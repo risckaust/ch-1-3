@@ -1,0 +1,35 @@
+<launch>
+        <!-- vim: set ft=xml noet : -->
+
+	<arg name="fcu_url" default="/dev/ttyUSB0:921600" />
+        <arg name="gcs_url" default="" />
+        <arg name="tgt_system" default="1" />
+        <arg name="tgt_component" default="1" />
+        <arg name="log_output" default="screen" />
+        <arg name="arduino_url" default="/dev/ttyUSB1" />
+        <arg name="arduino_baud" default="115200" />
+        <arg name="record" default="false"/>
+        <arg name="ns" default="Quad1"/>
+        <arg name="quadN" default="1"/>
+
+<group ns="Quad1">
+        <include file="$(find mavros)/launch/node.launch">
+                <arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
+                <arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
+
+                <arg name="fcu_url" value="$(arg fcu_url)" />
+                <arg name="gcs_url" value="$(arg gcs_url)" />
+                <arg name="tgt_system" value="$(arg tgt_system)" />
+                <arg name="tgt_component" value="$(arg tgt_component)" />
+                <arg name="log_output" value="$(arg log_output)" />
+        </include>
+	
+	<node pkg="autopilots" type="gripper_rc_test.py" name="gripper_node" required="true" >
+	</node>
+
+        <node pkg="rosserial_python" type="serial_node.py" name="gripper_arduino_node" args="_port:=$(arg arduino_url) _baud:=$(arg arduino_baud)" required="true">
+        </node>
+
+</group>
+
+</launch>
