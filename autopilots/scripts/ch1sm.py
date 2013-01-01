@@ -35,7 +35,9 @@ def ch1sm():
     
     # Instantiate a tracker
     target = sm.xyzVar()
+    targetPix = sm.xyzVar()
     rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
+    rospy.Subscriber('/getLaunchpad/launchpad/xyPixels', Point32, targetPix.cbXYZ)
     #rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
     
     # Instantiate various generic xyz positions
@@ -57,7 +59,7 @@ def ch1sm():
         sm.altK.distanceSensor = sm.altK.z
         
     zGround = sm.altK.z    
-    zGroundDistanceSensor = sm.altK.distanceSensor
+    zGroundDistanceSensor = sm.altK.distanceSensor1
                           
     zHover = rospy.get_param('/autopilot/altStep')   # base hover altitude
     takeoff.x = sm.bodK.x
@@ -122,7 +124,7 @@ def ch1sm():
                 
                 sm.altK.zSp = home.z
                 
-                print "z/zSp/Lidar1/Lidar2/Lidar3: ", sm.altK.z, sm.altK.zSp,sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3
+                print "z/zSp/Lidar1/Lidar2/Lidar3: ", sm.altK.z, sm.altK.zSp,sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3
                 
                 while not abs(sm.altK.zSp - sm.altK.z) < 0.2 and not rospy.is_shutdown():
                 
@@ -222,7 +224,7 @@ def ch1sm():
             tStart = rospy.Time.now()
             dT = 0.0
             
-            while confidence > 0.5 and dT < 15.0 and not rospy.is_shutdown(): # TODO: parameter
+            while confidence > 0.5 and dT < 20.0 and not rospy.is_shutdown(): # TODO: parameter
             
                 vxHold = sm.setp.velocity.x
                 vyHold = sm.setp.velocity.y
@@ -248,7 +250,7 @@ def ch1sm():
                 if Testing:
                     theAlt = sm.altK.z - zGround
                 else:
-                    theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
+                    theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor2) - zGroundDistanceSensor
                 
                 if seeIt: # Track target
                     confidence = cRateU*confidence + (1-cRateU)*1.0
@@ -304,8 +306,8 @@ def ch1sm():
         
             print "Descending..."
             
-            rospy.set_param('/kAltVel/vMaxU',vMaxU/4.0)
-            rospy.set_param('/kAltVel/vMaxD',vMaxD/4.0)
+            rospy.set_param('/kAltVel/vMaxU',vMaxU/3.0)
+            rospy.set_param('/kAltVel/vMaxD',vMaxD/3.0)
         
             tStart = rospy.Time.now()
             dT = 0.0
@@ -315,7 +317,7 @@ def ch1sm():
             if Testing:
                 theAlt = sm.altK.z - zGround
             else:
-                theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
+                theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor2) - zGroundDistanceSensor
                 
             zSp = theAlt/2.0    # incremental target waypoint
             zFix = -1.0
@@ -327,12 +329,12 @@ def ch1sm():
                 vyHold = sm.setp.velocity.y
                 yrHold = sm.setp.yaw_rate
                                 
-                theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
+                theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor2) - zGroundDistanceSensor
                 
                 if Testing:
                     theAlt = sm.altK.z - zGround
                 else:
-                    lidar = sm.altK.distanceSensor1, sm.altK.distanceSensor2, sm.altK.distanceSensor3
+                    lidar = sm.altK.distanceSensor1, sm.altK.distanceSensor2, sm.altK.distanceSensor2
                     theAlt = min(lidar) - zGroundDistanceSensor
                     
                 if theAlt < zSp + .05: # TODO: parameter
@@ -396,9 +398,15 @@ def ch1sm():
                 
                     dXY = sqrt(sm.bodK.xSp**2 + sm.bodK.ySp**2)
                     dV = abs(   sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(np.asscalar(sm.bodK.ekf.xhat[3]))   )
-                    if dXY < 0.01+0.3*theAlt and dV < 0.4: # TODO: parameters
-                       Envelope = True
+                    # if dXY < 0.01+0.3*theAlt and dV < 0.4: # TODO: parameters
+                    #   Envelope = True
                                             
+                    # pixel based envelope condition *without* velocity
+                    LX = rospy.get_param('/cvision/LX')
+                    LY = rospy.get_param('/cvision/LY') 
+                    if abs(targetPix.x - LX/2) < LX/5 and abs(targetPix.y - LY/2) < LX/5:
+                       Envelope = True
+
                     if HighAltitude: # descend if seeIt and high altitude and platform velocity match:
                         sm.setp.velocity.z = -vMaxD
                         Descend = True
@@ -433,7 +441,7 @@ def ch1sm():
                 
                 print " "
                 print "Descending: conf/PlatformFix:", confidence, PlatformFix
-                print "zFused/Lidar1/2:", sm.altK.z,sm.altK.distanceSensor,sm.altK.distanceSensor2
+                print "zFused/Lidar1/2:", sm.altK.z,sm.altK.distanceSensor1,sm.altK.distanceSensor2
                 print "seeIt/Env/High/AllAgree: ", seeIt, Envelope, HighAltitude, AllAgree
                 print "Descend/z/zSp/zFix: ", Descend, theAlt, zSp, zFix
                 print "dXY/dV/vHat: ", dXY, dV, np.asscalar(sm.bodK.ekf.xhat[3])

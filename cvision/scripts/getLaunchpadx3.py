@@ -329,6 +329,8 @@ def getLaunchpad():
                 Detect = True
                 CX = dataCircle[0]
                 CY = dataCircle[1]
+                # CX = dataWhite[0]
+                # CY = dataWhite[1]
                 pxRad = max(dataCircle[2],dataWhite[2])
                 Skip = True 
 
@@ -341,6 +343,7 @@ def getLaunchpad():
                 pxRad = dataCircle[2]
                 Skip = True 
 
+        # REMOVE BELOW to disqualify white+corner combo
         if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
             error = (dataWhite[0] - dataCorners[0])**2 + (dataWhite[1] - dataCorners[1])**2
             if sqrt(error) < TOL*dataWhite[2]:

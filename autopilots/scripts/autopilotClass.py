@@ -9,7 +9,7 @@ from sensor_msgs.msg import *
 from geometry_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
-# from altitude_sensor.msg import sensor_data
+from altitude_sensor.msg import sensor_data
 
 #########
 # Math custom functions
@@ -32,7 +32,7 @@ def setParams():
     # ROS parameters for autopilot
     rospy.set_param('/autopilot/fbRate',20.0)        # feedback rate (hz)
     rospy.set_param('/autopilot/altStep',3.5)        # initial altitude step command
-    rospy.set_param('/autopilot/camOffset',0.055)      # camera offset from ground
+    rospy.set_param('/autopilot/camOffset',0.05)      # camera offset from ground
     rospy.set_param('/autopilot/platformHeight',2.0)   # height of platform
 
     # ROS parameters for kAltVel
@@ -41,7 +41,7 @@ def setParams():
     rospy.set_param('/kAltVel/vMaxU',1)
     rospy.set_param('/kAltVel/vMaxD',0.5)
     rospy.set_param('/kAltVel/distanceSensorName','hrlv_ez4_pub') # name of distance sensor for mavros subscription
-    rospy.set_param('/kAltVel/smartLandingSim', True)         # True = for HIL simulation of smartLanding
+    rospy.set_param('/kAltVel/smartLandingSim', False)         # True = for HIL simulation of smartLanding
     rospy.set_param('/kAltVel/teraN',3)             # number of tera rangers
     rospy.set_param('/kAltVel/lidarAgree', 0.5)       # agreement for terarangers
     
@@ -50,7 +50,7 @@ def setParams():
 
     
     # ROS parameters for kBodVel
-    rospy.set_param('/kBodVel/gP',0.75)             # 0.75 tuned
+    rospy.set_param('/kBodVel/gP',0.8)             # 0.75 tuned
     rospy.set_param('/kBodVel/gI',0.05)             # 0.05 tuned
     rospy.set_param('/kBodVel/vMax',5.0)            # max lateral velocity
     rospy.set_param('/kBodVel/gPyaw',0.5)           # yaw proportional gain
@@ -58,7 +58,7 @@ def setParams():
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
     rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone (deg/s)
     rospy.set_param('/kBodVel/feedForward', True)   # use EKF to feedforward estimates
-    rospy.set_param('/kBodVel/momentum', False)       # use momentum (vs EKF) in case of vision loss
+    rospy.set_param('/kBodVel/momentum', True)       # use momentum (vs EKF) in case of vision loss
 
 class autopilotClass:
 
@@ -387,8 +387,8 @@ class autopilotClass:
                 VX = vHat*cos(thHat)      # ENU coordinates             
                 VY = vHat*sin(thHat)
                 
-                self.ekf.VxFF = 0.9*self.ekf.VxFF + 0.1*VX # TODO: parameter
-                self.ekf.VyFF = 0.9*self.ekf.VyFF + 0.1*VY
+                self.ekf.VxFF = 0.9*self.ekf.VxFF + 0.1*VX*0.7 # TODO: parameter
+                self.ekf.VyFF = 0.9*self.ekf.VyFF + 0.1*VY*0.7
                         
                 #### vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
                 #### vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
