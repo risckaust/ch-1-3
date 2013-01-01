@@ -1,0 +1,11 @@
+<launch>
+
+        <arg name="record_states" default="true" />
+
+        <node pkg="autopilots" type="ch1sm.py"  name="ch1sm" required="true" output="screen">
+        </node>
+
+	<node pkg="rosbag" type="record" name="record_states" args="-o /home/odroid/ros_bags/State_Data.bag /mavros/local_position/pose /mavros/setpoint_raw/local /kBodVel/ekfState /mavros/local_position/velocity /mavros/distance_sensor/hrlv_ez4_pub /altitude /altitude2 " respawn="true" if="$(arg record_states)" > 
+        </node>
+
+</launch>

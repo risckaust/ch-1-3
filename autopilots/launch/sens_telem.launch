@@ -1,0 +1,14 @@
+<launch>
+
+        <arg name="fcu_url" default="/dev/ttyUSB0:921600" />
+	<arg name="gcs_url" default="" />
+        
+        <include file="$(find mavros)/launch/px4.launch">
+            <arg name="fcu_url" value="$(arg fcu_url)" />
+            <arg name="gcs_url" value="$(arg gcs_url)" />		
+        </include>
+        
+        <node pkg="altitude_sensor" type="altitude_sensor_node"  name="altitude_sensor" respawn="true" >
+        </node>
+
+</launch>

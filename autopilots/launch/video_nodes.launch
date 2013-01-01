@@ -1,0 +1,16 @@
+<launch>
+        <arg name="record_imgs" default="false" />
+ 
+        <node pkg="cvision" type="videoBridge.py"  name="videoBridge" respawn="true" >
+        </node>
+        
+        <node pkg="cvision" type="getLaunchpadx3.py"  name="getLaunchpadx3" required="true" >
+        </node>
+
+	<!--node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frame 5.0 cvision/frame_reduced" respawn="true" >
+        </node-->
+
+        <node pkg="rosbag" type="record" name="record_imgs" args="-o /home/odroid/ros_bags/Img_Data.bag /getLaunchpad/launchpad/processedImage /getLaunchpad/launchpad/xyMeters /getLaunchpad/launchpad/xyPixels" respawn="true" if="$(arg record_imgs)" >
+        </node>
+
+</launch>
