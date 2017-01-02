@@ -16,11 +16,11 @@ from geometry_msgs.msg import Point32
 
 class ImageSubscriber:
 	def __init__(self):
-		self.img=Image()
+		self.img= Image()
 		self.height=0
 		self.width=0
 	def cb(self, msg):
-		self.img	=msg.data
+		self.img	= msg
 		self.height	=msg.height
 		self.width	=msg.width
 
@@ -35,8 +35,7 @@ def getBlueBlob():
     img_obj= ImageSubscriber()
     vrep_img_sub = rospy.Subscriber('/VREP_Image', Image, img_obj.cb)
 
-    # create cv bridge object
-    bridge = CvBridge()
+    
 	
     # flage to whether to write images to disk
     write_images=False
@@ -68,6 +67,9 @@ def getBlueBlob():
     start_stream_t=time.time()
     start_saving_t=time.time()
 
+    # create cv bridge object
+    bridge = CvBridge()
+
     while not rospy.is_shutdown():
 
 	if STREAM_IMG :
@@ -78,10 +80,11 @@ def getBlueBlob():
 
         # grab a frame: get it from VREP image topic
 	if img_obj.height > 0:
-		frame = img_obj.img
+		frame = bridge.imgmsg_to_cv2(img_obj.img, desired_encoding="passthrough")
 		img_obj.height=0
 		img_obj.width=0
 	else:
+		print "could not get image"
 		continue
         #_, frame = cap.read()
         # frame = imutils.resize(frame, width=640) # resize to std
@@ -161,8 +164,8 @@ def getBlueBlob():
         rate.sleep()
 
         # draw frame and mask
-        #cv2.imshow('frame',frame)
-        #cv2.imshow('mask',mask)
+        cv2.imshow('frame',frame)
+        cv2.imshow('mask',mask)
 
         key = cv2.waitKey(1) & 0xFF
 
