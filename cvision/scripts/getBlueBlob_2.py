@@ -81,6 +81,7 @@ def getBlueBlob():
         # grab a frame: get it from VREP image topic
 	if img_obj.height > 0:
 		frame = bridge.imgmsg_to_cv2(img_obj.img, desired_encoding="passthrough")
+		#frame=cv2.flip(frame,0)
 		img_obj.height=0
 		img_obj.width=0
 	else:
@@ -90,7 +91,8 @@ def getBlueBlob():
         # frame = imutils.resize(frame, width=640) # resize to std
 
         # convert to HSV
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+	frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
     	# find the blue in the image
         lower = np.array([60,121,180],np.uint8)
@@ -164,8 +166,8 @@ def getBlueBlob():
         rate.sleep()
 
         # draw frame and mask
-        cv2.imshow('frame',frame)
-        cv2.imshow('mask',mask)
+        #cv2.imshow('frame',frame)
+        #cv2.imshow('mask',mask)
 
         key = cv2.waitKey(1) & 0xFF
 
