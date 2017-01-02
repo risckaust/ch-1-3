@@ -13,31 +13,14 @@ from mavros_msgs.srv import *
 
 import autopilotLib
 import myLib
+import autopilotParams
+autopilotParams.setParams()
 
 ###################################
 
 # Publishers and parameters
 
 command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
-
-# ROS parameters for main loop
-rospy.set_param('/main/fbRate',20.0)
-rospy.set_param('/main/altStep',5.0)
-
-# ROS parameters for kAltVel
-rospy.set_param('/kAltVel/gP',1.5)
-rospy.set_param('/kAltVel/gI',0.1)
-rospy.set_param('/kAltVel/vMaxU',1.0)
-rospy.set_param('/kAltVel/vMaxD',0.5)
-
-# ROS parameters for kBodVel
-rospy.set_param('/kBodVel/gP',1.5)
-rospy.set_param('/kBodVel/gI',0.1)
-rospy.set_param('/kBodVel/vMax',5.0)
-rospy.set_param('/kBodVel/gPyaw',0.5)
-rospy.set_param('/kBodVel/yawOff',1.0)
-rospy.set_param('/kBodVel/yawCone',45.0)
-rospy.set_param('/kBodVel/yawTurnRate',15.0)
 
 ###################################
 
@@ -61,7 +44,7 @@ def autopilot():
     rospy.Subscriber('/mavros/state', State, bodK.cbFCUstate)
 
     # Establish a rate
-    fbRate = rospy.get_param('/main/fbRate')
+    fbRate = rospy.get_param('/autopilot/fbRate')
     rate = rospy.Rate(fbRate)
 
     # Cycle to register local position
@@ -76,7 +59,7 @@ def autopilot():
     # Execute altitude step response while holding current position
     #####
 
-    altK.zSp = zGround + rospy.get_param('/main/altStep')
+    altK.zSp = zGround + rospy.get_param('/autopilot/altStep')
     home = myLib.xyVar()
     home.x = bodK.x
     home.y = bodK.y

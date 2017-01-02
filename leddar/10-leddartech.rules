@@ -1,0 +1,2 @@
+ATTR{idVendor}=="28f1", ATTR{idProduct}=="0400",
+ATTR{manufacturer}=="LEDDARTECH", MODE:="666", GROUP="plugdev"

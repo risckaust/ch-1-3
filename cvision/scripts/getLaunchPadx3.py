@@ -29,35 +29,37 @@ if OLDCV:
     import cv2.cv as cv
 
 import cvisionLib
+import cvisionParams
+cvisionParams.setParams()
 
 ###################################
 
-# ROS parameters
-
-rospy.set_param('/pix2m/LX', 640.0)
-rospy.set_param('/pix2m/LY', 480.0)
-rospy.set_param('/pix2m/altCal',1.2)
-rospy.set_param('/pix2m/m2pix', 0.00104167) # 0.5m = 480pixels
-
 # Flags & Constants
-FEMASKON = True     # Use fisheye mask
-THRESH = 10000.0    # threshold for positive centroid detection
-TOL = 1.5           # radius multiplier for circle inclusion
-ERODE = False       # Use erode/dilate vs blur
-LIBERAL = True      # Allow lone bright white detection
-HOVERLOW = False    # Allow corner only detection override (for temporary testing)
-RED = 2             # Image size reduction
-DIMX = 640/RED      # Reduced x-dimension
-DIMY = 480/RED      # Reduced y-dimension
-PXRAD = DIMY/4      # Radius for PXmask
-LOOP_RATE = 15      # publishing rate (Hz)
 
-# Image showing/saving/streaming
-IMGSHOW = True      # Show images to screen
-IMGPUB = False      # Publish raw images
-IMGSTREAM = True    # Stream reduced images
-PUB_RATE = 3        # save rate (Hz)
-STREAM_RATE = 2     # streaming rate (Hz)
+FECAMERA = rospy.get_param('/getLaunchPad/feCamera')
+CAMFLIP = rospy.get_param('/getLaunchPad/camFlip')
+PXMASKING = rospy.get_param('/getLaunchPad/pxMasking')
+THRESH = rospy.get_param('/getLaunchPad/centroidThresh')
+TOL = rospy.get_param('/getLaunchPad/circleTol')
+ERODE = rospy.get_param('/getLaunchPad/erodeOn')
+LIBERAL = rospy.get_param('/getLaunchPad/liberal')
+RED = rospy.get_param('/getLaunchPad/reduction')
+LOOP_RATE = rospy.get_param('/getLaunchPad/loopRate')
+
+HOVERLOW = rospy.get_param('/getLaunchPad/hoverLow')
+
+IMGSHOW = rospy.get_param('/getLaunchPad/imgShow')
+IMGPUB = rospy.get_param('/getLaunchPad/imgPub')
+PUB_RATE = rospy.get_param('/getLaunchPad/imgPubRate')
+IMGSTREAM = rospy.get_param('/getLaunchPad/imgStream')
+STREAM_RATE = rospy.get_param('/getLaunchPad/imgStreamRate')
+
+DIMX = rospy.get_param('/pix2m/LX')/rospy.get_param('/getLaunchPad/reduction')
+DIMY = rospy.get_param('/pix2m/LY')/rospy.get_param('/getLaunchPad/reduction')
+DIMX = int(DIMX)
+DIMY = int(DIMY)
+
+PXRAD = DIMY/4      # Radius for PXmask
 
 # Creat fisheye mask
 FEmask = np.zeros((DIMY,DIMX,1), np.uint8)
@@ -79,7 +81,7 @@ bridge = CvBridge()
 
 spGen = cvisionLib.pix2m() # setpoint generator
 
-def getLaunchPadCircles():
+def getLaunchPad():
 
     # initialize node & set rate in Hz
 
@@ -94,7 +96,6 @@ def getLaunchPadCircles():
     DetectHold = False
     PXMASKON = False
     kc = 0              # number of iterations
-    img_k = 1000		# counter of saved images
 
     # start video stream
     cap = cv2.VideoCapture(0)
@@ -110,11 +111,11 @@ def getLaunchPadCircles():
         frameGRY = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # apply fisheye mask
-        if FEMASKON:
+        if FECAMERA:
             frameGRY = cv2.bitwise_and(frameGRY,FEmask)
         
         # apply proximity mask
-        if PXMASKON:
+        if PXMASKING and PXMASKON:
             frameGRY = cv2.bitwise_and(frameGRY,PXmask)
 
         # extract superwhite
@@ -132,10 +133,10 @@ def getLaunchPadCircles():
 
         if OLDCV:
             circlesGRY = cv2.HoughCircles(frameGRY,cv.CV_HOUGH_GRADIENT,1,DIMY,
-                param1=50,param2=80,minRadius=DIMY/50,maxRadius=DIMY/4)
+                param1=50,param2=50,minRadius=DIMY/50,maxRadius=DIMY/4)
         else:
             circlesGRY = cv2.HoughCircles(frameGRY,cv2.HOUGH_GRADIENT,1,DIMY,
-                param1=50,param2=80,minRadius=DIMY/50,maxRadius=DIMY/4)
+                param1=50,param2=50,minRadius=DIMY/50,maxRadius=DIMY/4)
 
         # assess circles 
 
@@ -226,7 +227,7 @@ def getLaunchPadCircles():
                 CY = cyCRN
 
         # Create proximity mask for next image
-        if Detect and DetectHold: # create a proximity mask of PXRAD radius circle
+        if Detect and DetectHold and PXMASKING: # create a proximity mask of PXRAD radius circle
                 PXmask = np.zeros((DIMY,DIMX,1), np.uint8)
                 cv2.circle(PXmask,(CX,CY),PXRAD,(255,255,255),-1)
                 PXMASKON = True
@@ -239,8 +240,16 @@ def getLaunchPadCircles():
         # publish location with reduction correction
         msgPixel.x = CX*RED
         msgPixel.y = CY*RED
+        if CAMFLIP and msgPixel.x > 0 and msgPixel.y > 0:
+            hold = msgPixel.x
+            msgPixel.x = msgPixel.y
+            msgPixel.y = rospy.get_param('/pix2m/LY') - hold
+            
         msgPixel.z = 0.0 # Not used
-        (msgSp.x, msgSp.y, msgSp.z) = spGen.targetFishEye(msgPixel)
+        if FECAMERA:
+            (msgSp.x, msgSp.y, msgSp.z) = spGen.targetFishEye(msgPixel)
+        else:
+            (msgSp.x, msgSp.y, msgSp.z) = spGen.target(msgPixel)
 
         rate.sleep()
         targetPixel.publish(msgPixel)
@@ -254,9 +263,8 @@ def getLaunchPadCircles():
             key = cv2.waitKey(1) & 0xFF
 
         if IMGPUB: # publish raw image
-            if (kc*SAVE_RATE)%LOOP_RATE < SAVE_RATE:
+            if (kc*PUB_RATE)%LOOP_RATE < PUB_RATE:
                 raw_img_pub.publish(bridge.cv2_to_imgmsg(raw_frame, encoding="bgr8"))
-                img_k = img_k+1
 
         if IMGSTREAM: # stream processed image
             if (kc*STREAM_RATE)%LOOP_RATE < STREAM_RATE:
@@ -268,7 +276,7 @@ def getLaunchPadCircles():
 
 if __name__ == '__main__':
     try:
-        getLaunchPadCircles()
+        getLaunchPad()
     except rospy.ROSInterruptException:
         cap.release()
         cv2.destroyAllWindows()

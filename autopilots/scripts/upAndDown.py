@@ -37,6 +37,7 @@ def autopilot():
     altK = autopilotLib.kAltVel()
     rospy.Subscriber('/mavros/local_position/pose', PoseStamped, altK.cbPos)
     rospy.Subscriber('/mavros/state', State, altK.cbFCUstate)
+    rospy.Subscriber('/mavros/extended_state', ExtendedState, altK.cbFCUexState)
 
     # Instantiate body controller
     bodK = autopilotLib.kBodVel()
@@ -44,7 +45,7 @@ def autopilot():
     rospy.Subscriber('/mavros/state', State, bodK.cbFCUstate)
     
     # Instantiate a tracker
-    target = autopilotLib.spTracker()
+    target = autopilotLib.xyzVar()
     rospy.Subscriber('target_xySp', Point32, target.cbTracker)
 
     # Establish a rate
@@ -61,11 +62,11 @@ def autopilot():
     camOffset = rospy.get_param('/autopilot/camOffset')
 
     #####
-    # Execute altitude step response while holding current position
+    # Execute gradual altitude step response while holding current position
     #####
 
     altK.zSp = zGround + rospy.get_param('/autopilot/altStep')
-    home = myLib.xyVar()
+    home = autopilotLib.xyzVar()
     home.x = bodK.x
     home.y = bodK.y
 
@@ -74,42 +75,71 @@ def autopilot():
         setp.header.stamp = rospy.Time.now()
 
         setp.velocity.z = altK.controller()
+        
+        takeOffVel = 2.0*(altK.z - zGround) + 0.3
+
+        setp.velocity.z = min(setp.velocity.z, takeOffVel)
+        
         (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)
         (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
 
         rate.sleep()
         command.publish(setp)
         
-        print 'Set/Alt/Gnd:',altK.zSp, altK.z, zGround
+        print 'Set/Alt/Gnd/takeOffVel:',altK.zSp, altK.z, zGround, takeOffVel
         
         
     #####
-    # Track camera detection
+    # Track camera detection and land
     #####
     
     home.x = bodK.x                 # define home position
     home.y = bodK.y
+    home.z = altK.z
     
-    while not rospy.is_shutdown():
+    airborne = True
+    
+    while airborne and not rospy.is_shutdown():
     
         setp.header.stamp = rospy.Time.now()
         
-        if target.z > 0:            # positive detection
+        if target.z > 0:
+            seeIt = True
+        else:
+            seeIt = False
+        
+        if seeIt:                   # positive detection
             altCorrect = (altK.z - zGround + camOffset)/rospy.get_param('/pix2m/altCal')
             bodK.xSp = target.x*altCorrect
             bodK.ySp = target.y*altCorrect
             home.x = bodK.x         # store most recent successful target
             home.y = bodK.y
+            home.z = altK.z
+            (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
+            
+            error = sqrt(bodK.xSp**2 + bodK.ySp**2)
+            if error < 0.25:
+                setp.velocity.z = -0.1
+            else:
+                setp.velocity.z = 0.0
+                
         else:
             (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)
+            (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
             
-        setp.velocity.z = altK.controller()
-        (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
+            altK.zSp = home.z
+            setp.velocity.z = altK.controller()
 
         rate.sleep()
         command.publish(setp)
+
+        print 'bodK.xSp, bodK.ySp, seeIt: ', bodK.xSp, bodK.ySp, seeIt
+        print 'airborne: ', altK.airborne
         
-        print 'bodK.xSp, bodK.ySp, target.z
+        if not altK.airborne:
+            airborne = False
+            autopilotLib.fcuModes.setDisarm()
+   
         
 if __name__ == '__main__':
     try:

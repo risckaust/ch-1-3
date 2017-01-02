@@ -10,8 +10,7 @@ from geometry_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
 
-
-###################################
+#########
 #
 # class kAltVel
 #   Altitude controller based on outer loop velocity commands to FCU
@@ -22,9 +21,10 @@ from mavros_msgs.srv import *
 # Subscriptions:
 #   rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
 #   rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
-#   
+#   rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
+#
 # ROS parameters:
-#   /main/fbRate = feedback sampling rate (Hz)
+#   /autopilot/fbRate = feedback sampling rate (Hz)
 #   /kAltVel/gP = proportional gain
 #   /kAltVel/gI = integral gain
 #   /kAltVel/vMaxU = maximum upward reference velocity (positive m/s)
@@ -36,6 +36,7 @@ from mavros_msgs.srv import *
 #   zSp = commanded altitude setpoint (m)
 #   z = current altitude from /mavros/local_position/pose (m)
 #   engaged = Boolean if armed and offboard
+#   landed = Boolean if landed
 #
 #####
 
@@ -46,27 +47,34 @@ class kAltVel:
         self.zSp = 0.0
         self.z = 0.0
         self.engaged = False
+        self.airborne = False
 
     def cbPos(self,msg):
         if not msg == None:
             self.z = msg.pose.position.z
 
     def cbFCUstate(self,msg):
+        self.engaged = False
         if not msg == None:
             if msg.armed and (msg.mode == 'OFFBOARD'):
                 self.engaged = True
+                
+    def cbFCUexState(self,msg):
+        if not msg == None:
+            if msg.landed_state == 2:
+                self.airborne = True
             else:
-                self.engaged = False
+                self.airborne = False
 
     def controller(self):
     
-        fbRate = rospy.get_param('/main/fbRate')
+        fbRate = rospy.get_param('/autopilot/fbRate')
         gP = rospy.get_param('/kAltVel/gP')
         gI = rospy.get_param('/kAltVel/gI')
         vMaxU = rospy.get_param('/kAltVel/vMaxU')
         vMaxD = rospy.get_param('/kAltVel/vMaxD')
 
-        ez = self.zSp - self.z                              # altitude erro
+        ez = self.zSp - self.z                              # altitude error
 
         vzRef = gP*ez + gI*self.ezInt                       # to be published
 
@@ -91,7 +99,7 @@ class kAltVel:
 #   rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
 #   
 # ROS parameters:
-#   /main.fbRate = feedback sampling rate (Hz)
+#   /autopilot/fbRate = feedback sampling rate (Hz)
 #   /kBodVel/gP = proportional gain for velocity control
 #   /kBodVel/gI = integral gain for velocity control
 #   /kBodVel/vMax = maximum reference velocity (positive m/s)
@@ -146,7 +154,7 @@ class kBodVel:
 
     def controller(self):
     
-        fbRate = rospy.get_param('/main/fbRate')
+        fbRate = rospy.get_param('/autopilot/fbRate')
         gP = rospy.get_param('/kBodVel/gP')
         gI = rospy.get_param('/kBodVel/gI')
         vMax = rospy.get_param('/kBodVel/vMax')
@@ -231,8 +239,8 @@ def wayHome(pos,home):
 
 ###################################
 #
-# class spTracker
-#   Class to subscribe to setpoints
+# class xyzVar
+#   Generic class to subscribe to setpoints
 #
 # Subscriptions:
 #   
@@ -244,7 +252,7 @@ def wayHome(pos,home):
 #
 #####
 
-class spTracker:
+class xyzVar:
     def __init__(self):
         self.x = 0.0
         self.y = 0.0
@@ -257,5 +265,78 @@ class spTracker:
             self.z = msg.z
 
 
+###################################
+#
+# class fcuModes
+#   Collection of service calls to arm/disarm/change modes
+#
+# Fields:
+#   setArm()
+#   setDisarm()
+#   setStabilzedMode()
+#   setOffboardMode()
+#   setAltitudeMode()
+#   setPositionMode()
+#   setAutoLandMode()
+#
+#####
+
+class fcuModes:
+
+    def setArm(self):
+        rospy.wait_for_service('/mavros/cmd/arming')
+        try:
+            armService = rospy.ServiceProxy('/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
+            armService(True)
+        except rospy.ServiceException, e:
+            print "Service arming call failed: %s"%e
+
+    def setDisarm(self):
+        rospy.wait_for_service('/mavros/cmd/arming')
+        try:
+            armService = rospy.ServiceProxy('/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
+            armService(False)
+        except rospy.ServiceException, e:
+            print "Service disarming call failed: %s"%e
+
+    def setStabilizedMode(self):
+        rospy.wait_for_service('/mavros/set_mode')
+        try:
+            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService(custom_mode='STABILIZED')
+        except rospy.ServiceException, e:
+            print "service set_mode call failed: %s. Stabilized Mode could not be set."%e
+
+    def setOffboardMode(self):
+        rospy.wait_for_service('/mavros/set_mode')
+        try:
+            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService(custom_mode='OFFBOARD')
+        except rospy.ServiceException, e:
+            print "service set_mode call failed: %s. Offboard Mode could not be set."%e
+
+    def setAltitudeMode(self):
+        rospy.wait_for_service('/mavros/set_mode')
+        try:
+            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService(custom_mode='ALTCTL')
+        except rospy.ServiceException, e:
+            print "service set_mode call failed: %s. Altitude Mode could not be set."%e
+
+    def setPositionMode(self):
+        rospy.wait_for_service('/mavros/set_mode')
+        try:
+            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService(custom_mode='POSCTL')
+        except rospy.ServiceException, e:
+            print "service set_mode call failed: %s. Position Mode could not be set."%e
+
+    def setAutoLandMode(self):
+        rospy.wait_for_service('/mavros/set_mode')
+        try:
+            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService(custom_mode='AUTO.LAND')
+        except rospy.ServiceException, e:
+            print "service set_mode call failed: %s. Autoland Mode could not be set."%e
 
  
