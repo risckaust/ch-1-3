@@ -85,7 +85,7 @@ def autopilot():
         rate.sleep()
         command.publish(setp)
         
-        print 'Set/Alt/Gnd/takeOffVel:',altK.zSp, altK.z, zGround, takeOffVel
+        print 'Set/Alt/Gnd:',altK.zSp, altK.z, zGround
         
         
     #####

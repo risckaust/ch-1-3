@@ -34,6 +34,7 @@ cvisionParams.setParams()
 
 FECAMERA = rospy.get_param('/getLaunchPad/feCamera')
 CAMFLIP = rospy.get_param('/getLaunchPad/camFlip')
+IMGSHOW = rospy.get_param('/getLaunchPad/imgShow')
 
 ###################################
 
@@ -120,6 +121,7 @@ def getBlueBlob():
         msg.x = -1
         msg.y = -1
         center= None
+        radius = 0
         if len(cnts) > 0:
             # keep largest contour
             c = max(cnts, key=cv2.contourArea)
@@ -174,8 +176,9 @@ def getBlueBlob():
         targetSp.publish(msgSp)
 
         # draw frame and mask
-        # cv2.imshow('frame',frame)
-        # cv2.imshow('mask',mask)
+        if IMGSHOW:
+            cv2.imshow('frame',frame)
+            cv2.imshow('mask',mask)
 
         key = cv2.waitKey(1) & 0xFF
 
