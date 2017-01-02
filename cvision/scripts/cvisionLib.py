@@ -30,7 +30,7 @@ class pix2m():
         ySp = 0.0
         flag = -1
         
-        if center.x > 0 and center.y > 0:
+        if center.z > 0:
             xSp = (center.x - self.LX/2)
             ySp = (self.LY/2 - center.y)
             xSp = xSp*self.m2pix
@@ -47,7 +47,7 @@ class pix2m():
         ySp = 0.0
         flag = -1
         
-        if center.x > 0 and center.y > 0:
+        if center.z > 0:
             xSp = (center.x - self.LX/2)
             ySp = (self.LY/2 - center.y)
             radius = sqrt(xSp**2 + ySp**2)

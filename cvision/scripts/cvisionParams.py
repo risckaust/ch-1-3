@@ -19,7 +19,7 @@ def setParams():
     rospy.set_param('/getLaunchPad/reduction', 2)                # image reduction for realtime
     rospy.set_param('/getLaunchPad/loopRate', 15)                # publishing rate (hz)
     
-    rospy.set_param('/getLaunchPad/imgShow', False)               # show images to screen
+    rospy.set_param('/getLaunchPad/imgShow', True)               # show images to screen
     rospy.set_param('/getLaunchPad/imgPub', False)               # publish raw images
     rospy.set_param('/getLaunchPad/imgPubRate', 3)               # publishing rate
     rospy.set_param('/getLaunchPad/imgStream', True)             # stream reduced images

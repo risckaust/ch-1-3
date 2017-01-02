@@ -36,6 +36,9 @@ FECAMERA = rospy.get_param('/getLaunchPad/feCamera')
 CAMFLIP = rospy.get_param('/getLaunchPad/camFlip')
 IMGSHOW = rospy.get_param('/getLaunchPad/imgShow')
 
+LX = rospy.get_param('/pix2m/LX')
+LY = rospy.get_param('/pix2m/LY')
+
 ###################################
 
 # Create publishers
@@ -115,8 +118,10 @@ def getBlueBlob():
             _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     
         # prep messages
-        msgPixel.x = -1
-        msgPixel.y = -1
+        msgPixel.x = -1.0
+        msgPixel.y = -1.0
+        msgPixel.z = -1.0
+        
         center= None
         radius = 0
         if len(cnts) > 0:
@@ -124,6 +129,7 @@ def getBlueBlob():
             c = max(cnts, key=cv2.contourArea)
             # construct & draw bounding circle
             ((x, y), radius) = cv2.minEnclosingCircle(c)
+            msgPixel.z = 1.0
 	    M = cv2.moments(c)
 	    if M["m00"]>0:
 	    	center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
@@ -156,12 +162,12 @@ def getBlueBlob():
 		
         msgPixel.x=center[0]
         msgPixel.y=center[1]
-        msgPixel.z=0.0        
         
-        if CAMFLIP and msgPixel.x > 0 and msgPixel.y > 0:
-            hold = msgPixel.x
-            msgPixel.x = msgPixel.y
-            msgPixel.y = rospy.get_param('/pix2m/LY') - hold
+        if CAMFLIP and msgPixel.z > 0:
+            pseudo_x = LX/2.0 + (msgPixel.y - LY/2.0)
+            pseudo_y = LY/2.0 - (msgPixel.x - LX/2.0)
+            msgPixel.x = pseudo_x
+            msgPixel.y = pseudo_y
             
         if FECAMERA:
             (msgSp.x, msgSp.y, msgSp.z) = spGen.targetFishEye(msgPixel)
