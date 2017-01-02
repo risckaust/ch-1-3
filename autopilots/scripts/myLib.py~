@@ -20,11 +20,6 @@ def dead(x,X):
     z = x - sat(x,-X,X)
     return z
 
-class xyVar:
-	def __init__(self):
-		self.x=0
-		self.y=0
-
 
 
 

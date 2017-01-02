@@ -85,8 +85,8 @@ def autopilot():
     V = 4.0
     omega = 0.1
     theta = pi/2.0
-    home.x = 0.0
-    home.y = 0.0
+    home.x = 10.0
+    home.y = 15.0
     
     while not rospy.is_shutdown():
     

@@ -79,7 +79,7 @@ def autopilot():
         
         
     #####
-    # Track circling trajectory
+    # Go to point
     #####
     
     V = 4.0
@@ -92,9 +92,8 @@ def autopilot():
     
         setp.header.stamp = rospy.Time.now()
             
-        home.x = home.x + (1.0/fbRate)*V*cos(theta)
-        home.y = home.y + (1.0/fbRate)*V*sin(theta)
-        theta = theta + (1.0/fbRate)*omega
+        home.x = 1.0
+        home.y = 1.0 
         
         setp.velocity.z = altK.controller()
         (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)
