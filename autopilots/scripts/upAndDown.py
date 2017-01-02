@@ -117,18 +117,23 @@ def autopilot():
             (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
             
             error = sqrt(bodK.xSp**2 + bodK.ySp**2)
-            if error < 0.25:
+            if error < 0.05:
                 setp.velocity.z = -0.1
             else:
                 setp.velocity.z = 0.0
 
-            if False:
-                if error < 0.25:
+            if True:
+                if error < 0.05:
                     altK.zSp = altK.z - 0.1/fbRate
                     setp.velocity.z = altK.controller()
                 else:
                     altK.zSp = altK.z
                     setp.velocity.z = altK.controller()
+
+            if altK.z < zGround + 0.1:
+                altK.zSp = zGround + 0.1
+                setp.velocity.z = altK.controller()
+
                     
         else:
             (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)
@@ -137,16 +142,19 @@ def autopilot():
             altK.zSp = home.z
             setp.velocity.z = altK.controller()
 
+            error = -1.0
+
         rate.sleep()
         command.publish(setp)
 
-        print 'bodK.xSp, bodK.ySp, seeIt: ', bodK.xSp, bodK.ySp, seeIt
+        print 'bodK.xSp/bodK.ySp/error/seeIt: ', bodK.xSp, bodK.ySp, error, seeIt
         print 'airborne: ', altK.airborne
         
         if not altK.airborne:
             airborne = False
             modes.setDisarm()
    
+        airborne = True ###############################################
         
 if __name__ == '__main__':
     try:

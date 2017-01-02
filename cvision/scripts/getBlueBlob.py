@@ -65,9 +65,6 @@ def getBlueBlob():
 #    camera.command('record','on')
 #    status = camera.status()
 
-    # prep to publish two topics: x & y of ellipse center
-    msg = Point32()
-
     # initialize node & set rate in Hz
     rospy.init_node('tracker', anonymous=True)
     loop_rate=20
@@ -118,8 +115,8 @@ def getBlueBlob():
             _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     
         # prep messages
-        msg.x = -1
-        msg.y = -1
+        msgPixel.x = -1
+        msgPixel.y = -1
         center= None
         radius = 0
         if len(cnts) > 0:

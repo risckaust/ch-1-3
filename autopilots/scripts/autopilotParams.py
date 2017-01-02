@@ -11,7 +11,7 @@ def setParams():
     # ROS parameters for autopilot
     rospy.set_param('/autopilot/fbRate',20.0)        # feedback rate (hz)
     rospy.set_param('/autopilot/altStep',1.5)        # initial altitude step command
-    rospy.set_param('/autopilot/camOffset',0.2)      # camera offset from ground
+    rospy.set_param('/autopilot/camOffset',0.0)      # camera offset from ground
 
     # ROS parameters for kAltVel
     rospy.set_param('/kAltVel/gP',1.)
