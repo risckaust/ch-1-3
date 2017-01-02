@@ -14,6 +14,15 @@ import time
 # from goprohero import GoProHero
 from geometry_msgs.msg import Point32
 
+class ImageSubscriber:
+	def __init__(self):
+		self.img=Image()
+		self.height=0
+		self.width=0
+	def cb(self, msg):
+		self.img	=msg.data
+		self.height	=msg.height
+		self.width	=msg.width
 
 def getBlueBlob():
     # centroid of detected object
@@ -22,12 +31,15 @@ def getBlueBlob():
     img_pub = rospy.Publisher('processed_image', Image, queue_size=10)
     # processed gray image for downstream
     img_stream_pub= rospy.Publisher('img_stream', Image, queue_size=10)
+    # subscriber for VREP image
+    img_obj= ImageSubscriber()
+    vrep_img_sub = rospy.Subscriber('/VREP_Image', Image, img_obj.cb)
 
     # create cv bridge object
     bridge = CvBridge()
 	
     # flage to whether to write images to disk
-    write_images=True
+    write_images=False
     saving_rate=3.0	# image saving rate, Hz
     saving_k=0.0	# saving rate counter
 
@@ -35,10 +47,6 @@ def getBlueBlob():
     STREAM_IMG=True
     stream_rate=2.0	# Hz
     stream_k=0.0	# counter
-
-#    camera = GoProHero(password='odroid')
-#    camera.command('record','on')
-#    status = camera.status()
 
     # prep to publish two topics: x & y of ellipse center
     msg = Point32()
@@ -52,7 +60,8 @@ def getBlueBlob():
     morph_height=2
 
     # start video stream
-    cap = cv2.VideoCapture(0)
+    # Not needed as we are reading an image from VREP
+    #cap = cv2.VideoCapture(0)
 
     img_k=0
 
@@ -67,8 +76,14 @@ def getBlueBlob():
 	if write_images :
 		saving_k=saving_k+1
 
-        # grab a frame
-        _, frame = cap.read()
+        # grab a frame: get it from VREP image topic
+	if img_obj.height > 0:
+		frame = img_obj.img
+		img_obj.height=0
+		img_obj.width=0
+	else:
+		continue
+        #_, frame = cap.read()
         # frame = imutils.resize(frame, width=640) # resize to std
 
         # convert to HSV
