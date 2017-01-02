@@ -47,6 +47,9 @@ def autopilot():
     # Instantiate a tracker
     target = autopilotLib.xyzVar()
     rospy.Subscriber('target_xySp', Point32, target.cbTracker)
+    
+    # Instantiate a mode switcher
+    modes = autopilotLib.fcuModes()
 
     # Establish a rate
     fbRate = rospy.get_param('/autopilot/fbRate')
@@ -75,10 +78,6 @@ def autopilot():
         setp.header.stamp = rospy.Time.now()
 
         setp.velocity.z = altK.controller()
-        
-        takeOffVel = 2.0*(altK.z - zGround) + 0.3
-
-        setp.velocity.z = min(setp.velocity.z, takeOffVel)
         
         (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)
         (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
@@ -122,7 +121,15 @@ def autopilot():
                 setp.velocity.z = -0.1
             else:
                 setp.velocity.z = 0.0
-                
+
+            if False:
+                if error < 0.25:
+                    altK.zSp = altK.z - 0.1/fbRate
+                    setp.velocity.z = altK.controller()
+                else:
+                    altK.zSp = altK.z
+                    setp.velocity.z = altK.controller()
+                    
         else:
             (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)
             (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
@@ -138,7 +145,7 @@ def autopilot():
         
         if not altK.airborne:
             airborne = False
-            autopilotLib.fcuModes.setDisarm()
+            modes.setDisarm()
    
         
 if __name__ == '__main__':

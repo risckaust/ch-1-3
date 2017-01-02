@@ -61,7 +61,7 @@ DIMY = int(DIMY)
 
 PXRAD = DIMY/4      # Radius for PXmask
 
-# Creat fisheye mask
+# Create fisheye mask
 FEmask = np.zeros((DIMY,DIMX,1), np.uint8)
 cv2.circle(FEmask,(DIMX/2,DIMY/2),DIMX/2,(255,255,255),-1)
 
