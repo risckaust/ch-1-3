@@ -35,17 +35,13 @@ def autopilot():
 
     # Instantiate altitude controller
     altK = autopilotLib.kAltVel()
-    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, altK.cbPos)
-    rospy.Subscriber('/mavros/state', State, altK.cbFCUstate)
 
     # Instantiate body controller
     bodK = autopilotLib.kBodVel()
-    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, bodK.cbPos)
-    rospy.Subscriber('/mavros/state', State, bodK.cbFCUstate)
     
     # Instantiate a tracker
-    target = autopilotLib.spTracker()
-    rospy.Subscriber('target_xySp', Point32, target.cbTracker)
+    target = autopilotLib.xyzVar()
+    rospy.Subscriber('blue_xySp', Point32, target.cbXYZ)
 
     # Establish a rate
     fbRate = rospy.get_param('/autopilot/fbRate')
@@ -65,7 +61,7 @@ def autopilot():
     #####
 
     altK.zSp = zGround + rospy.get_param('/autopilot/altStep')
-    home = myLib.xyVar()
+    home = autopilotLib.xyzVar()
     home.x = bodK.x
     home.y = bodK.y
 
@@ -94,7 +90,12 @@ def autopilot():
     
         setp.header.stamp = rospy.Time.now()
         
-        if target.z > 0:            # positive detection
+        if target.z > 0:
+            seeIt = True
+        else:
+            seeIt = False
+        
+        if seeIt:            # positive detection
             altCorrect = (altK.z - zGround + camOffset)/rospy.get_param('/pix2m/altCal')
             bodK.xSp = target.x*altCorrect
             bodK.ySp = target.y*altCorrect
@@ -109,7 +110,7 @@ def autopilot():
         rate.sleep()
         command.publish(setp)
         
-        print 'bodK.xSp, bodK.ySp, target.z
+        print "xSp/ySp/seeIt:", bodK.xSp, bodK.ySp, seeIt
         
 if __name__ == '__main__':
     try:

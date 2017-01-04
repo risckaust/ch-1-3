@@ -35,13 +35,9 @@ def autopilot():
 
     # Instantiate altitude controller
     altK = autopilotLib.kAltVel()
-    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, altK.cbPos)
-    rospy.Subscriber('/mavros/state', State, altK.cbFCUstate)
 
     # Instantiate body controller
     bodK = autopilotLib.kBodVel()
-    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, bodK.cbPos)
-    rospy.Subscriber('/mavros/state', State, bodK.cbFCUstate)
 
     # Establish a rate
     fbRate = rospy.get_param('/autopilot/fbRate')
@@ -60,7 +56,7 @@ def autopilot():
     #####
 
     altK.zSp = zGround + rospy.get_param('/autopilot/altStep')
-    home = myLib.xyVar()
+    home = autopilotLib.xyzVar()
     home.x = bodK.x
     home.y = bodK.y
 
@@ -104,7 +100,7 @@ def autopilot():
         command.publish(setp)
         
         error = sqrt((home.x - bodK.x)**2 + (home.y - bodK.y)**2)
-        print error, setp.velocity.x, setp.velocity.y, setp.yaw_rate
+        print "err/vx/vy/yawR: ", error, setp.velocity.x, setp.velocity.y, setp.yaw_rate
         
 if __name__ == '__main__':
     try:

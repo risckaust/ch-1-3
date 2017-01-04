@@ -20,6 +20,7 @@ from mavros_msgs.srv import *
 #
 # Subscriptions:
 #   rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
+#   rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
 #   rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
 #   rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
 #
@@ -31,10 +32,11 @@ from mavros_msgs.srv import *
 #   /kAltVel/vMaxD = maximum downward reference velocity (positive m/s)
 #
 # Fields:
-#   callback functions
+#   callback functions & subscriptions
 #   ezInt = integrated altitude error
 #   zSp = commanded altitude setpoint (m)
 #   z = current altitude from /mavros/local_position/pose (m)
+#   vz = current altitude velocity from /mavros/local_position/velocity (m/s)
 #   engaged = Boolean if armed and offboard
 #   landed = Boolean if landed
 #
@@ -46,12 +48,21 @@ class kAltVel:
         self.ezInt = 0.0
         self.zSp = 0.0
         self.z = 0.0
+        self.vz = 0.0
         self.engaged = False
         self.airborne = False
+        self.subPos = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
+        self.subFCUexState = rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
 
     def cbPos(self,msg):
         if not msg == None:
             self.z = msg.pose.position.z
+            
+    def cbVel(self,msg):
+        if not msg == None:
+            self.vz = msg.twist.linear.z
 
     def cbFCUstate(self,msg):
         self.engaged = False
@@ -96,6 +107,7 @@ class kAltVel:
 #
 # Subscriptions:
 #   rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
+#   rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
 #   rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
 #   
 # ROS parameters:
@@ -109,13 +121,14 @@ class kAltVel:
 #   /kBodVel/yawTurnRate = constant yaw turn rate (deg/s)
 #
 # Fields:
-#   callback functions
+#   callback functions, subscriptions
 #   exInt = integrated error
 #   eyInt = integrated error
 #   xSp = commanded x setpoint (NED-h, m) NOTE: NED-h = NED projected to horizontal
 #   ySp = commanded y setpoint (NED-h, m)
-#   x = x of body frame origin in local ENU coordinates
-#   y = y of body frame origin in local ENU coordinates
+#   x = x of body frame origin in local ENU coordinates (m)
+#   y = y of body frame origin in local ENU coordinates (m)
+#   vx, vy = body frame velocities (m/s)
 #   yaw = yaw angle of relative (yaw,pitch,roll) in Local ENU -> Body NED
 #   engaged = Boolean if armed and offboard
 #
@@ -131,7 +144,12 @@ class kBodVel:
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
+        self.vx = 0.0
+        self.vy = 0.0
         self.engaged = False
+        self.subPos = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
 
     def cbPos(self,msg):
         if not msg == None:
@@ -144,6 +162,11 @@ class kBodVel:
             self.x = msg.pose.position.x
             self.y = msg.pose.position.y
             self.yaw = euler[0]
+            
+    def cbVel(self,msg):
+        if not msg == None:
+            self.vx = msg.twist.linear.x
+            self.vy = msg.twist.linear.y
 
     def cbFCUstate(self,msg):
         if not msg == None:
@@ -244,7 +267,7 @@ def wayHome(pos,home):
 #
 # Subscriptions:
 #   
-#   rospy.Subscriber('target_xySp', Point32, self.cbTracker)
+#   rospy.Subscriber('xyzTopic', Point32, self.cbXYZ)
 #
 # Fields:
 #   x,y = target position
@@ -258,7 +281,7 @@ class xyzVar:
         self.y = 0.0
         self.z = 0.0
         
-    def cbTracker(self,msg):
+    def cbXYZ(self,msg):
         if not msg == None:
             self.x = msg.x
             self.y = msg.y

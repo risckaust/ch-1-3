@@ -39,8 +39,8 @@ IMGSTREAM = rospy.get_param('/getLaunchPad/imgStream')
 STREAM_RATE = rospy.get_param('/getLaunchPad/imgStreamRate')
 
 # Create publishers
-targetPixel = rospy.Publisher('blue_xyPixel', Point32, queue_size=10)
-targetSp = rospy.Publisher('blue_xySp', Point32, queue_size=10)
+targetPixel = rospy.Publisher('red_xyPixel', Point32, queue_size=10)
+targetSp = rospy.Publisher('red_xySp', Point32, queue_size=10)
 img_pub	 = 	rospy.Publisher('processed_Image', Image, queue_size=10)
 
 msgPixel = Point32()
@@ -81,10 +81,18 @@ def getLaunchPad():
         # convert to HSV        
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    	# find the blue in the image
-        lower = np.array([60,121,180],np.uint8)
-        upper = np.array([130,255,255],np.uint8)
-        mask = cv2.inRange(hsv, lower, upper)
+    	# find the red in the image with low "H"
+        lower = np.array([0,121,180],np.uint8)
+        upper = np.array([10,255,255],np.uint8)
+        maskLow = cv2.inRange(hsv, lower, upper)
+        
+        # find the red in the image with high "H"
+        lower = np.array([170,121,180],np.uint8)
+        upper = np.array([180,255,255],np.uint8)
+        maskHigh = cv2.inRange(hsv, lower, upper)
+        
+        # merge masks
+        mask = cv2.bitwise_or(maskLow,maskHigh)
 
         # opening
         mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
@@ -93,7 +101,7 @@ def getLaunchPad():
     	# closing
         mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
         mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
-
+        
         # find contours in the masked image
         if OLDCV:
             cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)

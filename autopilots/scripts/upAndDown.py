@@ -35,18 +35,13 @@ def autopilot():
 
     # Instantiate altitude controller
     altK = autopilotLib.kAltVel()
-    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, altK.cbPos)
-    rospy.Subscriber('/mavros/state', State, altK.cbFCUstate)
-    rospy.Subscriber('/mavros/extended_state', ExtendedState, altK.cbFCUexState)
 
     # Instantiate body controller
     bodK = autopilotLib.kBodVel()
-    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, bodK.cbPos)
-    rospy.Subscriber('/mavros/state', State, bodK.cbFCUstate)
     
     # Instantiate a tracker
     target = autopilotLib.xyzVar()
-    rospy.Subscriber('target_xySp', Point32, target.cbTracker)
+    rospy.Subscriber('target_xySp', Point32, target.cbXYZ)
     
     # Instantiate a mode switcher
     modes = autopilotLib.fcuModes()
@@ -85,7 +80,7 @@ def autopilot():
         rate.sleep()
         command.publish(setp)
         
-        print 'Set/Alt/Gnd:',altK.zSp, altK.z, zGround
+        print 'Set/Alt/zDot/Gnd:',altK.zSp, altK.z, altK.vz, zGround
         
         
     #####
@@ -122,15 +117,7 @@ def autopilot():
             else:
                 setp.velocity.z = 0.0
 
-            if True:
-                if error < 0.05:
-                    altK.zSp = altK.z - 0.1/fbRate
-                    setp.velocity.z = altK.controller()
-                else:
-                    altK.zSp = altK.z
-                    setp.velocity.z = altK.controller()
-
-            if altK.z < zGround + 0.1:
+            if False: # altK.z < zGround + 0.1:
                 altK.zSp = zGround + 0.1
                 setp.velocity.z = altK.controller()
 
@@ -147,14 +134,12 @@ def autopilot():
         rate.sleep()
         command.publish(setp)
 
-        print 'bodK.xSp/bodK.ySp/error/seeIt: ', bodK.xSp, bodK.ySp, error, seeIt
+        print 'xSp/ySp/error/seeIt: ', bodK.xSp, bodK.ySp, error, seeIt
         print 'airborne: ', altK.airborne
         
         if not altK.airborne:
             airborne = False
             modes.setDisarm()
-   
-        airborne = True ###############################################
         
 if __name__ == '__main__':
     try:

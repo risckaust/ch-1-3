@@ -36,26 +36,26 @@ cvisionParams.setParams()
 
 # Flags & Constants
 
-FECAMERA = rospy.get_param('/getLaunchPad/feCamera')
-CAMFLIP = rospy.get_param('/getLaunchPad/camFlip')
+LOOP_RATE = rospy.get_param('/cvision/loopRate')
+LX = rospy.get_param('/cvision/LX')
+LY = rospy.get_param('/cvision/LY')
+CAMROTATE = rospy.get_param('/cvision/camRotate')
+FECAMERA = rospy.get_param('/cvision/feCamera')
+
 PXMASKING = rospy.get_param('/getLaunchPad/pxMasking')
 THRESH = rospy.get_param('/getLaunchPad/centroidThresh')
 TOL = rospy.get_param('/getLaunchPad/circleTol')
 ERODE = rospy.get_param('/getLaunchPad/erodeOn')
 LIBERAL = rospy.get_param('/getLaunchPad/liberal')
 RED = rospy.get_param('/getLaunchPad/reduction')
-LOOP_RATE = rospy.get_param('/getLaunchPad/loopRate')
-
 HOVERLOW = rospy.get_param('/getLaunchPad/hoverLow')
 
 IMGSHOW = rospy.get_param('/getLaunchPad/imgShow')
-IMGPUB = rospy.get_param('/getLaunchPad/imgPub')
-PUB_RATE = rospy.get_param('/getLaunchPad/imgPubRate')
 IMGSTREAM = rospy.get_param('/getLaunchPad/imgStream')
 STREAM_RATE = rospy.get_param('/getLaunchPad/imgStreamRate')
 
-DIMX = rospy.get_param('/pix2m/LX')/rospy.get_param('/getLaunchPad/reduction')
-DIMY = rospy.get_param('/pix2m/LY')/rospy.get_param('/getLaunchPad/reduction')
+DIMX = rospy.get_param('/cvision/LX')/rospy.get_param('/getLaunchPad/reduction')
+DIMY = rospy.get_param('/cvision/LY')/rospy.get_param('/getLaunchPad/reduction')
 DIMX = int(DIMX)
 DIMY = int(DIMY)
 
@@ -72,9 +72,8 @@ kernelD = np.ones((3,3),np.uint8)
 # Create publishers
 targetPixel = rospy.Publisher('target_xyPixel', Point32, queue_size=10)
 targetSp = rospy.Publisher('target_xySp', Point32, queue_size=10)
+img_pub	 = 	rospy.Publisher('processed_Image', Image, queue_size=10)
 
-img_pub	 = 	rospy.Publisher('image_feed', Image, queue_size=10)
-raw_img_pub = 	rospy.Publisher('raw_img', Image, queue_size=10)
 msgPixel = Point32()
 msgSp = Point32()
 bridge = CvBridge()
@@ -95,20 +94,20 @@ def getLaunchPad():
     Detect = False
     DetectHold = False
     PXMASKON = False
-    kc = 0              # number of iterations
+    kc = 0              # number of iterations for downsample image streaming
 
-    # start video stream
-    cap = cv2.VideoCapture(0)
+    # start video stream: replaces cap = cv2.VideoCapture(0)
+
+    quadCam = cvisionLib.getFrame()
 
     while not rospy.is_shutdown():
 
-        # grab and resize frame
-        _, frame = cap.read()
-        frame = imutils.resize(frame, width=DIMX)
-        raw_frame=frame.copy()
-
-        # convert to grayscale
-        frameGRY = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # grab and resize frames
+        frame = quadCam.BGR
+        frame = cv2.resize(frame,(DIMX,DIMY))
+        
+        frameGRY = quadCam.Gry
+        frameGRY = cv2.resize(frameGRY,(DIMX,DIMY))
 
         # apply fisheye mask
         if FECAMERA:
@@ -240,13 +239,15 @@ def getLaunchPad():
         # publish location with reduction correction
         msgPixel.x = CX*RED
         msgPixel.y = CY*RED
-        if CAMFLIP and msgPixel.x > 0 and msgPixel.y > 0:
-            hold = msgPixel.x
-            msgPixel.x = msgPixel.y
-            msgPixel.y = rospy.get_param('/pix2m/LY') - hold
-            
-        msgPixel.z = 0.0 # Not used
-        if FECAMERA:
+        if Detect:
+            msgPixel.z =  1.0
+        else:
+            msgPixel.z = -1.0
+
+        if CAMROTATE and msgPixel.z > 0:                        # rotate camera if needed
+            msgPixel.x, msgPixel.y = cvisionLib.camRotate(msgPixel.x, msgPixel.y)
+
+        if FECAMERA:                                            # convert pixels to to meters
             (msgSp.x, msgSp.y, msgSp.z) = spGen.targetFishEye(msgPixel)
         else:
             (msgSp.x, msgSp.y, msgSp.z) = spGen.target(msgPixel)
@@ -255,16 +256,12 @@ def getLaunchPad():
         targetPixel.publish(msgPixel)
         targetSp.publish(msgSp)
 
-        # show/save/stream images
+        # show/stream images
         if IMGSHOW:
             cv2.imshow('color',frame)
             cv2.imshow('gray',frameGRY)
             cv2.imshow('high',mask255h)
             key = cv2.waitKey(1) & 0xFF
-
-        if IMGPUB: # publish raw image
-            if (kc*PUB_RATE)%LOOP_RATE < PUB_RATE:
-                raw_img_pub.publish(bridge.cv2_to_imgmsg(raw_frame, encoding="bgr8"))
 
         if IMGSTREAM: # stream processed image
             if (kc*STREAM_RATE)%LOOP_RATE < STREAM_RATE:
