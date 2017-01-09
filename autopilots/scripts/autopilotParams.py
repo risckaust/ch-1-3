@@ -26,7 +26,8 @@ def setParams():
     rospy.set_param('/kBodVel/gPyaw',0.5)           # yaw proportional gain
     rospy.set_param('/kBodVel/yawOff',0.05)          # error to turn off yaw control (m)
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
-    rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone
+    rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone (deg/s)
+    rospy.set_param('/kBodVel/feedForward', True)   # use EKF and feedforward estimates
 
 
 

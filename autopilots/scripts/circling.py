@@ -99,8 +99,11 @@ def autopilot():
         rate.sleep()
         command.publish(setp)
         
+        bodK.ekfUpdate()
+        
         error = sqrt((home.x - bodK.x)**2 + (home.y - bodK.y)**2)
-        print "err/vx/vy/yawR: ", error, setp.velocity.x, setp.velocity.y, setp.yaw_rate
+        print "err/yawR/wHat/vHat: ", error, setp.yaw_rate, np.asscalar(bodK.ekf.xhat[4]), np.asscalar(bodK.ekf.xhat[3])
+
         
 if __name__ == '__main__':
     try:

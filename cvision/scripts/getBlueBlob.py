@@ -72,9 +72,6 @@ def getLaunchPad():
 
     while not rospy.is_shutdown():
 
-        # grab and resize frames
-        frame = quadCam.BGR
-
         # grab a frame
         frame = quadCam.BGR
 

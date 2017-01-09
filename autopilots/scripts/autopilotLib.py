@@ -119,6 +119,7 @@ class kAltVel:
 #   /kBodVel/yawOff = radius to disable yaw control (m)
 #   /kBodVel/yawCone = cone angle to disable (x,y) velocity commands (deg)
 #   /kBodVel/yawTurnRate = constant yaw turn rate (deg/s)
+#   /kBodVel/feedForward = boolean EKF to estimate target velocity and feedforward to controller
 #
 # Fields:
 #   callback functions, subscriptions
@@ -131,6 +132,16 @@ class kAltVel:
 #   vx, vy = body frame velocities (m/s)
 #   yaw = yaw angle of relative (yaw,pitch,roll) in Local ENU -> Body NED
 #   engaged = Boolean if armed and offboard
+#
+#   ekf = subclass to estimate the velocity and orientation of the setpoint
+#       xhat = state estimate
+#       F = dynamics matrix
+#       H = observation matrix
+#       P = covariance matrix
+#       Q = process noise covariance
+#       R = measurementnoise covariance
+#
+#   ekfUpdate = update call of state estimate
 #
 #####
 
@@ -150,6 +161,21 @@ class kBodVel:
         self.subPos = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
         self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
         self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
+
+        self.ekf = self.EKF()
+        
+    class EKF:
+        def __init__(self):
+            self.xhat = np.matrix(np.zeros( (5,1) ))
+            self.F = np.matrix(np.identity(5))
+            self.F[2,4] = 1.0
+            self.H = np.matrix(np.zeros( (2,5) ))
+            self.H[0,0] = 1.0
+            self.H[1,1] = 1.0
+            self.P = np.matrix(np.identity(5))
+            self.Q = np.matrix(np.identity(5))
+            self.R = np.matrix(np.identity(2))
+            
 
     def cbPos(self,msg):
         if not msg == None:
@@ -174,6 +200,46 @@ class kBodVel:
                 self.engaged = True
             else:
                 self.engaged = False
+    
+    def ekfUpdate(self):
+    
+        fbRate = rospy.get_param('/autopilot/fbRate')
+        h = 1/fbRate
+                
+        # Update state estimate prior
+        
+        thHat = self.ekf.xhat[2]
+        vHat = self.ekf.xhat[3]
+        omegaHat = self.ekf.xhat[4]
+        
+        self.ekf.xhat[0] = self.ekf.xhat[0] + h*vHat*cos(thHat)
+        self.ekf.xhat[1] = self.ekf.xhat[1] + h*vHat*sin(thHat)
+        self.ekf.xhat[2] = self.ekf.xhat[2] + h*omegaHat
+        
+        # Update covariance prior
+        self.ekf.F[0,2] = -vHat*sin(thHat)*h
+        self.ekf.F[0,3] = cos(thHat)*h
+        self.ekf.F[1,2] = vHat*cos(thHat)*h
+        self.ekf.F[1,3] = sin(thHat)*h
+
+        self.ekf.P = self.ekf.F*self.ekf.P*self.ekf.F.T + self.ekf.Q
+        
+        # Gather measurement and build residual
+        e = np.matrix(np.zeros( (2,1) ) )
+        bodyRot = self.yaw - pi/2.0                                 # rotation of NED y-axis
+        e[0] =  (self.x - self.xSp*sin(bodyRot) + self.ySp*cos(bodyRot)) - self.ekf.xhat[0]    # local ENU x
+        e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]  # local ENU y
+        
+        # build ekf gain
+        S = self.ekf.H*self.ekf.P*self.ekf.H.T + self.ekf.R
+        K = self.ekf.P*self.ekf.H.T*S.I
+        
+        # update state estimate posterior
+        self.ekf.xhat = self.ekf.xhat + K*e
+        
+        # update covariance posterior
+        Mtemp = np.matrix(np.identity(5)) - K*self.ekf.H
+        self.ekf.P = Mtemp*self.ekf.P*Mtemp.T + K*self.ekf.R*K.T
 
     def controller(self):
     
@@ -185,6 +251,7 @@ class kBodVel:
         yawOff = rospy.get_param('/kBodVel/yawOff')
         yawCone = rospy.get_param('/kBodVel/yawCone')
         yawTurnRate = rospy.get_param('/kBodVel/yawTurnRate')
+        feedForward = rospy.get_param('/kBodVel/feedForward')
 
         ######
         # longitudinal/lateral control
@@ -195,9 +262,27 @@ class kBodVel:
         
         ey = self.ySp                               # lateral error 
         vyRef = gP*ey + gI*self.eyInt               # to be published
+        
+        
+        ######
+        # Feedforward estimated velocities
+        ######
+
+        bodyRot = self.yaw - pi/2.0                        # rotation of NED y-axis
+        if feedForward:
+            thHat = self.ekf.xhat[2]
+            vHat =  self.ekf.xhat[3]
+            wHat = self.ekf.xhat[4]
+            
+            VX = vHat*cos(thHat)                           
+            VY = vHat*sin(thHat)
+            
+            vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
+            vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
+            
 
         vel = sqrt(vxRef**2 + vyRef**2)
-        if vel > vMax:                            # anti-windup        
+        if vel > vMax:                            # anti-windup scaling      
             scale = vMax/vel
             vxRef = vxRef*scale
             vyRef = vyRef*scale
@@ -210,27 +295,26 @@ class kBodVel:
         # Convert body commands to local ENU coordinates
         ######
 
-        bodyRot = self.yaw - pi/2.0                        # rotation of NED y-axis
         vxCom = vyRef*cos(bodyRot) - vxRef*sin(bodyRot)    # local ENU velocity commands
         vyCom = vyRef*sin(bodyRot) + vxRef*cos(bodyRot)
-
+        
         ######
         # Yaw control
         ######
 
-        dYawSp = -atan2(vyRef,vxRef)              # desired rotational change
+        dYawSp = -atan2(vyRef,vxRef)                            # desired rotational change
 
         radius = sqrt(ex**2 + ey**2)
-        if radius < yawOff:                             # no yaw control if too close
+        if radius < yawOff:                                     # no yaw control if too close
             yaw_r = 0.0
         else:
-            if abs(dYawSp) > radians(yawCone):          # target out of view
+            if abs(dYawSp) > radians(yawCone):                  # target out of view
                 yaw_r = copysign(radians(yawTurnRate),dYawSp)   # constant rate
             else:
                 yaw_r = gPyaw*dYawSp                            # proportional rate
 
-        yawRateCom = yaw_r                              # yaw rate command
-
+        yawRateCom = yaw_r                                      # yaw rate command
+            
         return vxCom, vyCom, yawRateCom
 
 
