@@ -228,7 +228,7 @@ class kBodVel:
         e = np.matrix(np.zeros( (2,1) ) )
         bodyRot = self.yaw - pi/2.0                                 # rotation of NED y-axis
         e[0] =  (self.x - self.xSp*sin(bodyRot) + self.ySp*cos(bodyRot)) - self.ekf.xhat[0]    # local ENU x
-        e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]  # local ENU y
+        e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]    # local ENU y
         
         # build ekf gain
         S = self.ekf.H*self.ekf.P*self.ekf.H.T + self.ekf.R
