@@ -28,7 +28,7 @@ def setParams():
     rospy.set_param('/getLaunchPad/imgStreamRate', 3)            # streaming rate
     
     # ROS parameters for color processing
-    rospy.set_param('/getColor/imgShow', False)                   # show processed images to screen
+    rospy.set_param('/getColor/imgShow', True)                   # show processed images to screen
 
     
     # ROS parameters for pix2m
