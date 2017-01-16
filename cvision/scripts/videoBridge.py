@@ -55,7 +55,7 @@ def videoBridge():
 
         # publish images
         rate.sleep()
-        frameBGR.publish(msgBGR.cv2_to_imgmsg(bgr, encoding="passthrough"))
+        frameBGR.publish(msgBGR.cv2_to_imgmsg(bgr, encoding="bgr8"))
         frameGry.publish(msgGry.cv2_to_imgmsg(gry, encoding="passthrough"))
 
 if __name__ == '__main__':
