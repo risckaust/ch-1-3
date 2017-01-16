@@ -21,6 +21,8 @@
 
         <node pkg="cvision" type="videoBridge.py" name="videoBridge" required="true" >
         </node>
+	<node pkg="cvision" type="getBlueBlob.py" name="getBlueBlob" required="true" >
+        </node>
 
         <!--node pkg="topic_tools" type="throttle" name="throttle" args="messages /frameBGR 5.0 /frameBGR_reduced" required="true" >
         </node>
@@ -28,7 +30,7 @@
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
 
-	<node pkg="autopilots" type="tracking.py" name="tracking" required="true" >
+	<node pkg="autopilots" type="tracking_blueBlob.py" name="tracking_blueBlob" required="true" >
         </node>
 
 </launch>

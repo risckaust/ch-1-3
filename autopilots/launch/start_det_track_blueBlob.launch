@@ -30,7 +30,7 @@
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
 
-	<node pkg="autopilots" type="tracking_blueBlob.py" name="tracking_blueBlob" required="true" >
+	<node pkg="autopilots" type="tracking_blueBlob.py" name="tracking_blueBlob" required="true" output="screen">
         </node>
 
 </launch>
