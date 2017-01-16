@@ -59,7 +59,7 @@ def autopilot():
     #####
     # Execute altitude step response while holding current position
     #####
-    print "Executing altitude step."
+
     altK.zSp = zGround + rospy.get_param('/autopilot/altStep')
     home = autopilotLib.xyzVar()
     home.x = bodK.x
