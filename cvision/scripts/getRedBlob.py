@@ -29,19 +29,17 @@ cvisionParams.setParams()
 # Flags & Constants
 
 LOOP_RATE = rospy.get_param('/cvision/loopRate')
-LX = rospy.get_param('/cvision/LX')
-LY = rospy.get_param('/cvision/LY')
 CAMROTATE = rospy.get_param('/cvision/camRotate')
 FECAMERA = rospy.get_param('/cvision/feCamera')
 
-IMGSHOW = rospy.get_param('/getLaunchPad/imgShow')
-IMGSTREAM = rospy.get_param('/getLaunchPad/imgStream')
-STREAM_RATE = rospy.get_param('/getLaunchPad/imgStreamRate')
+IMGSHOW = rospy.get_param('/getColors/imgShow')
+IMGSTREAM = rospy.get_param('/getColors/imgStream')
+STREAM_RATE = rospy.get_param('/getColors/imgStreamRate')
 
 # Create publishers
-targetPixel = rospy.Publisher('red_xyPixel', Point32, queue_size=10)
-targetSp = rospy.Publisher('red_xySp', Point32, queue_size=10)
-img_pub	 = 	rospy.Publisher('processed_Image', Image, queue_size=10)
+targetPixel = rospy.Publisher('/color/red/xyPixels', Point32, queue_size=10)
+targetSp = rospy.Publisher('/color/red/xyMeters', Point32, queue_size=10)
+img_pub	 = 	rospy.Publisher('/color/red/processedImage', Image, queue_size=10)
 
 msgPixel = Point32()
 msgSp = Point32()
@@ -49,7 +47,7 @@ bridge = CvBridge()
 
 spGen = cvisionLib.pix2m() # setpoint generator
 
-def getLaunchPad():
+def getColor():
 
     # initialize node & set rate in Hz
 
@@ -67,13 +65,10 @@ def getLaunchPad():
     morph_width=2       # for erode & dilate
     morph_height=2
 
-    # start video stream: replaces cap = cv2.VideoCapture(0)
+    # start video stream; replaces: cap = cv2.VideoCapture(0)
     quadCam = cvisionLib.getFrame()
 
     while not rospy.is_shutdown():
-
-        # grab and resize frames
-        frame = quadCam.BGR
 
         # grab a frame
         frame = quadCam.BGR
@@ -154,7 +149,7 @@ def getLaunchPad():
 
         # show/stream images
         if IMGSHOW:
-            cv2.imshow('color',frame)
+            cv2.imshow('red',frame)
             key = cv2.waitKey(1) & 0xFF
 
         if IMGSTREAM: # stream processed image
@@ -167,7 +162,7 @@ def getLaunchPad():
 
 if __name__ == '__main__':
     try:
-        getLaunchPad()
+        getColor()
     except rospy.ROSInterruptException:
         cap.release()
         cv2.destroyAllWindows()

@@ -89,7 +89,7 @@ class pix2m():
 #   subBGR = subscriber
 #   subGry = subscriber
 #####
-     
+
 class getFrame():
     def __init__(self):
         self.bridge = CvBridge()

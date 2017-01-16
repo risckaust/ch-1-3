@@ -36,22 +36,28 @@ IMGSHOW = rospy.get_param('/getColors/imgShow')
 IMGSTREAM = rospy.get_param('/getColors/imgStream')
 STREAM_RATE = rospy.get_param('/getColors/imgStreamRate')
 
-# Create publishers
-targetPixel = rospy.Publisher('/color/blue/xyPixels', Point32, queue_size=10)
-targetSp = rospy.Publisher('/color/blue/xyMeters', Point32, queue_size=10)
-img_pub	 = 	rospy.Publisher('/color/blue/processedImage', Image, queue_size=10)
-
 msgPixel = Point32()
 msgSp = Point32()
 bridge = CvBridge()
 
 spGen = cvisionLib.pix2m() # setpoint generator
 
+######
+
 def getColor():
 
     # initialize node & set rate in Hz
 
     rospy.init_node('colorTracker', anonymous=True)
+
+    # COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
+    color = rospy.get_param('local_color')
+    
+    # Create publishers
+    targetPixel = rospy.Publisher('/getColors/' + color + '/xyPixels', Point32, queue_size=10)
+    targetSp = rospy.Publisher('/getColors/' + color + '/xyPixels', Point32, queue_size=10)
+    img_pub	 = 	rospy.Publisher('/getColors/' + color + '/xyPixels', Image, queue_size=10)
+
     rate = rospy.Rate(LOOP_RATE)
 
     # Initializations
@@ -71,15 +77,34 @@ def getColor():
     while not rospy.is_shutdown():
 
         # grab a frame
-        frame = quadCam.BGR
+        if color == 'white':
+            frame = quadCam.Gry
+        else:
+            frame = quadCam.BGR
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) # convert to HSV
+        
 
-        # convert to HSV        
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    	# find the blue in the image
-        lower = np.array([60,121,180],np.uint8)
-        upper = np.array([130,255,255],np.uint8)
-        mask = cv2.inRange(hsv, lower, upper)
+    	# find the color in the image. red & white are special cases
+    	
+    	if color == 'blue':
+            lower = np.array([60,121,180],np.uint8)
+            upper = np.array([130,255,255],np.uint8)
+            mask = cv2.inRange(hsv,lower,upper)
+        elif color == 'red':
+            # find the red in the image with low "H"
+            lower = np.array([0,121,180],np.uint8)
+            upper = np.array([10,255,255],np.uint8)
+            maskLow = cv2.inRange(hsv, lower, upper)
+        
+            # find the red in the image with high "H"
+            lower = np.array([170,121,180],np.uint8)
+            upper = np.array([180,255,255],np.uint8)
+            maskHigh = cv2.inRange(hsv, lower, upper)
+    
+            # merge masks
+            mask = cv2.bitwise_or(maskLow,maskHigh)
+        elif color == 'white':
+            _, mask = cv2.threshold(frame,225,255,cv2.THRESH_BINARY)
 
         # opening
         mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
@@ -141,12 +166,15 @@ def getColor():
 
         # show/stream images
         if IMGSHOW:
-            cv2.imshow('blue',frame)
+            cv2.imshow(color,frame)
             key = cv2.waitKey(1) & 0xFF
 
         if IMGSTREAM: # stream processed image
             if (kc*STREAM_RATE)%LOOP_RATE < STREAM_RATE:
-                gray_frame=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                if color == 'white':
+                    gray_frame = frame
+                else:
+                    gray_frame=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 gray_frame=imutils.resize(gray_frame, width=200)
                 img_pub.publish(bridge.cv2_to_imgmsg(gray_frame, encoding="passthrough"))
 
