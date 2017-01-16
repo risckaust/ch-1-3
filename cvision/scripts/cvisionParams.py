@@ -23,6 +23,7 @@ def setParams():
     rospy.set_param('/getLaunchPad/liberal', False)              # allow lone bright white detection
     rospy.set_param('/getLaunchPad/reduction', 2)                # image dimension reduction for realtime processing speed
     rospy.set_param('/getLaunchPad/hoverLow', False)             # corner override (temp)
+<<<<<<< HEAD
     rospy.set_param('/getLaunchPad/imgShow', False)               # show processed images to screen
     rospy.set_param('/getLaunchPad/imgStream', True)             # stream reduced processed images
     rospy.set_param('/getLaunchPad/imgStreamRate', 3)            # streaming rate
@@ -30,10 +31,27 @@ def setParams():
     # ROS parameters for color processing
     rospy.set_param('/getColor/imgShow', False)                   # show processed images to screen
 
+=======
+    
+    rospy.set_param('/getLaunchPad/imgShow', True)               # show processed images to screen
+    rospy.set_param('/getLaunchPad/imgStream', True)             # stream reduced processed images
+    rospy.set_param('/getLaunchPad/imgStreamRate', 3)            # streaming rate
+    
+    # ROS parameters getColors
+    rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen
+    rospy.set_param('/getColors/imgStream', True)                # stream reduced processed images
+    rospy.set_param('/getColors/imgStreamRate', 3)               # streaming rate
+    rospy.set_param('/getColors/red','red')
+    rospy.set_param('/getColors/blue','blue')
+    rospy.set_param('/getColors/green','green')
+    rospy.set_param('/getColors/white','white')
+>>>>>>> jeffsMods
     
     # ROS parameters for pix2m
     rospy.set_param('/pix2m/m2pix', 0.00104167)                  # 0.5m = 480pixels
-    rospy.set_param('/pix2m/altCal',1.2)                       # calibration altitude (used in main loop)
+    rospy.set_param('/pix2m/altCal',1.2)                         # calibration altitude (used in main loop)
+
+
 
 
  
