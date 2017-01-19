@@ -14,15 +14,7 @@ from mavros_msgs.srv import *
 import autopilotLib
 import myLib
 import autopilotParams
-autopilotParams.setParams()
 
-###################################
-
-# Publishers
-
-command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
-
-###################################
 
 # Main loop
 
@@ -30,7 +22,13 @@ def autopilot():
     rospy.init_node('autopilot', anonymous=True)
     # get namespace
     ns=rospy.get_namespace()
-    print "namespace: " , ns
+    ###################################
+    # set parameters
+    autopilotParams.setParams(ns)
+    ###################################
+    # Publishers
+    command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+    ###################################
 
     # Instantiate a setpoint
     setp = PositionTarget()

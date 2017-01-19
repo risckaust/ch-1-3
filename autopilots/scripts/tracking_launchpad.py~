@@ -14,35 +14,34 @@ from mavros_msgs.srv import *
 import autopilotLib
 import myLib
 import autopilotParams
+autopilotParams.setParams()
 
+###################################
+
+# Publishers
+
+command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
+
+###################################
 
 # Main loop
 
 def autopilot():
     rospy.init_node('autopilot', anonymous=True)
-    # get namespace
-    ns=rospy.get_namespace()
-    ###################################
-    # set parameters
-    autopilotParams.setParams(ns)
-    ###################################
-    # Publishers
-    command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
-    ###################################
 
     # Instantiate a setpoint
     setp = PositionTarget()
     setp.type_mask = int('010111000111', 2)
 
     # Instantiate altitude controller
-    altK = autopilotLib.kAltVel(ns)
+    altK = autopilotLib.kAltVel()
 
     # Instantiate body controller
     bodK = autopilotLib.kBodVel()
     
     # Instantiate a tracker
     target = autopilotLib.xyzVar()
-    rospy.Subscriber('blue_xySp', Point32, target.cbXYZ)
+    rospy.Subscriber('target_xySp', Point32, target.cbXYZ)
 
     # Establish a rate
     fbRate = rospy.get_param('/autopilot/fbRate')
@@ -60,7 +59,7 @@ def autopilot():
     #####
     # Execute altitude step response while holding current position
     #####
-    print "Executing altitude step."
+
     altK.zSp = zGround + rospy.get_param('/autopilot/altStep')
     home = autopilotLib.xyzVar()
     home.x = bodK.x
