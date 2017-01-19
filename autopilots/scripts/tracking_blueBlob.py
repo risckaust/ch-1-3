@@ -120,9 +120,3 @@ if __name__ == '__main__':
         autopilot()
     except rospy.ROSInterruptException:
         pass
-
-
-
-
-
- 
