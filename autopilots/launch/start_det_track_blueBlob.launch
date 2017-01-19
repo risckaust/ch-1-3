@@ -7,7 +7,7 @@
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
-
+<group ns="Quad1">
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
 		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -32,5 +32,5 @@
 
 	<node pkg="autopilots" type="tracking_blueBlob.py" name="tracking_blueBlob" required="true" output="screen">
         </node>
-
+</group>
 </launch>
