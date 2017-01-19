@@ -43,18 +43,19 @@ from mavros_msgs.srv import *
 #####
 
 class kAltVel:
-    def __init__(self):
+    def __init__(self,ns):
 
+	
         self.ezInt = 0.0
         self.zSp = 0.0
         self.z = 0.0
         self.vz = 0.0
         self.engaged = False
         self.airborne = False
-        self.subPos = rospy.Subscriber('~/mavros/local_position/pose', PoseStamped, self.cbPos)
-        self.subVel = rospy.Subscriber('~/mavros/local_position/velocity', TwistStamped, self.cbVel)
-        self.subFCUstate = rospy.Subscriber('~/mavros/state', State, self.cbFCUstate)
-        self.subFCUexState = rospy.Subscriber('~/mavros/extended_state', ExtendedState, self.cbFCUexState)
+        self.subPos = rospy.Subscriber(ns+'/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber(ns+'/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber(ns+'/mavros/state', State, self.cbFCUstate)
+        self.subFCUexState = rospy.Subscriber(ns+'/mavros/extended_state', ExtendedState, self.cbFCUexState)
 
     def cbPos(self,msg):
         if not msg == None:
@@ -146,7 +147,7 @@ class kAltVel:
 #####
 
 class kBodVel:
-    def __init__(self):
+    def __init__(self,ns):
 
         self.exInt = 0.0
         self.eyInt = 0.0
@@ -158,9 +159,9 @@ class kBodVel:
         self.vx = 0.0
         self.vy = 0.0
         self.engaged = False
-        self.subPos = rospy.Subscriber('~/mavros/local_position/pose', PoseStamped, self.cbPos)
-        self.subVel = rospy.Subscriber('~/mavros/local_position/velocity', TwistStamped, self.cbVel)
-        self.subFCUstate = rospy.Subscriber('~/mavros/state', State, self.cbFCUstate)
+        self.subPos = rospy.Subscriber(ns+'/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber(ns+'/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber(ns+'/mavros/state', State, self.cbFCUstate)
 
         self.ekf = self.EKF()
         
