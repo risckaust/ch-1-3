@@ -22,6 +22,7 @@ def autopilot():
     rospy.init_node('autopilot', anonymous=True)
     # get namespace
     ns=rospy.get_namespace()
+    ns=ns[0:len(ns)-1]
     ###################################
     # set parameters
     autopilotParams.setParams(ns)
