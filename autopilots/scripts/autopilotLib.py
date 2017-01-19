@@ -51,10 +51,10 @@ class kAltVel:
         self.vz = 0.0
         self.engaged = False
         self.airborne = False
-        self.subPos = rospy.Subscriber('~/mavros/local_position/pose', PoseStamped, self.cbPos)
-        self.subVel = rospy.Subscriber('~/mavros/local_position/velocity', TwistStamped, self.cbVel)
-        self.subFCUstate = rospy.Subscriber('~/mavros/state', State, self.cbFCUstate)
-        self.subFCUexState = rospy.Subscriber('~/mavros/extended_state', ExtendedState, self.cbFCUexState)
+        self.subPos = rospy.Subscriber('/Quad1/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber('/Quad1/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber('/Quad1/mavros/state', State, self.cbFCUstate)
+        self.subFCUexState = rospy.Subscriber('/Quad1/mavros/extended_state', ExtendedState, self.cbFCUexState)
 
     def cbPos(self,msg):
         if not msg == None:
