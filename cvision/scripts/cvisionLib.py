@@ -34,7 +34,6 @@ class pix2m():
     def target(self,center):
         xSp = 0.0
         ySp = 0.0
-        flag = -1
         
         if center.z > 0:
             xSp = (center.x - self.LX/2)
@@ -44,14 +43,12 @@ class pix2m():
             hold = xSp                                  # switch for NED
             xSp = ySp
             ySp = hold
-            flag = 1
                 
-        return [xSp,ySp,flag]
+        return [xSp,ySp,center.z]                       # pass information through z-channel
                 
     def targetFishEye(self,center):
         xSp = 0.0
         ySp = 0.0
-        flag = -1
         
         if center.z > 0:
             xSp = (center.x - self.LX/2)
@@ -65,9 +62,8 @@ class pix2m():
             hold = xSp                                  # switch for NED
             xSp = ySp
             ySp = hold
-            flag = 1
 
-        return [xSp,ySp,flag]
+        return [xSp,ySp,center.z]                       # pass information through z-channel
         
 
 ###################################

@@ -26,18 +26,18 @@ cvisionParams.setParams()
 
 ###################################
 
-def getWhite():
+def getCircle():
 
     # Initialize node
 
     rospy.init_node('whiteTracker', anonymous=True)
     
     # Create publishers
-    targetPixels = rospy.Publisher('/getLaunchpad/white/xyPixels', Point32, queue_size=10)
+    targetPixels = rospy.Publisher('/getLaunchpad/circle/xyPixels', Point32, queue_size=10)
     msgPixels = Point32()
-    targetMeters = rospy.Publisher('/getLaunchpad/white/xyMeters', Point32, queue_size=10)
+    targetMeters = rospy.Publisher('/getLaunchpad/circle/xyMeters', Point32, queue_size=10)
     msgMeters = Point32()
-    img_pub	 = 	   rospy.Publisher('/getLaunchpad/white/processedImage', Image, queue_size=10)
+    img_pub	 = 	   rospy.Publisher('/getLaunchpad/circle/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
     # Create setpoint generator
@@ -50,8 +50,6 @@ def getWhite():
     # initializations
     
     kc = 0              # iteration counter for downsample image streaming
-    morph_width=2       # for erode & dilate
-    morph_height=2
     Detect = False      # for proximity mask
     DetectHold = False
     MaskItNow = False
@@ -77,12 +75,14 @@ def getWhite():
         if rospy.get_param('/getLaunchpad/testFileOn'):
             _, frame = cap.read()
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            mask = frame
         else:
             frame = quadCam.Gry
+            mask = frame
+            
+        # blur image
+        mask = cv2.blur(mask, (5,5))
 
-        # extract superwhite
-        _, mask = cv2.threshold(frame,225,255,cv2.THRESH_BINARY)
-        
         # apply fisheye mask
         if rospy.get_param('/cvision/feCamera'):
             mask = cv2.bitwise_and(mask,feMask)
@@ -90,26 +90,6 @@ def getWhite():
         # apply proximity mask
         if MaskItNow:
             mask = cv2.bitwise_and(mask,pxMask)
-            
-        if rospy.get_param('/getLaunchpad/erodeOn'):
-            # opening
-            mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
-            mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
-
-        	# closing
-            mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
-            mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
-        else:
-            # blurring
-            mask = cv2.blur(mask, (3,3))
-            # clearing
-            _, mask =  cv2.threshold(mask,100,255,cv2.THRESH_BINARY)
-            
-        # find contours in the masked image
-        if OLDCV:
-            cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
-        else:
-            _, cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     
         # prep messages
         msgPixels.x = -1.0
@@ -117,37 +97,32 @@ def getWhite():
         msgPixels.z = -1.0
         Detect = False
         
-        if len(cnts) > 0:
+        # extract circles from grayscale
 
-            # keep largest contour
-            c = max(cnts, key=cv2.contourArea)
-                  
-            # compute centroid of max contour
-            M = cv2.moments(c)
-            
-            if M["m00"]>rospy.get_param('/getLaunchpad/minMass'):
-            
-                # flag positive detection
-                msgPixels.z = M["m00"] # report size of color mass in z-channel
-                Detect = True
-                
-	    	    # compute center of contour
-                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-	    	    
-                # construct & draw bounding circle
-                ((x, y), radius) = cv2.minEnclosingCircle(c)
-                cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-                # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
-    	    	
-                # use centroid (not circle center) as detected target
-                msgPixels.x=center[0]
-                msgPixels.y=center[1]
+        if OLDCV:
+            circles = cv2.HoughCircles(mask,cv.CV_HOUGH_GRADIENT,1,LY,
+                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/4)
+        else:
+            circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,1,LY,
+                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/4)
+
+        # assess circles 
+
+        if circles is not None:
+            center = circles[0,0]
+            Detect = True
+            cv2.circle(frame,(center[0],center[1]),center[2],(0,255,255),2)
+            msgPixels.x = center[0] # x
+            msgPixels.y = center[1] # y
+            msgPixels.z = center[2] # radius
+        else:
+            Detect = False
 
         # create proximity mask
 
-        pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
+        pxMask = np.zeros((LY,LX,1), np.uint8)
         if Detect and DetectHold: # create a proximity mask of radius multiple
-                cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+                cv2.circle(pxMask,(center[0],center[1]),np.uint8(center[2]*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
                 MaskItNow = True
         else:
             MaskItNow = False
@@ -169,7 +144,7 @@ def getWhite():
 
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):
-            cv2.imshow('white',frame)
+            cv2.imshow('circle',frame)
             #cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
@@ -177,14 +152,14 @@ def getWhite():
         STREAM_RATE = rospy.get_param('/getLaunchpad/imgStreamRate')
         if rospy.get_param('/getLaunchpad/imgStream'): # stream processed image
             if (kc*STREAM_RATE)%rospy.get_param('/cvision/loopRate') < STREAM_RATE:
-                frame=imutils.resize(frame, width=rospy.get_param('/cvision/LX')/2)
+                frame=imutils.resize(frame, width=LX/2)
                 img_pub.publish(bridge.cv2_to_imgmsg(frame, encoding="passthrough"))
 
         kc = kc + 1
 
 if __name__ == '__main__':
     try:
-        getWhite()
+        getCircle()
     except rospy.ROSInterruptException:
         cap.release()
         cv2.destroyAllWindows()
