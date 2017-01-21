@@ -30,13 +30,11 @@ def getCircle():
 
     # Initialize node
 
-    rospy.init_node('whiteTracker', anonymous=True)
+    rospy.init_node('circleTracker', anonymous=True)
     
     # Create publishers
     targetPixels = rospy.Publisher('/getLaunchpad/circle/xyPixels', Point32, queue_size=10)
     msgPixels = Point32()
-    targetMeters = rospy.Publisher('/getLaunchpad/circle/xyMeters', Point32, queue_size=10)
-    msgMeters = Point32()
     img_pub	 = 	   rospy.Publisher('/getLaunchpad/circle/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
@@ -75,6 +73,7 @@ def getCircle():
         if rospy.get_param('/getLaunchpad/testFileOn'):
             _, frame = cap.read()
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = cv2.resize(frame,(LX,LY))
             mask = frame
         else:
             frame = quadCam.Gry
@@ -101,17 +100,17 @@ def getCircle():
 
         if OLDCV:
             circles = cv2.HoughCircles(mask,cv.CV_HOUGH_GRADIENT,1,LY,
-                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/4)
+                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/2)
         else:
             circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,1,LY,
-                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/4)
+                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/2)
 
         # assess circles 
 
         if circles is not None:
             center = circles[0,0]
             Detect = True
-            cv2.circle(frame,(center[0],center[1]),center[2],(0,255,255),2)
+            cv2.circle(frame,(center[0],center[1]),center[2],(255,255,255),3)
             msgPixels.x = center[0] # x
             msgPixels.y = center[1] # y
             msgPixels.z = center[2] # radius
@@ -129,18 +128,9 @@ def getCircle():
                 
         DetectHold = Detect # hold for next iteration
 
-        if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
-            msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
-
-        if rospy.get_param('/cvision/feCamera'):                             # convert pixels to to meters
-            (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.targetFishEye(msgPixels)
-        else:
-            (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.target(msgPixels)
-
-        # publish target pixels & meters
+        # publish target pixels only
         rate.sleep()
         targetPixels.publish(msgPixels)
-        targetMeters.publish(msgMeters)
 
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):

@@ -9,7 +9,7 @@ import rospy
 def setParams():
 
     # ROS parameters for general vision tasks
-    rospy.set_param('/cvision/loopRate', 10.0)                    # loop rate for vision algorithms
+    rospy.set_param('/cvision/loopRate', 20.0)                    # loop rate for vision algorithms
     rospy.set_param('/cvision/LX', 640)                          # full size screen width
     rospy.set_param('/cvision/LY', 480)                          # full size screen height
     rospy.set_param('/cvision/camRotate', True)                  # camera rotated 90 degrees CCW facing down
@@ -53,7 +53,7 @@ def setParams():
     rospy.set_param('/getColors/proximityOn',True)               # use proximity filter on most recent detection
     rospy.set_param('/getColors/pxRadius', 5.0)                  # radius multiplier for proximity mask
     
-    rospy.set_param('/getColors/testFileOn',False)                  # binary for testing on file
+    rospy.set_param('/getColors/testFileOn',False)               # binary for testing on file
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset1/output.mp4')
     
     rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen

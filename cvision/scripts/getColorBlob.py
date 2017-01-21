@@ -159,7 +159,6 @@ def getColor():
             if M["m00"]>rospy.get_param('/getColors/minMass'):
             
                 # flag positive detection
-                msgPixels.z = M["m00"] # report size of color mass in z-channel
                 Detect = True
                 
 	    	    # compute center of contour
@@ -173,7 +172,8 @@ def getColor():
                 # use centroid (not circle center) as detected target
                 msgPixels.x=center[0]
                 msgPixels.y=center[1]
-
+                msgPixels.z = radius # report radius of enclosing circle
+                
         # create proximity mask
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)

@@ -121,5 +121,30 @@ def camRotate(old_x,old_y):
     new_y = LY/2.0 - (old_x - LX/2.0)
     return new_x, new_y
 
-    
+###################################
+#
+# class xyzVar
+#   Generic class to subscribe to setpoints
+#
+# Subscriptions:
+#   
+#   rospy.Subscriber('xyzTopic', Point32, self.cbXYZ)
+#
+# Fields:
+#   x,y = target position
+#   z = detection information
+#
+#####
+
+class xyzVar:
+    def __init__(self):
+        self.x = 0.0
+        self.y = 0.0
+        self.z = -1.0
+        
+    def cbXYZ(self,msg):
+        if not msg == None:
+            self.x = msg.x
+            self.y = msg.y
+            self.z = msg.z
 

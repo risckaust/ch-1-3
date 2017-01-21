@@ -35,8 +35,6 @@ def getWhite():
     # Create publishers
     targetPixels = rospy.Publisher('/getLaunchpad/white/xyPixels', Point32, queue_size=10)
     msgPixels = Point32()
-    targetMeters = rospy.Publisher('/getLaunchpad/white/xyMeters', Point32, queue_size=10)
-    msgMeters = Point32()
     img_pub	 = 	   rospy.Publisher('/getLaunchpad/white/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
@@ -77,6 +75,7 @@ def getWhite():
         if rospy.get_param('/getLaunchpad/testFileOn'):
             _, frame = cap.read()
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = cv2.resize(frame,(LX,LY))
         else:
             frame = quadCam.Gry
 
@@ -128,7 +127,6 @@ def getWhite():
             if M["m00"]>rospy.get_param('/getLaunchpad/minMass'):
             
                 # flag positive detection
-                msgPixels.z = M["m00"] # report size of color mass in z-channel
                 Detect = True
                 
 	    	    # compute center of contour
@@ -136,13 +134,14 @@ def getWhite():
 	    	    
                 # construct & draw bounding circle
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
-                cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+                cv2.circle(frame, (int(x), int(y)), int(radius),(255, 255, 255), 2)
                 # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
     	    	
                 # use centroid (not circle center) as detected target
                 msgPixels.x=center[0]
                 msgPixels.y=center[1]
-
+                msgPixels.z = radius # report radius of enclosing circle
+                
         # create proximity mask
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
@@ -154,18 +153,9 @@ def getWhite():
                 
         DetectHold = Detect # hold for next iteration
 
-        if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
-            msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
-
-        if rospy.get_param('/cvision/feCamera'):                             # convert pixels to to meters
-            (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.targetFishEye(msgPixels)
-        else:
-            (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.target(msgPixels)
-
-        # publish target pixels & meters
+        # publish target pixels only
         rate.sleep()
         targetPixels.publish(msgPixels)
-        targetMeters.publish(msgMeters)
 
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):
