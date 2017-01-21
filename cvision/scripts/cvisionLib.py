@@ -93,8 +93,8 @@ class getFrame():
         self.LY = rospy.get_param('/cvision/LY')
         self.BGR = np.zeros((self.LY,self.LX,3), np.uint8)
         self.Gry = np.zeros((self.LY,self.LX,1), np.uint8)
-        self.subBGR = rospy.Subscriber('frameBGR', Image, self.cbBGR)
-        self.subGry = rospy.Subscriber('frameGry', Image, self.cbGry)
+        self.subBGR = rospy.Subscriber('/cvision/frameBGR', Image, self.cbBGR)
+        self.subGry = rospy.Subscriber('/cvision/frameGry', Image, self.cbGry)
     
     def cbBGR(self,msg):
         if not msg == None:

@@ -83,7 +83,10 @@ def getCorners():
     else:
         old_frame = quadCam.Gry
     
-    p0 = cv2.goodFeaturesToTrack(old_frame, **feature_params)
+    if rospy.get_param('/cvision/feCamera'):
+        p0 = cv2.goodFeaturesToTrack(old_frame, mask = feMask, **feature_params)
+    else:
+        p0 = cv2.goodFeaturesToTrack(old_frame, **feature_params)
 
     # Create an image for drawing purposes
     traces = np.zeros_like(old_frame)  
@@ -99,10 +102,6 @@ def getCorners():
         else:
             frame = quadCam.Gry
             mask = frame
-        
-        # apply fisheye mask
-        if rospy.get_param('/cvision/feCamera'):
-            mask = cv2.bitwise_and(mask,feMask)
     
         # prep messages
         msgPixels.x = -1.0
@@ -128,14 +127,14 @@ def getCorners():
                 good_new = p1[st==1]
                 good_old = p0[st==1]
                 
-                # draw the tracks
+                # draw the corners
                 for i,(new,old) in enumerate(zip(good_new,good_old)):
                     a,b = new.ravel()
                     c,d = old.ravel()
                     frame = cv2.circle(frame,(a,b),5,(255,255,255),-1)
                     
                 # Now update the previous frame and previous points
-                frame = cv2.circle(frame,(mean1[0],mean1[1]),10,(255,255,255),-1)
+                frame = cv2.circle(frame,(mean1[0],mean1[1]),10,(0,0,0),-1)
                     
                 msgPixels.x = mean1[0]
                 msgPixels.y = mean1[1]
@@ -155,7 +154,10 @@ def getCorners():
                 old_frame = frame
             else:
                 old_frame = quadCam.Gry
-            p0 = cv2.goodFeaturesToTrack(old_frame, **feature_params)
+            if rospy.get_param('/cvision/feCamera'):
+                p0 = cv2.goodFeaturesToTrack(old_frame, mask = feMask, **feature_params)
+            else:
+                p0 = cv2.goodFeaturesToTrack(old_frame, **feature_params)
                 
         DetectHold = Detect # hold for next iteration
 

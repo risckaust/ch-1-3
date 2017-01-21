@@ -38,8 +38,9 @@ def getWhite():
     img_pub	 = 	   rospy.Publisher('/getLaunchpad/white/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
-    # Create setpoint generator
-    spGen = cvisionLib.pix2m() # setpoint generator
+    # Subscribe to launchpad for proximity masks
+    getLaunchpad = cvisionLib.xyzVar()
+    rospy.Subscriber('/getLaunchpad/launchpad/xyPixels', Point32, getLaunchpad.cbXYZ)
 
     # establish publish rate
     
@@ -134,8 +135,8 @@ def getWhite():
 	    	    
                 # construct & draw bounding circle
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
-                cv2.circle(frame, (int(x), int(y)), int(radius),(255, 255, 255), 2)
-                # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
+                cv2.circle(frame, (int(x), int(y)), int(radius),(255, 255, 255), 3)
+                cv2.circle(frame, (int(center[0]), int(center[1])), 6, (0, 0, 0), -1)
     	    	
                 # use centroid (not circle center) as detected target
                 msgPixels.x=center[0]
@@ -143,11 +144,14 @@ def getWhite():
                 msgPixels.z = radius # report radius of enclosing circle
                 
         # create proximity mask
+        # NOTE: Proximity masking is mandatory
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
-        if Detect and DetectHold: # create a proximity mask of radius multiple
-                cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
-                MaskItNow = True
+        if Detect and DetectHold and getLaunchpad.z > 0:
+            cv2.circle(pxMask,(int(getLaunchpad.x),int(getLaunchpad.y)),int(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+            # Deleted code for white-based proximity
+            # cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+            MaskItNow = True   
         else:
             MaskItNow = False
                 
@@ -160,7 +164,7 @@ def getWhite():
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):
             cv2.imshow('white',frame)
-            #cv2.imshow('pxMask',pxMask)
+            # cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image

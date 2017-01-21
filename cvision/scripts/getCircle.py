@@ -38,8 +38,9 @@ def getCircle():
     img_pub	 = 	   rospy.Publisher('/getLaunchpad/circle/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
-    # Create setpoint generator
-    spGen = cvisionLib.pix2m() # setpoint generator
+    # Subscribe to launchpad for proximity masks
+    getLaunchpad = cvisionLib.xyzVar()
+    rospy.Subscriber('/getLaunchpad/launchpad/xyPixels', Point32, getLaunchpad.cbXYZ)
 
     # establish publish rate
     
@@ -111,6 +112,7 @@ def getCircle():
             center = circles[0,0]
             Detect = True
             cv2.circle(frame,(center[0],center[1]),center[2],(255,255,255),3)
+            cv2.circle(frame, (int(center[0]), int(center[1])), 6, (0, 0, 0), -1)
             msgPixels.x = center[0] # x
             msgPixels.y = center[1] # y
             msgPixels.z = center[2] # radius
@@ -118,11 +120,14 @@ def getCircle():
             Detect = False
 
         # create proximity mask
-
+        # NOTE: Proximity masking is mandatory
+        
         pxMask = np.zeros((LY,LX,1), np.uint8)
-        if Detect and DetectHold: # create a proximity mask of radius multiple
-                cv2.circle(pxMask,(center[0],center[1]),np.uint8(center[2]*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
-                MaskItNow = True
+        if Detect and DetectHold and getLaunchpad.z > 0: # create a proximity mask of radius multiple
+            cv2.circle(pxMask,(int(getLaunchpad.x),int(getLaunchpad.y)),int(center[2]*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+            # Deleted code for circle-based proximity
+            # cv2.circle(pxMask,(center[0],center[1]),np.uint8(center[2]*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+            MaskItNow = True
         else:
             MaskItNow = False
                 
@@ -135,7 +140,7 @@ def getCircle():
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):
             cv2.imshow('circle',frame)
-            #cv2.imshow('pxMask',pxMask)
+            # cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image

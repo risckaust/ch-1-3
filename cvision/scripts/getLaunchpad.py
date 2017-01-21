@@ -113,7 +113,6 @@ def getLaunchpad():
                 CY = getWhite.y
                 Skip = True
         
-        print kc, Detect                  
         if Detect:
             msgPixels.x = CX
             msgPixels.y = CY
@@ -125,6 +124,12 @@ def getLaunchpad():
             
         DetectHold = Detect # hold for next iteration
         
+        # publish (unrotated) pixels and (rotated) meters
+        
+        rate.sleep()
+        
+        targetPixels.publish(msgPixels)
+        
         if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
             msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
 
@@ -133,18 +138,16 @@ def getLaunchpad():
         else:
             (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.target(msgPixels)
 
-        # publish target pixels & meters
-        rate.sleep()
-        targetPixels.publish(msgPixels)
         targetMeters.publish(msgMeters)
+        
         
         frame = quadCam.BGR
         if getWhite.z > 0:
-            cv2.circle(frame, (int(getWhite.x), int(getWhite.y)), int(getWhite.z),(255, 255, 255), 2)
+            cv2.circle(frame, (int(getWhite.x), int(getWhite.y)), int(getWhite.z),(255, 255, 255), 5)
         if getCircle.z > 0:
-            cv2.circle(frame, (int(getCircle.x), int(getCircle.y)), int(getCircle.z),(0, 255, 0), 2)
+            cv2.circle(frame, (int(getCircle.x), int(getCircle.y)), int(getCircle.z),(0, 255, 0), 5)
         if getCorners.z > 0:
-            cv2.circle(frame, (int(getCorners.x), int(getCorners.y)), 5,(0, 255, 255), -1)        
+            cv2.circle(frame, (int(getCorners.x), int(getCorners.y)), 10,(0, 255, 255), -1)        
 
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):
