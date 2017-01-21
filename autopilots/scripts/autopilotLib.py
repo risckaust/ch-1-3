@@ -158,6 +158,7 @@ class kBodVel:
         self.vx = 0.0
         self.vy = 0.0
         self.engaged = False
+
         self.subPos = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
         self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
         self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)

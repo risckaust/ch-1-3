@@ -56,7 +56,7 @@ def getCorners():
     cv2.circle(feMask,(LX/2,LY/2),LX/2,(255,255,255),-1)
     
     # Parameters for Shi Tomasi corner detection
-    feature_params = dict( maxCorners = 10,
+    feature_params = dict( maxCorners = 20,
                        qualityLevel = 0.5,
                        minDistance = 20) # blockSize = 7 ) 
                        

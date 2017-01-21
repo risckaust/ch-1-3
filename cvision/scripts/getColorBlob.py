@@ -184,6 +184,12 @@ def getColor():
             MaskItNow = False
                 
         DetectHold = Detect # hold for next iteration
+        
+        # publish (unrotated) pixels and (rotated) meters
+        
+        rate.sleep()
+        
+        targetPixels.publish(msgPixels)
 
         if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
             msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
@@ -193,9 +199,6 @@ def getColor():
         else:
             (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.target(msgPixels)
 
-        # publish target pixels & meters
-        rate.sleep()
-        targetPixels.publish(msgPixels)
         targetMeters.publish(msgMeters)
 
         # show processed images to screen

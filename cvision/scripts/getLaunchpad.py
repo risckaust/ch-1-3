@@ -89,29 +89,29 @@ def getLaunchpad():
         CX = -1
         CY = -1
 
-        if detectCircle and detectWhite: # Greyscale circle + Superwhite centroid
+        if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
+            error = (getWhite.x - getCorners.x)**2 + (getWhite.y - getCorners.y)**2
+            if sqrt(error) < TOL*getWhite.z:
+                Detect = True
+                CX = getCorners.x
+                CY = getCorners.y
+                Skip = True
+
+        if detectCircle and detectCorners and not Skip: # Circle + Corners
+            error = (getCircle.x - getCorners.x)**2 + (getCircle.y - getCorners.y)**2
+            if sqrt(error) < TOL*getCircle.z:
+                Detect = True
+                CX = getCorners.x
+                CY = getCorners.y
+                Skip = True 
+                               
+        if detectCircle and detectWhite and not Skip: # Circle + Superwhite centroid
             error = (getCircle.x - getWhite.x)**2 + (getCircle.y - getWhite.y)**2
             if sqrt(error) < TOL*getCircle.z:
                 Detect = True
                 CX = getCircle.x
                 CY = getCircle.y
-                Skip = True
-        
-        if detectCircle and detectCorners and not Skip: # Greyscale circle + Corners
-            error = (getCircle.x - getCorners.x)**2 + (getCircle.y - getCorners.y)**2
-            if sqrt(error) < TOL*getCircle.z:
-                Detect = True
-                CX = getCircle.x
-                CY = getCircle.y
-                Skip = True                
-
-        if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
-            error = (getWhite.x - getCorners.x)**2 + (getWhite.y - getCorners.y)**2
-            if sqrt(error) < TOL*getWhite.z:
-                Detect = True
-                CX = getWhite.x
-                CY = getWhite.y
-                Skip = True
+                Skip = True  
         
         if Detect:
             msgPixels.x = CX
@@ -129,7 +129,8 @@ def getLaunchpad():
         rate.sleep()
         
         targetPixels.publish(msgPixels)
-        
+
+            
         if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
             msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
 
@@ -147,7 +148,9 @@ def getLaunchpad():
         if getCircle.z > 0:
             cv2.circle(frame, (int(getCircle.x), int(getCircle.y)), int(getCircle.z),(0, 255, 0), 5)
         if getCorners.z > 0:
-            cv2.circle(frame, (int(getCorners.x), int(getCorners.y)), 10,(0, 255, 255), -1)        
+            cv2.circle(frame, (int(getCorners.x), int(getCorners.y)), 10,(0, 255, 255), -1)
+        if Detect:
+            cv2.circle(frame, (int(CX), int(CY)), 10,(0, 0, 255), -1)
 
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):

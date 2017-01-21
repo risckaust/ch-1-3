@@ -10,9 +10,9 @@ from sensor_msgs.msg import Image
 #   Convert pixel center to distance setpoint in body NED (m)
 #
 # Modules:
-#   self.target(center) = position setpoint in body NED coordinates given center.x, center.y, center.z = -1/1 flag
+#   self.target(center) = position setpoint in body NED coordinates given center.x, center.y, center.z = detection info
 #   self.targetFE(center) = same but for FE lens
-#   (xSp,ySp,flag) = position setpoint (m) body NED coordinates with -1/+1 flag
+#   (xSp,ySp,info) = position setpoint (m) body NED coordinates with detection info (positive value <=> detection)
 #
 # NOTE: Altitude correction done in main loop using /cvision/altCal = altitude of camera calibration (m)
 #
@@ -21,7 +21,7 @@ from sensor_msgs.msg import Image
 #   /pix2m/altCal = calibration altitude (used in main loop)
 #
 # Fields:
-#   LX, LY, m2pix
+#   LX, LY, m2pix, gripperOffset
 #   target(), targetFE()
 #####
 
@@ -30,13 +30,14 @@ class pix2m():
         self.LX = rospy.get_param('/cvision/LX')
         self.LY = rospy.get_param('/cvision/LY')
         self.m2pix = rospy.get_param('/pix2m/m2pix')
+        self.gripperOffset = rospy.get_param('/cvision/gripperOffset')
         
     def target(self,center):
         xSp = 0.0
         ySp = 0.0
         
         if center.z > 0:
-            xSp = (center.x - self.LX/2)
+            xSp = (center.x - self.LX/2) - self.gripperOffset
             ySp = (self.LY/2 - center.y)
             xSp = xSp*self.m2pix
             ySp = ySp*self.m2pix
@@ -51,7 +52,7 @@ class pix2m():
         ySp = 0.0
         
         if center.z > 0:
-            xSp = (center.x - self.LX/2)
+            xSp = (center.x - self.LX/2) - self.gripperOffset
             ySp = (self.LY/2 - center.y)
             radius = sqrt(xSp**2 + ySp**2)
             scale = 0.0019*radius + 0.1756              # empirical data fit

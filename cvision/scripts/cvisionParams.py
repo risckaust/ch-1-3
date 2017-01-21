@@ -12,8 +12,10 @@ def setParams():
     rospy.set_param('/cvision/loopRate', 20.0)                   # loop rate for vision algorithms
     rospy.set_param('/cvision/LX', 640)                          # full size screen width
     rospy.set_param('/cvision/LY', 480)                          # full size screen height
-    rospy.set_param('/cvision/camRotate', True)                  # camera rotated 90 degrees CCW facing down
+    rospy.set_param('/cvision/camRotate', False)                  # camera rotated 90 degrees CCW facing down
     rospy.set_param('/cvision/feCamera', True)                   # use fisheye mask and meter conversions
+    rospy.set_param('/cvision/gripperOffset', 0.0)               # gripper location from screen center in NED x-axis 
+                                                                 # measured in pixels when landed
     
     # ROS parameters getLaunchpad
     rospy.set_param('/getLaunchpad/minMass',50.0)                # minimum mass to detect a white blob
