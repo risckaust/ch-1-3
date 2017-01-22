@@ -123,11 +123,12 @@ class StateMachineC( object ):
 		
 		# set the controllers setpoints
 		self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+		print self.altK.zSp
 		self.home.x = self.bodK.x
 		self.home.y = self.bodK.y
 		# takeoff
-
-		while self.current_state == 'Takeoff' and abs(self.altK.zSp - self.altK.z) < 0.2 and not rospy.is_shutdown():
+		print abs(self.altK.zSp - self.altK.z) < 0.2
+		while self.current_state == 'Takeoff' and not abs(self.altK.zSp - self.altK.z) < 0.2 and not rospy.is_shutdown():
 			self.setp.header.stamp = rospy.Time.now()
 
 			self.setp.velocity.z = self.altK.controller()
@@ -135,13 +136,14 @@ class StateMachineC( object ):
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 
 			self.rate.sleep()
-			self.command.publish(setp)
+			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
 			print 'State/Set/Alt/Gnd:', self.current_state, self.altK.zSp, self.altK.z, self.ZGROUND
+			
 
 		# Done with takoeff, send signal
 		self.current_signal = 'Done'
@@ -413,7 +415,7 @@ class StateMachineC( object ):
 	# determins if an object is inside an allowable descend envelope
 	def inside_envelope(self,xy):
 		# currently, only based on relative pos
-		if np.sqrt(xy[0]**2 + xy[1]**2) <= self.ENVELOPE_XY_POS
+		if np.sqrt(xy[0]**2 + xy[1]**2) <= self.ENVELOPE_XY_POS:
 			return True
 		else:
 			return False
@@ -451,6 +453,10 @@ def mission():
 
 	# get namespace
 	ns=rospy.get_namespace()
+	ns=''
+	sm = StateMachineC(ns)
+	sm.DEBUG=True
+	sm.execute_takeoff()
 	
 
 ######### Main ##################
