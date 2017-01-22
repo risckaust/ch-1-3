@@ -2,7 +2,7 @@
 #include "ros/ros.h"
 #include "cvision/ObjectPose.h"
 #include <cv_bridge/cv_bridge.h>
-//#include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/image_encodings.h>
 #include "sensor_msgs/Image.h"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -49,59 +49,76 @@ mp->bMouseClicked = true;
 }
 
 
-class ImageConverter
+//class ImageConverter
+//{
+//  ros::NodeHandle nh_;
+//  image_transport::ImageTransport it_;
+//  image_transport::Subscriber image_sub_;
+//
+//public:
+//  cv_bridge::CvImagePtr cv_ptr;
+//  ImageConverter()
+//    : it_(nh_)
+//  {
+//    // Subscrive to input video feed and publish output video feed
+//    image_sub_ = it_.subscribe("frame_BGR", 10,
+//      &ImageConverter::imageCb, this);
+//	ROS_INFO("Constructer is done");
+//    //image_pub_ = it_.advertise("/image_converter/output_video", 1);
+//
+//    //cv::namedWindow(OPENCV_WINDOW);
+//  }
+//
+//  ~ImageConverter()
+//  {
+//    //cv::destroyWindow(OPENCV_WINDOW);
+//  }
+//
+//  void imageCb(const sensor_msgs::ImageConstPtr& msg)
+//  {
+//
+//    try
+//    {
+//      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+//      ROS_INFO("Cv image is obtained");
+//    }
+//    catch (cv_bridge::Exception& e)
+//    {
+//      ROS_ERROR("cv_bridge exception: %s", e.what());
+//      return;
+//    }
+//
+//    // Update GUI Window
+//    //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+//    //cv::waitKey(3);
+//
+//    // Output modified video stream
+//    //image_pub_.publish(cv_ptr->toImageMsg());
+//  }
+//  };
+
+Mat imgVB;
+
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-  ros::NodeHandle nh_;
-  image_transport::ImageTransport it_;
-  image_transport::Subscriber image_sub_;
-
-public:
-  cv_bridge::CvImagePtr cv_ptr;
-  ImageConverter()
-    : it_(nh_)
+  try
   {
-    // Subscrive to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("frameBGR", 10,
-      &ImageConverter::imageCb, this);
-	ROS_INFO("Constructer is done");
-    //image_pub_ = it_.advertise("/image_converter/output_video", 1);
+    //  cv::imshow("view", cv_bridge::toCvShare(msg, "bgr8")->image);
+    //cv::waitKey(30);
+    imgVB = cv_bridge::toCvShare(msg, "bgr8")->image;
+    cout << "ImgDIMCB " << imgVB.rows << imgVB.cols;
+          cv::imshow("view", imgVB);
 
-    //cv::namedWindow(OPENCV_WINDOW);
+
   }
-
-  ~ImageConverter()
+  catch (cv_bridge::Exception& e)
   {
-    //cv::destroyWindow(OPENCV_WINDOW);
+    ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
   }
-  };
-
-  void imageCb(const sensor_msgs::ImageConstPtr& msg)
-  {
-
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-      ROS_INFO("Cv image is obtained");
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-
-    // Update GUI Window
-    //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
-    //cv::waitKey(3);
-
-    // Output modified video stream
-    //image_pub_.publish(cv_ptr->toImageMsg());
-  }
-
-
+}
 
 int main(int argc, char** argv)
 {
-	Mat imgVB;
 	int frameRate =30;
 	//ROS Init
 	ros::init(argc, argv, "detector");
@@ -109,6 +126,16 @@ int main(int argc, char** argv)
 	//Node handle
 	ros::NodeHandle n;
 
+
+  cv::namedWindow("view");
+  cv::startWindowThread();
+
+
+  image_transport::ImageTransport it(n);
+  image_transport::Subscriber sub = it.subscribe("/cv_camera/image_raw", 1, imageCallback);
+
+  ros::spin();
+  cv::destroyWindow("view");
 	//ROS Topics
 	//pose (setpoint - 2D float [m], heading - float [deg])
 	//valid - bool
@@ -120,7 +147,7 @@ int main(int argc, char** argv)
 
 	//ros::Subscriber image_sub = n.subscribe("frameBGR",10,imageCb(&imgVB));
 
-	ImageConverter imgC;
+	//ImageConverter imgC;
 
 	ros::Rate loop_rate(frameRate);
 
@@ -151,6 +178,8 @@ int main(int argc, char** argv)
 	Size imgSz;
     	VideoCapture cap;
 	VideoWriter outputVideo;
+
+        imgSz = Size(imgVB.rows,imgVB.cols);
 
 if (bCamera){
     	// open the default camera, use something different from 0 otherwise;
@@ -258,8 +287,8 @@ if (bOutputVideo){
 		Mat imgHSV;
 		Mat imgThresholded;
 		Mat imgContours;
-		ROS_INFO("rows %d \n" , imgC.cv_ptr->image.rows);
-		imgOriginal = imgC.cv_ptr->image;
+		//ROS_INFO("rows %d \n" , imgC.cv_ptr->image.rows);
+		//imgOriginal = imgC.cv_ptr->image;
 
 if (bCamera || bVideo) {
 		bool bSuccess = cap.read(imgOriginal); // read a new frame from video
@@ -272,10 +301,12 @@ if (bCamera || bVideo) {
 		frame_counter++;
 }
 
+        imgOriginal=imgVB;
+
 		//Determine size of video input
 		int irows_imgOriginal = imgOriginal.rows;
 		int icols_imgOriginal = imgOriginal.cols;
-
+cout << "ImgDIM " << irows_imgOriginal << icols_imgOriginal;
 
 
 		cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV

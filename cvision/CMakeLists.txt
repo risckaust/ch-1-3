@@ -5,9 +5,13 @@ project(cvision)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  cv_bridge
+  geometry_msgs
   roscpp
   rospy
+  sensor_msgs
   std_msgs
+  image_transport
 )
 
 ## System dependencies are found with CMake's conventions
@@ -102,7 +106,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES cvision
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  CATKIN_DEPENDS cv_bridge geometry_msgs roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 
@@ -129,6 +133,7 @@ include_directories(
 
 ## Declare a C++ executable
 # add_executable(cvision_node src/cvision_node.cpp)
+add_executable(cvision_detector src/color_detector.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -137,6 +142,7 @@ include_directories(
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(cvision_node
 #   ${catkin_LIBRARIES}
+target_link_libraries(cvision_detector ${catkin_LIBRARIES})
 # )
 
 #############
@@ -186,3 +192,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+
+
