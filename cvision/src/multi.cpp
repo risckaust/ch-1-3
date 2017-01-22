@@ -1,0 +1,527 @@
+﻿////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat)
+
+#include <fstream>
+#include <sstream>
+#include <iostream> // for standard I/O
+#include <string>   // for strings
+#include <cstring>
+
+
+using namespace std;
+using namespace cv;
+
+int main(int argc, char** argv)
+{
+	//Modes for convenience
+	bool debugMode = false;
+	bool ctrlEnabled = false;
+	bool trackingEnabled = false;
+	//pause and resume code
+	bool pause = false;
+
+	string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src"; 
+	string newThres = srcpath + "/ThresholdValuesNew.txt";
+	ofstream myfile(newThres.c_str());
+
+	string inputFile = srcpath + "/InputVideo.avi";
+	VideoCapture inputVideo(inputFile);
+
+	if (!inputVideo.isOpened())  // if not success, exit program
+	{
+		cout << "Cannot open video" << endl;
+		return -1;
+	}
+	double frame_counter = 0;
+	double frame_count_max = inputVideo.get(CV_CAP_PROP_FRAME_COUNT); //get the frame count
+	cout << "Number of frames: " << frame_count_max << endl;
+
+	const string NAME = srcpath + "/ProcessedVideo.avi";   // Form the new name with container
+	int ex = static_cast<int>(inputVideo.get(CV_CAP_PROP_FOURCC));     // Get Codec Type- Int form
+
+	// Transform from int to char via Bitwise operators
+	//char EXT[] = { (char)(ex & 0XFF), (char)((ex & 0XFF00) >> 8), (char)((ex & 0XFF0000) >> 16), (char)((ex & 0XFF000000) >> 24), 0 };
+
+	Size S = Size((int)inputVideo.get(CV_CAP_PROP_FRAME_WIDTH),    // Acquire input size
+		(int)inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT));
+
+	VideoWriter outputVideo;                                        // Open the output
+
+	outputVideo.open(NAME, ex, inputVideo.get(CV_CAP_PROP_FPS), S, true);
+	//outputVideo.open(NAME, CV_FOURCC('D', 'I', 'V', 'X'), inputVideo.get(CV_CAP_PROP_FPS), S, true);
+
+	if (!outputVideo.isOpened())
+	{
+		cout << "Could not open the output video for write" << endl;
+		return -1;
+	}
+
+	//Set threshold values
+	int iLowH = 0;
+	int iHighH = 179;
+
+	int iLowS = 0;
+	int iHighS = 255;
+
+	int iLowV = 0;
+	int iHighV = 255;
+
+	//Set threshold values black
+	int iLowH_black = 0;
+	int iHighH_black = 179;
+
+	int iLowS_black = 0;
+	int iHighS_black = 255;
+
+	int iLowV_black = 0;
+	int iHighV_black = 255;
+
+	//Set threshold values red
+	int iLowH_red = 0;
+	int iHighH_red = 179;
+
+	int iLowS_red = 0;
+	int iHighS_red = 255;
+
+	int iLowV_red = 0;
+	int iHighV_red = 255;
+
+	//Set threshold values blue
+	int iLowH_blue = 0;
+	int iHighH_blue = 179;
+
+	int iLowS_blue = 0;
+	int iHighS_blue = 255;
+
+	int iLowV_blue = 0;
+	int iHighV_blue = 255;
+
+
+	int obj_sz = 100;
+
+	//using namespace std;
+	string blackThres = srcpath + "/ThresholdValuesBlack.txt";
+	ifstream f_black(blackThres.c_str());
+	if (!f_black)
+		{
+			cout << "error: could not load black file," << endl;
+		}
+
+		string txt_line, name, tmp;
+		while (getline(f_black, txt_line))
+		{
+			istringstream iss(txt_line);
+			iss >> name >> tmp;
+
+			// skip invalid lines and comments
+			if (iss.fail() || tmp != "=" || name[0] == '#') continue;
+
+			if (name == "iLowH") iss >> iLowH_black;
+			else if (name == "iHighH") iss >> iHighH_black;
+			else if (name == "iLowS") iss >> iLowS_black;
+			else if (name == "iHighS") iss >> iHighS_black;
+			else if (name == "iLowV") iss >> iLowV_black;
+			else if (name == "iHighV") iss >> iHighV_black;
+		}
+		string redThres = srcpath + "/ThresholdValuesRed.txt";
+		ifstream f_red(redThres.c_str());
+		if (!f_red)
+		{
+			cout << "error: could not load red file," << endl;
+		}
+
+		while (getline(f_red, txt_line))
+		{
+			istringstream iss(txt_line);
+			iss >> name >> tmp;
+
+			// skip invalid lines and comments
+			if (iss.fail() || tmp != "=" || name[0] == '#') continue;
+
+			if (name == "iLowH") iss >> iLowH_red;
+			else if (name == "iHighH") iss >> iHighH_red;
+			else if (name == "iLowS") iss >> iLowS_red;
+			else if (name == "iHighS") iss >> iHighS_red;
+			else if (name == "iLowV") iss >> iLowV_red;
+			else if (name == "iHighV") iss >> iHighV_red;
+		}
+
+		string blueThres = srcpath + "/ThresholdValuesBlue.txt";
+		ifstream f_blue(blueThres.c_str());
+		if (!f_blue)
+		{
+			cout << "error: could not load blue file," << endl;
+		}
+
+		while (getline(f_blue, txt_line))
+		{
+			istringstream iss(txt_line);
+			iss >> name >> tmp;
+
+			// skip invalid lines and comments
+			if (iss.fail() || tmp != "=" || name[0] == '#') continue;
+
+			if (name == "iLowH") iss >> iLowH_blue;
+			else if (name == "iHighH") iss >> iHighH_blue;
+			else if (name == "iLowS") iss >> iLowS_blue;
+			else if (name == "iHighS") iss >> iHighS_blue;
+			else if (name == "iLowV") iss >> iLowV_blue;
+			else if (name == "iHighV") iss >> iHighV_blue;
+		}
+	int iLastX = -1;
+	int iLastY = -1;
+	bool bESC = 0;
+
+	//Capture a temporary image from the camera
+	Mat imgTmp;
+	inputVideo.read(imgTmp);
+
+	//Create a black image with the size as the camera output
+	Mat imgLines = Mat::zeros(imgTmp.size(), CV_8UC3);
+
+
+	while (frame_counter < frame_count_max && !bESC)
+	{
+		Mat imgOriginal;
+		
+
+		bool bSuccess = inputVideo.read(imgOriginal); // read a new frame from video
+
+		if (!bSuccess) //if not success, break loop
+		{
+			cout << "Cannot read a frame from video stream" << endl;
+			break;
+		}
+		frame_counter++;
+		
+
+		//Determine size of video input
+		int irows_imgOriginal = imgOriginal.rows;
+		int icols_imgOriginal = imgOriginal.cols;
+
+		Mat imgHSV;
+
+		cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+
+		Mat imgThresholded;
+/////BLACK
+		inRange(imgHSV, Scalar(iLowH_black, iLowS_black, iLowV_black), Scalar(iHighH_black, iHighS_black, iHighV_black), imgThresholded); //Threshold the image
+
+
+		Moments oMoments = moments(imgThresholded);
+
+		double dM01 = oMoments.m01;
+		double dM10 = oMoments.m10;
+		double dArea = oMoments.m00;
+		
+		//Width and height for morph
+		int morph_width = 5;
+		int morph_height = 5;
+
+		//morphological opening (removes small objects from the foreground)
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//morphological closing (removes small holes from the foreground)
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		vector<vector<Point> > contours;
+		vector<Vec4i> hierarchy;
+		findContours(imgThresholded, contours, hierarchy,
+			CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+		/// Get the moments
+		vector<Moments> mu(contours.size());
+		for (int i = 0; i < contours.size(); i++)
+		{
+			mu[i] = moments(contours[i], false);
+		}
+
+		///  Get the mass centers:
+		vector<Point2f> mc(contours.size());
+		for (int i = 0; i < contours.size(); i++)
+		{
+			mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+		}
+
+		for (int i = 0; i< contours.size(); i++)
+		{
+			if (mu[i].m00 > obj_sz) //Minimum size for object, otherwise it is considered noise
+			{
+				Scalar color = Scalar(0, 255, 0);
+				drawContours(imgOriginal, contours, i, color, 2, 8, hierarchy, 0, Point());
+				circle(imgOriginal, mc[i], 5, color, -1, 8, 0);
+				putText(imgOriginal, "Black Object", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+			}
+		}
+
+		contours.clear();
+		hierarchy.clear();
+		mu.clear();
+		mc.clear();
+
+/////RED
+		inRange(imgHSV, Scalar(iLowH_red, iLowS_red, iLowV_red), Scalar(iHighH_red, iHighS_red, iHighV_red), imgThresholded); //Threshold the image
+
+
+		//morphological opening (removes small objects from the foreground)
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//morphological closing (removes small holes from the foreground)
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//vector<vector<Point> > contours;
+		//vector<Vec4i> hierarchy;
+		findContours(imgThresholded, contours, hierarchy,
+			CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+		/// Get the moments
+		vector<Moments> mu_r(contours.size());
+		for (int i = 0; i < contours.size(); i++)
+		{
+			mu_r[i] = moments(contours[i], false);
+		}
+
+		///  Get the mass centers:
+		vector<Point2f> mc_r(contours.size());
+		for (int i = 0; i < contours.size(); i++)
+		{
+			mc_r[i] = Point2f(mu_r[i].m10 / mu_r[i].m00, mu_r[i].m01 / mu_r[i].m00);
+		}
+
+		for (int i = 0; i< contours.size(); i++)
+		{
+			if (mu_r[i].m00 > obj_sz) //Minimum size for object, otherwise it is considered noise
+			{
+				Scalar color = Scalar(0, 255, 0);
+				drawContours(imgOriginal, contours, i, color, 2, 8, hierarchy, 0, Point());
+				circle(imgOriginal, mc_r[i], 5, color, -1, 8, 0);
+				putText(imgOriginal, "Red Object", mc_r[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+			}
+		}
+		contours.clear();
+		hierarchy.clear();
+		mu.clear();
+		mc.clear();
+
+/////BLUE
+		inRange(imgHSV, Scalar(iLowH_blue, iLowS_blue, iLowV_blue), Scalar(iHighH_blue, iHighS_blue, iHighV_blue), imgThresholded); //Threshold the image
+
+		//morphological opening (removes small objects from the foreground)
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//morphological closing (removes small holes from the foreground)
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//vector<vector<Point> > contours;
+		//vector<Vec4i> hierarchy;
+		findContours(imgThresholded, contours, hierarchy,
+			CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+		/// Get the moments
+		vector<Moments> mu_b(contours.size());
+		for (int i = 0; i < contours.size(); i++)
+		{
+			mu_b[i] = moments(contours[i], false);
+		}
+
+		///  Get the mass centers:
+		vector<Point2f> mc_b(contours.size());
+
+		for (int i = 0; i < contours.size(); i++)
+		{
+			mc_b[i] = Point2f(mu_b[i].m10 / mu_b[i].m00, mu_b[i].m01 / mu_b[i].m00);
+		}
+
+		for (int i = 0; i< contours.size(); i++)
+		{
+			if (mu_b[i].m00 > obj_sz) //Minimum size for object, otherwise it is considered noise
+			{
+				Scalar color = Scalar(0, 255, 0);
+				drawContours(imgOriginal, contours, i, color, 2, 8, hierarchy, 0, Point());
+				circle(imgOriginal, mc_b[i], 5, color, -1, 8, 0);
+				putText(imgOriginal, "Blue Object", mc_b[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+			}
+		}
+
+		contours.clear();
+		hierarchy.clear();
+		mu.clear();
+		mc.clear();
+
+		///// Draw contours
+		//RNG rng(12345);
+		//Mat drawing = Mat::zeros(imgThresholded.size(), CV_8UC3);
+		//for (int i = 0; i< contours.size(); i++)
+		//{
+		//	Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		//	drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+		//	circle(drawing, mc[i], 4, color, -1, 8, 0);
+
+		//	circle(imgOriginal, mc[i], 20, Scalar(0, 255, 0), 2);
+		//	putText(imgOriginal, "Blue Object", mc[i] + Point2f(75, 75), 1, 3, Scalar(150, 0, 0), 2);
+
+		//}
+
+		////Show in a window
+		//namedWindow("Contours", CV_WINDOW_AUTOSIZE);
+		//imshow("Contours", drawing);
+
+
+		if (debugMode == true){
+
+		inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+
+		//morphological opening (removes small objects from the foreground)
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//morphological closing (removes small holes from the foreground)
+		dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+		erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+		//Calculate the moments of the thresholded image
+		oMoments = moments(imgThresholded);
+
+		dM01 = oMoments.m01;
+		dM10 = oMoments.m10;
+		dArea = oMoments.m00;
+
+		if (dArea > 20000) //Minimum size for object, otherwise it is considered noise
+		{
+			//calculate the position of the object
+			int posX = dM10 / dArea;
+			int posY = dM01 / dArea;
+
+			//center of frame
+			int centerX = icols_imgOriginal / 2;
+			int centerY = irows_imgOriginal / 2;
+
+			//distance from center
+			int diffX = (centerX - posX);
+			int diffY = (centerY - posY);
+
+			if (iLastX >= 0 && iLastY >= 0 && posX >= 0 && posY >= 0)
+			{
+				//Draw a red line from the previous point to the current point
+				line(imgLines, Point(posX, posY), Point(iLastX, iLastY), Scalar(0, 0, 255), 2);
+				//Draw green crosshairs around the object
+				circle(imgOriginal, Point(posX, posY), 20, Scalar(0, 0, 255), 2);
+				putText(imgOriginal, "New Object", Point(posX, posY + 75), 1, 3, Scalar(150, 0, 0), 2);
+
+				line(imgOriginal, Point(posX, posY), Point(posX, posY - 25), Scalar(0, 0, 255), 2);
+				line(imgOriginal, Point(posX, posY), Point(posX, posY + 25), Scalar(0, 0, 255), 2);
+				line(imgOriginal, Point(posX, posY), Point(posX - 25, posY), Scalar(0, 0, 255), 2);
+				line(imgOriginal, Point(posX, posY), Point(posX + 25, posY), Scalar(0, 0, 255), 2);
+			}
+
+			iLastX = posX;
+			iLastY = posY;
+		}
+
+			imshow("Thresholded Image", imgThresholded); //show the thresholded image
+		}
+		else {
+			//if not in debug mode, destroy the window
+			cv::destroyWindow("Thresholded Image");
+		}
+
+		if (ctrlEnabled == true){
+			namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
+
+			//Create trackbars in "Control" window
+			createTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
+			createTrackbar("HighH", "Control", &iHighH, 179);
+
+			createTrackbar("LowS", "Control", &iLowS, 255); //Saturation (0 - 255)
+			createTrackbar("HighS", "Control", &iHighS, 255);
+
+			createTrackbar("LowV", "Control", &iLowV, 255);//Value (0 - 255)
+			createTrackbar("HighV", "Control", &iHighV, 255);
+		}
+		else {
+			//if not in ctrl mode, destroy the window
+			cv::destroyWindow("Control");
+		}
+
+		if (trackingEnabled == true){
+			imgOriginal = imgOriginal + imgLines; //Show tracking lines
+		}
+		else {
+			//if tracking is not enabled, don't show tracking lines
+			imgLines = Mat::zeros(imgTmp.size(), CV_8UC3); //Clear existing tracking lines
+		}
+
+		imshow("Original", imgOriginal); //show the original image
+
+		outputVideo << imgOriginal;
+		
+		switch (waitKey(30)){
+
+		case 27: //'esc' key has been pressed, exit program.
+			bESC = 1;
+			break;
+
+		case 116: //'t' has been pressed. Toggle tracking
+			trackingEnabled = !trackingEnabled;
+			if (trackingEnabled == false) cout << "Tracking disabled." << endl;
+			else cout << "Tracking enabled." << endl;
+			break;
+
+		case 100: //'d' has been pressed. Toggle debug
+			debugMode = !debugMode;
+			if (debugMode == false) cout << "Debug disabled." << endl;
+			else cout << "Debug enabled." << endl;
+			break;
+
+		case 99: //'c' has been pressed. Toggle control
+			ctrlEnabled = !ctrlEnabled;
+			if (ctrlEnabled == false) cout << "Control disabled." << endl;
+			else cout << "Control enabled." << endl;
+			break;
+
+		case 112: //'p' has been pressed. this will pause/resume the code.
+			pause = !pause;
+			if (pause == true){
+				cout << "Code paused, press 'p' again to resume" << endl;
+				while (pause == true){
+					//stay in this loop until 
+					switch (waitKey()){
+						//a switch statement inside a switch statement? Mind blown.
+					case 112:
+						//change pause back to false
+						pause = false;
+						cout << "Code Resumed" << endl;
+						break;
+					}
+				}
+			}
+
+
+
+		}
+
+	}
+
+	//Save values to file
+	if (myfile.is_open()){
+		myfile << "iLowH = " << iLowH << "\n";
+		myfile << "iHighH = " << iHighH << "\n";
+		myfile << "iLowS = " << iLowS << "\n";
+		myfile << "iHighS = " << iHighS << "\n";
+		myfile << "iLowV = " << iLowV << "\n";
+		myfile << "iHighV = " << iHighV << "\n";
+		myfile.close();
+	}
+	else cout << "Unable to open file";
+	cout << "Finished writing" << endl;
+	return 0;
+}

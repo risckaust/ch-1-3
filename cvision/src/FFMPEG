@@ -1,0 +1,14 @@
+echo "deb http://www.deb-multimedia.org wheezy main non-free" > /etc/apt/sources.list.d/deb-multimedia.list
+sudo apt-get install deb-multimedia-keyring
+sudo apt-get install ffmpeg
+
+ffmpeg -framerate 5 -i frame%04d.jpg -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p InputVideo.mp4
+
+ffmpeg -framerate 5 -i frame%04d.jpg -c:v libxvid  InputVideo.avi
+
+
+
+
+
+
+
