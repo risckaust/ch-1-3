@@ -34,7 +34,6 @@ if( event != CV_EVENT_LBUTTONDOWN )
 
 // Mount back the parameters
 MouseParams* mp = (MouseParams*)param;
-//Mat & img = mp->img;
 Mat img = mp->img;
 
 Point3_<uchar>* point = img.ptr<Point3_<uchar> >(y,x);
@@ -45,40 +44,24 @@ mp->bMouseClicked = true;
 //int H=p->x; //hue
 //int S=p->y; //saturation
 //int V=p->z; //value
-//cout << "H:" << H << " S:" << S << " V:" << V << endl; 
+//cout << "H:" << H << " S:" << S << " V:" << V << endl;
 
 }
 
-
-//void imageCb(const sensor_msgs::ImageConstPtr& msg, Mat* img)
-
-//{
-//    cv_bridge::CvImagePtr cv_ptr;
-//    try
-//    {
-//      cv_ptr = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8);
-//      img = &(cv_ptr->image);
-//    }
-//    catch (cv_bridge::Exception& e)
-//    {
-//      ROS_ERROR("cv_bridge exception: %s", e.what());
-//      return;
-//    }
-//}
 
 class ImageConverter
 {
   ros::NodeHandle nh_;
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
-  
+
 public:
   cv_bridge::CvImagePtr cv_ptr;
   ImageConverter()
     : it_(nh_)
   {
     // Subscrive to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("frameBGR", 10, 
+    image_sub_ = it_.subscribe("frameBGR", 10,
       &ImageConverter::imageCb, this);
 	ROS_INFO("Constructer is done");
     //image_pub_ = it_.advertise("/image_converter/output_video", 1);
@@ -90,10 +73,11 @@ public:
   {
     //cv::destroyWindow(OPENCV_WINDOW);
   }
+  };
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
   {
-    
+
     try
     {
       cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -108,13 +92,12 @@ public:
     // Update GUI Window
     //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
     //cv::waitKey(3);
-    
+
     // Output modified video stream
     //image_pub_.publish(cv_ptr->toImageMsg());
   }
 
-  
-};
+
 
 int main(int argc, char** argv)
 {
@@ -130,7 +113,7 @@ int main(int argc, char** argv)
 	//pose (setpoint - 2D float [m], heading - float [deg])
 	//valid - bool
 	//radius - float [m]
-	
+
 	cvision::ObjectPose msg;
 
 	ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
@@ -157,11 +140,11 @@ int main(int argc, char** argv)
 	int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
 	double frame_counter = 0;
 	double frame_count_max = -1; //infinite
-	int thres = 25; 
+	int thres = 25;
 
 	RNG rng(12345);
 
-	string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src"; 
+	string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
 	string newThres = srcpath + "/ThresholdValuesNew.txt";
 	ofstream myfile(newThres.c_str());
 
@@ -190,7 +173,7 @@ else if (bVideo) {
 		cout << "Cannot open video" << endl;
 		return -1;
 	}
-	
+
 	imgSz = Size((int)cap.get(CV_CAP_PROP_FRAME_WIDTH),    // Acquire input size
 		(int)cap.get(CV_CAP_PROP_FRAME_HEIGHT));
 
@@ -255,7 +238,7 @@ if (bOutputVideo){
 			else if (name == "iLowV") iss >> iLowV;
 			else if (name == "iHighV") iss >> iHighV;
 		}
-		
+
 	int iLastX = -1;
 	int iLastY = -1;
 
@@ -276,9 +259,9 @@ if (bOutputVideo){
 		Mat imgThresholded;
 		Mat imgContours;
 		ROS_INFO("rows %d \n" , imgC.cv_ptr->image.rows);
-		imgOriginal = imgC.cv_ptr->image;		
+		imgOriginal = imgC.cv_ptr->image;
 
-if (bCamera || bVideo) {		
+if (bCamera || bVideo) {
 		bool bSuccess = cap.read(imgOriginal); // read a new frame from video
 
 		if (!bSuccess) //if not success, break loop
@@ -287,13 +270,13 @@ if (bCamera || bVideo) {
 			break;
 		}
 		frame_counter++;
-}		
+}
 
 		//Determine size of video input
 		int irows_imgOriginal = imgOriginal.rows;
 		int icols_imgOriginal = imgOriginal.cols;
 
-		
+
 
 		cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
@@ -301,7 +284,7 @@ if (bCamera || bVideo) {
 ////////////////Thresholding
 		inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
 
-		
+
 		//Width and height for morph
 		int morph_width = 5;
 		int morph_height = 5;
@@ -330,18 +313,18 @@ if (bCamera || bVideo) {
 		vector<float> cr(contours.size());
 
 		/// Get the moments
-	
+
   		/// Approximate contours to polygons + get bounding rects and circles
 		for (int i = 0; i < contours.size(); i++)
 		{
 			//mu contains moments
 			mu[i] = moments(contours[i], false);
-			
+
 			approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
        			boundRect[i] = boundingRect( Mat(contours_poly[i]) );
 			minRect[i] = minAreaRect( Mat(contours_poly[i]) );
        			minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
-			
+
 			//cout << "Bounding Box: " << boundRect[i] << endl;
 			//cout << "Smallest Rect: " << minRect[i] << endl;
 			//cout << "Smallest Circle: " << cc[i] << ", " << cr[i] << endl;
@@ -364,7 +347,7 @@ if (bCamera || bVideo) {
 		{
 			if (mu[i].m00 > obj_sz) //Minimum size for object, otherwise it is considered noise
 			{
-			  
+
 				if (bViz) {
 				  //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
 			          Scalar color = Scalar(0, 255, 255);
@@ -381,7 +364,7 @@ if (bCamera || bVideo) {
 				        {
 					//poly contours
 				        drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
-					       
+
 					//bounding box
 					rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
 				        //rotated rectangle
@@ -431,7 +414,7 @@ if (bCamera || bVideo) {
 
 			createTrackbar("LowV", "Control", &iLowV, 255);//Value (0 - 255)
 			createTrackbar("HighV", "Control", &iHighV, 255);
-			
+
 			mp.img = imgHSV;
 			cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
 
@@ -456,9 +439,9 @@ if (bCamera || bVideo) {
 		iHighS = min(S+thres,255);
 		iLowV = max(V-thres,0);
 		iHighV = min(V+thres,255);
-		cout << "H:" << H << " S:" << S << " V:" << V << endl; 
+		cout << "H:" << H << " S:" << S << " V:" << V << endl;
 		}
-		
+
 		switch (waitKey(30)){
 
 		case 27: //'esc' key has been pressed, exit program.
@@ -488,7 +471,7 @@ if (bCamera || bVideo) {
 			if (bPause == true){
 				cout << "Code paused, press 'p' again to resume" << endl;
 				while (bPause == true){
-					//stay in this loop until 
+					//stay in this loop until
 					switch (waitKey()){
 						//a switch statement inside a switch statement? Mind blown.
 					case 112:
