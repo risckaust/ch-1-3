@@ -10,8 +10,8 @@ def setParams():
 
     # ROS parameters for general vision tasks
     rospy.set_param('/cvision/loopRate', 20.0)                   # loop rate for vision algorithms
-    rospy.set_param('/cvision/LX', 640)                          # full size screen width
-    rospy.set_param('/cvision/LY', 480)                          # full size screen height
+    rospy.set_param('/cvision/LX', 256)                          # full size screen width
+    rospy.set_param('/cvision/LY', 256)                          # full size screen height
     rospy.set_param('/cvision/camRotate', False)                  # camera rotated 90 degrees CCW facing down
     rospy.set_param('/cvision/feCamera', True)                   # use fisheye mask and pixel2meters
 
