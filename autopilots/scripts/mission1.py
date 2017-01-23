@@ -44,8 +44,9 @@ autopilotParams.setParams()
 
 
 ###### State Machine Class ######
-# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
+# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
 # Possible Signals for each state:
+#	Start:		{'Waiting', 'Ready'}
 #	Takeoff:	{'Done', 'Running'}
 #	ObjectSearch:	{'Done', 'Running'}
 #	Picking:	{'Done', 'Running', 'Failed'}
@@ -61,6 +62,7 @@ class StateMachineC( object ):
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
 		self.error_str		= 'No error'			# Error description (for debug)
 		self.DEBUG		= False				# Turn debug mode on/off
+		self.START_SIGNAL	= False				# a flag to start the state machine, if true
 
 		# internal state-related fields
 		self.TKOFFALT		= 2.0				# takeoff altitude [m] to be set by external controller
@@ -113,6 +115,32 @@ class StateMachineC( object ):
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                                   (States implementation)                                                              #
+
+	# State: start
+	def execute_start(self):
+		self.current_state='Start'
+		self.current_signal='Waiting'
+
+		self.debug()
+
+		while not self.START_SIGNAL and not rospy.is_shutdown():
+			# do nothing, until we receive the start signal
+
+			# publish state topic
+			self.state_topic.state = self.current_state
+			self.state_topic.signal = self.current_signal
+			self.state_pub.publish(self.state_topic)
+
+		self.current_signal = 'Ready'
+		# publish state topic
+		self.state_topic.state = self.current_state
+		self.state_topic.signal = self.current_signal
+		self.state_pub.publish(self.state_topic)
+		
+		self.debug()
+	
+		return	
+			
 	
 	# State: Takeoff
 	def execute_takeoff(self):
@@ -159,7 +187,7 @@ class StateMachineC( object ):
 	######### Done with Takeof State #########
 
 	# State: ObjectSearch
-	def excecute_objectSearch(self):
+	def execute_objectSearch(self):
 		self.current_state = 'ObjectSearch'
 		self.current_signal= 'Running'
 
@@ -171,7 +199,7 @@ class StateMachineC( object ):
 		# keep checking vision feedback
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
-			# TODO executing circle trajectory for now
+			# TODO executing circle trajectory (others?) for now
 
 			# publish state topic
 			self.state_topic.state = self.current_state
@@ -214,6 +242,11 @@ class StateMachineC( object ):
 
 		# set altitude
 		self.altK.zSp= self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+
+		# TODO: Activate gripper (write the ROS node for the gripper feedback/command)
+		self.gripper_action.command = True
+		self.gripper_pub.publish(self.gripper_action)
+
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
 			objectFound, xy = self.monitorObjects()							# monitor objects
 			if objectFound:										# found an object
@@ -225,8 +258,8 @@ class StateMachineC( object ):
 				if self.inside_envelope(xy):
 					self.altK.zSp = max(self.altK.z - 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_ALT)	# descend if inside envelope
 			else:											# object not found
-				# TODO if at max ALT, exit state with signal='Failed'
-				if (self.altK.z >= self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep')):	# I am at max & no objects, return with 'Failed'
+				# if at max ALT (stil did not find objects), exit state with signal='Failed'
+				if (self.altK.z >= self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep')):
 					self.current_signal = 'Failed'
 
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)	# go to last location where object was seen
@@ -252,8 +285,9 @@ class StateMachineC( object ):
 
 
 		# Done with Picking state, send signal
-		# TODO manage different signals
-		self.current_signal = 'Done'
+		# Make sure the signal is not 'Failed', before declaring 'Done' signal
+		if (self.current_signal != 'Failed'):
+			self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -282,7 +316,7 @@ class StateMachineC( object ):
 			# self.home.x = x_enu
 			# self.home.y = y_enu
 
-			# TODO: implement trajectory to go to PRE_FROP
+			# TODO: implement trajectory to go to PRE_DROP zone
 			# (self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
@@ -322,6 +356,7 @@ class StateMachineC( object ):
 
 		# TODO: Implement coordinated dropping below
 
+			
 		# Done with GoToDrop state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
@@ -399,6 +434,45 @@ class StateMachineC( object ):
 	#                                          (End of States Implementation)                                                                #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 
+	#----------------------------------------------------------------------------------------------------------------------------------------#
+	#                                          (State Transition Function)	                                                                 #
+	def update_state(self):
+		
+		# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
+		# Possible Signals for each state:
+		#	Takeoff:	{'Done', 'Running'}
+		#	ObjectSearch:	{'Done', 'Running'}
+		#	Picking:	{'Done', 'Running', 'Failed'}
+		#	GoToDrop:	{'Done', 'Running'}
+		#	Dropping:	{'Done', 'Running'}
+		#	GoHome:		{'Done', 'Running'}
+		#	Land:		{'Done', 'Running'}
+		# manage the transition between states
+		state = self.current_state
+		signal = self.current_signal
+		if (state == 'Start' and signal != 'Ready' and self.START_SIGNAL):	# initial signal
+			self.execute_start()
+		elif (state == 'Start' and signal == 'Ready'):	# Done: start -> go to: Takeoff state
+			self.execute_takeoff()
+		elif (state == 'Takeoff' and signal == 'Done'):	# Done: Takeoff -> go to: ObjectSearch state
+			self.execute_objectSearch()
+		elif (state == 'ObjectSearch' and signal == 'Done'): # Done: ObjectSearch -> go to: Picking state
+			self.execute_picking()
+		elif (state == 'Picking'):			# Two cases: 
+			if (signal == 'Failed'):			# Failed -> go to: ObjectSearch state
+				self.execute_objectSearch()	
+			if (signal == 'Done'):				# Done: Picking -> go to: GoToDrop state
+				self.execute_gotodrop()
+		elif (state == 'GoToDrop' and signal == 'Done'):	# Done: GoToDrop -> go to: WiatToDrop state
+			self.execute_wiattodrop()
+		elif (state == 'WaitToDrop' and signal == 'Done'):# Done: WaitToDrop -> go to: Drop state
+			self.execute_drop()
+		elif (state == 'Drop' and signal == 'Done'):	# Done: Drop -> go back to: ObjectSearch state
+			self.execute_objectSearch()
+
+	#                                          (End of transition function)                                                                  #
+	#----------------------------------------------------------------------------------------------------------------------------------------#
+
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                               (helper functions)                                                                       #
@@ -454,8 +528,11 @@ class StateMachineC( object ):
 	def debug(self):
 		if self.DEBUG:
 			print '#--------------------------------------#'
-			print 'State/Signal: ', self.current_state, self.current_signal
+			print 'State/Signal: ', self.current_state, ' -> ', self.current_signal
 			print '#--------------------------------------#'
+			
+			if rospy.is_shutdown():
+				print '|------ ROS IS SHUTTING DOWN------|'
 	############### End of debug function ##################
 
 	#                                           (End of helper functions)                                                                    #
@@ -485,7 +562,10 @@ def mission():
 	ns=''
 	sm = StateMachineC(ns)
 	sm.DEBUG=True
-	sm.execute_takeoff()
+	sm.current_state='Start'
+	sm.START_SIGNAL='Start'
+	while not rospy.is_shutdown():
+		sm.update_state()
 	
 
 ######### Main ##################
