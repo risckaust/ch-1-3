@@ -1,0 +1,8 @@
+bDebug = 0
+bCtrl = 0
+bOutputVideo = 0
+bCamera = 0
+bVideo = 0
+bViz = 1
+int obj_sz = 5;
+int thres = 50;

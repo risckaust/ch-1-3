@@ -61,7 +61,7 @@ mp->bMouseClicked = true;
 //    : it_(nh_)
 //  {
 //    // Subscrive to input video feed and publish output video feed
-//    image_sub_ = it_.subscribe("frame_BGR", 10,
+//    image_sub_ = it_.subscribe("/cv_camera/image_raw", 10,
 //      &ImageConverter::imageCb, this);
 //	ROS_INFO("Constructer is done");
 //    //image_pub_ = it_.advertise("/image_converter/output_video", 1);
@@ -89,8 +89,9 @@ mp->bMouseClicked = true;
 //    }
 //
 //    // Update GUI Window
-//    //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
-//    //cv::waitKey(3);
+//    cv::namedWindow("view");
+//    cv::imshow("view", cv_ptr->image);
+//    cv::waitKey(3);
 //
 //    // Output modified video stream
 //    //image_pub_.publish(cv_ptr->toImageMsg());
@@ -98,22 +99,26 @@ mp->bMouseClicked = true;
 //  };
 
 Mat imgVB;
+cv_bridge::CvImagePtr cv_ptr1;
 
-void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+void imageCallback(const sensor_msgs::ImageConstPtr& input)
 {
+//Convert ROS image message to CvImage suitable for OpenCV
   try
   {
     //  cv::imshow("view", cv_bridge::toCvShare(msg, "bgr8")->image);
     //cv::waitKey(30);
-    imgVB = cv_bridge::toCvShare(msg, "bgr8")->image;
-    cout << "ImgDIMCB " << imgVB.rows << imgVB.cols;
-          cv::imshow("view", imgVB);
+    //imgVB = cv_bridge::toCvShare(input, "bgr8")->image;
+    cv_ptr1 = cv_bridge::toCvCopy(input, sensor_msgs::image_encodings::BGR8);
+    //cout << "ImgDIMCB " << imgVB.rows << imgVB.cols;
+     //     cv::imshow("view", imgVB);
 
 
   }
   catch (cv_bridge::Exception& e)
   {
-    ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    //ROS_ERROR("Could not convert from '%s' to 'bgr8'.", msg->encoding.c_str());
   }
 }
 
@@ -127,51 +132,69 @@ int main(int argc, char** argv)
 	ros::NodeHandle n;
 
 
-  cv::namedWindow("view");
-  cv::startWindowThread();
-
-
-  image_transport::ImageTransport it(n);
-  image_transport::Subscriber sub = it.subscribe("/cv_camera/image_raw", 1, imageCallback);
-
-  ros::spin();
-  cv::destroyWindow("view");
-	//ROS Topics
-	//pose (setpoint - 2D float [m], heading - float [deg])
-	//valid - bool
-	//radius - float [m]
-
 	cvision::ObjectPose msg;
 
 	ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
 
-	//ros::Subscriber image_sub = n.subscribe("frameBGR",10,imageCb(&imgVB));
+	ros::Subscriber image_sub = n.subscribe("/cv_camera/image_raw",10,imageCallback);
 
 	//ImageConverter imgC;
 
 	ros::Rate loop_rate(frameRate);
 
+
+	MouseParams mp;
+	mp.bMouseClicked = false;
+    //pause and resume code
+	bool bPause = false;
+	bool bESC = false;
+
 	//Modes for convenience
 	bool bDebug = false;
 	bool bCtrl = false;
-	//pause and resume code
-	bool bPause = false;
-	bool bESC = false;
 	bool bOutputVideo = false;
 	bool bCamera = false;
 	bool bVideo = false;
-	bool bViz = true;
-	MouseParams mp;
-	mp.bMouseClicked = false;
+	bool bViz = false;
+	//Set object size
+	int obj_sz = 100;
+	int thres = 25;
+
 
 	int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
 	double frame_counter = 0;
 	double frame_count_max = -1; //infinite
-	int thres = 25;
+
+	string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+
+	string configFile = srcpath + "/config.txt";
+	ifstream f_config(configFile.c_str());
+	if (!f_config)
+		{
+			cout << "error: could not load config file," << endl;
+		}
+
+		string txt_line, name, tmp;
+		while (getline(f_config, txt_line))
+		{
+			istringstream iss(txt_line);
+			iss >> name >> tmp;
+
+			// skip invalid lines and comments
+			if (iss.fail() || tmp != "=" || name[0] == '#') continue;
+
+			if (name == "bDebug") iss >> bDebug;
+			else if (name == "bCtrl") iss >> bCtrl;
+			else if (name == "bOutputVideo") iss >> bOutputVideo;
+			else if (name == "bCamera") iss >> bCamera;
+			else if (name == "bVideo") iss >> bVideo;
+			else if (name == "bViz") iss >> bViz;
+			else if (name == "obj_sz") iss >> obj_sz;
+			else if (name == "thres") iss >> thres;
+		}
 
 	RNG rng(12345);
 
-	string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
 	string newThres = srcpath + "/ThresholdValuesNew.txt";
 	ofstream myfile(newThres.c_str());
 
@@ -241,31 +264,28 @@ if (bOutputVideo){
 	int iLowV = 0;
 	int iHighV = 255;
 
-	//Set object size
-	int obj_sz = 100;
-
-	string blackThres = srcpath + "/ThresholdValuesBlack.txt";
-	ifstream f_black(blackThres.c_str());
-	if (!f_black)
+	string colorThres = srcpath + "/ThresholdValuesBlack.txt";
+	ifstream f_colorThres(colorThres.c_str());
+	if (!f_colorThres)
 		{
-			cout << "error: could not load black file," << endl;
+			cout << "error: could not load color threshold file," << endl;
 		}
 
-		string txt_line, name, tmp;
-		while (getline(f_black, txt_line))
+		string txt_line1, name1, tmp1;
+		while (getline(f_colorThres, txt_line1))
 		{
-			istringstream iss(txt_line);
-			iss >> name >> tmp;
+			istringstream iss(txt_line1);
+			iss >> name1 >> tmp1;
 
 			// skip invalid lines and comments
-			if (iss.fail() || tmp != "=" || name[0] == '#') continue;
+			if (iss.fail() || tmp1 != "=" || name1[0] == '#') continue;
 
-			if (name == "iLowH") iss >> iLowH;
-			else if (name == "iHighH") iss >> iHighH;
-			else if (name == "iLowS") iss >> iLowS;
-			else if (name == "iHighS") iss >> iHighS;
-			else if (name == "iLowV") iss >> iLowV;
-			else if (name == "iHighV") iss >> iHighV;
+			if (name1 == "iLowH") iss >> iLowH;
+			else if (name1 == "iHighH") iss >> iHighH;
+			else if (name1 == "iLowS") iss >> iLowS;
+			else if (name1 == "iHighS") iss >> iHighS;
+			else if (name1 == "iLowV") iss >> iLowV;
+			else if (name1 == "iHighV") iss >> iHighV;
 		}
 
 	int iLastX = -1;
@@ -276,19 +296,15 @@ if (bOutputVideo){
 	//cap.read(imgTmp)
 	//S=imgTmp.size();
 
-	//Create a black image with the size as the camera output
-	Mat imgLines = Mat::zeros(imgSz, CV_8UC3);
-	Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
-
-
 	while (frame_counter != frame_count_max && !bESC  && ros::ok())
 	{
-		Mat imgOriginal;
+        Mat imgOriginal;
 		Mat imgHSV;
 		Mat imgThresholded;
 		Mat imgContours;
-		//ROS_INFO("rows %d \n" , imgC.cv_ptr->image.rows);
-		//imgOriginal = imgC.cv_ptr->image;
+
+	if (cv_ptr1)
+	{
 
 if (bCamera || bVideo) {
 		bool bSuccess = cap.read(imgOriginal); // read a new frame from video
@@ -298,24 +314,34 @@ if (bCamera || bVideo) {
 			cout << "Cannot read a frame from video stream" << endl;
 			break;
 		}
-		frame_counter++;
+
 }
 
-        imgOriginal=imgVB;
+else
+{
 
-		//Determine size of video input
+        imgOriginal = cv_ptr1->image;
+
+         }
+
+        frame_counter++;
+
+         		//Determine size of video input
 		int irows_imgOriginal = imgOriginal.rows;
 		int icols_imgOriginal = imgOriginal.cols;
-cout << "ImgDIM " << irows_imgOriginal << icols_imgOriginal;
 
+         imgSz = Size(icols_imgOriginal,irows_imgOriginal);
+		 //Create a black image with the size as the camera output
+         Mat imgLines = Mat::zeros(imgSz, CV_8UC3);
+         Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
 
 		cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
 
-////////////////Thresholding
+//////////////////Thresholding
 		inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
-
-
+//
+//
 		//Width and height for morph
 		int morph_width = 5;
 		int morph_height = 5;
@@ -352,9 +378,9 @@ cout << "ImgDIM " << irows_imgOriginal << icols_imgOriginal;
 			mu[i] = moments(contours[i], false);
 
 			approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
-       			boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+            boundRect[i] = boundingRect( Mat(contours_poly[i]) );
 			minRect[i] = minAreaRect( Mat(contours_poly[i]) );
-       			minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
+            minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
 
 			//cout << "Bounding Box: " << boundRect[i] << endl;
 			//cout << "Smallest Rect: " << minRect[i] << endl;
@@ -374,41 +400,44 @@ cout << "ImgDIM " << irows_imgOriginal << icols_imgOriginal;
 			mc_dist[i] = frameCenter - mc[i];
 		}
 
+	  //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+			      Scalar color = Scalar(0, 255, 255);
+				  Scalar color1 = Scalar(255, 0, 0);
+				  Scalar color2 = Scalar(0, 255, 0);
+				  Scalar color3 = Scalar(0, 0, 255);
+
 		for (int i = 0; i< contours.size(); i++)
 		{
 			if (mu[i].m00 > obj_sz) //Minimum size for object, otherwise it is considered noise
 			{
 
 				if (bViz) {
-				  //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-			          Scalar color = Scalar(0, 255, 255);
-				  Scalar color1 = Scalar(255, 0, 0);
-				  Scalar color2 = Scalar(0, 255, 0);
-				  Scalar color3 = Scalar(0, 0, 255);
 
-				  drawContours(imgOriginal, contours, i, color, 2, 8, hierarchy, 0, Point());
+				  //drawContours(imgOriginal, contours, i, color, 2, 8, hierarchy, 0, Point());
+				  drawContours(imgOriginal, contours_poly, i, color, 2, 8, hierarchy, 0, Point());
 				  circle(imgOriginal, mc[i], 5, color, -1, 8, 0);
 				  //putText(imgOriginal, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+                }
+				if (bDebug) {
 
 				  /// Draw polygonal contour + bonding rects + circles
-				  for( int i = 0; i< contours.size(); i++ )
-				        {
+
 					//poly contours
-				        drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+				    drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
 
 					//bounding box
 					rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
-				        //rotated rectangle
-				        Point2f rect_points[4]; minRect[i].points( rect_points );
-				        for( int j = 0; j < 4; j++ )
-					   line( drawing, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
-				        //min circle
-				        circle( drawing, cc[i], (int)cr[i], color3, 2, 8, 0 );
-					}
+				    //rotated rectangle
+				    Point2f rect_points[4]; minRect[i].points( rect_points );
+				    for( int j = 0; j < 4; j++ )
+					line( drawing, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
+                    //min circle
+                    circle( drawing, cc[i], (int)cr[i], color3, 2, 8, 0 );
+                    }
 
 				}
 			}
-		}
+
 
 		if (bDebug == true){
 			namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
@@ -517,6 +546,11 @@ cout << "ImgDIM " << irows_imgOriginal << icols_imgOriginal;
 
 
 		}
+
+//ROS Topics
+//pose (setpoint - 2D float [m], heading - float [deg])
+//valid - bool
+//radius - float [m]
 msg.pose.x = mc[0].x;
 msg.pose.y = mc[0].y;
 msg.pose.theta = 0;
@@ -526,6 +560,15 @@ msg.valid = true;
 	//ROS Publisher
 	object_pub.publish(msg);
 
+    cv_ptr1.reset();
+
+	}
+	    else
+    {
+       // nothing can be done here; we have to spin and wait for images to arrive
+    }
+
+    ros::spinOnce();
 	}
 
 	//Save values to file
