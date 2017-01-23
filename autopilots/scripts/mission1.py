@@ -509,10 +509,14 @@ class StateMachineC( object ):
 		# other colors..........?
 
 		# find the closest object
-		min_d_index = r_list.index(min(r_list))
+		if len(r_list) > 1:
+			min_d_index = r_list.index(min(r_list))
+			# Finally return
+			return (objectFound, xy_list[min_d_index])
+		else:
+			return (objectFound, [])
 	
-		# Finally return
-		return (objectFound, xy_list[min_d_index])
+		
 	########## End of Monitoring Objects #######################
 
 	# determins if an object is inside an allowable descend envelope

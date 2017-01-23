@@ -509,7 +509,8 @@ class StateMachineC( object ):
 		# other colors..........?
 
 		# find the closest object
-		min_d_index = r_list.index(min(r_list))
+		if len(r_list) > 1:
+			min_d_index = r_list.index(min(r_list))
 	
 		# Finally return
 		return (objectFound, xy_list[min_d_index])
@@ -530,6 +531,9 @@ class StateMachineC( object ):
 			print '#--------------------------------------#'
 			print 'State/Signal: ', self.current_state, ' -> ', self.current_signal
 			print '#--------------------------------------#'
+			
+			if rospy.is_shutdown():
+				print '|------ ROS IS SHUTTING DOWN------|'
 	############### End of debug function ##################
 
 	#                                           (End of helper functions)                                                                    #
