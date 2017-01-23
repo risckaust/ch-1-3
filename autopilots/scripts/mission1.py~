@@ -22,7 +22,6 @@ import autopilotParams
 # TODO: include the namespace in the following function
 autopilotParams.setParams()
 
-# TODO
 #!!!!!!!!!!!!! Need to define a message type for the state machine !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ######################################################################################################
 # structure of the StateMachine.msg
@@ -45,11 +44,11 @@ autopilotParams.setParams()
 
 
 ###### State Machine Class ######
-# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, Dropping, GoHome, Land}
+# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
 # Possible Signals for each state:
 #	Takeoff:	{'Done', 'Running'}
 #	ObjectSearch:	{'Done', 'Running'}
-#	Picking:	{'Done', 'Running'}
+#	Picking:	{'Done', 'Running', 'Failed'}
 #	GoToDrop:	{'Done', 'Running'}
 #	Dropping:	{'Done', 'Running'}
 #	GoHome:		{'Done', 'Running'}
@@ -66,7 +65,8 @@ class StateMachineC( object ):
 		# internal state-related fields
 		self.TKOFFALT		= 2.0				# takeoff altitude [m] to be set by external controller
 		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])	# Lat/Lon of pre-drop location: different for each vehicle
-		self.DROP_COORDS	= np.array([23.3, 12.5])	# Lat/Lon of Drop Zone/box
+		self.DROP_COORDS	= np.array([23.3, 12.5])	
+
 		self.ZGROUND		= 0.0				# Altitude at ground level
 		self.home		= autopilotLib.xyzVar()
 		self.PICK_ALT		= 0.2				# Altitude at which we pick object [m]
@@ -99,9 +99,9 @@ class StateMachineC( object ):
 		# setpoint publisher (velocity to Pixhawk)
 		self.command 		= rospy.Publisher(ns+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
 
-		# State Machine topic & its publisher (TODO: messages need to be created)
+		# State Machine topic & its publisher 
 		self.state_topic	= StateMachine()
-		self.state_pub		= rospy.Publisher(ns+'/state_machine/state', StateMachine, queue_size=10)	###### TODO:  Define the StateMachine message in the package ######
+		self.state_pub		= rospy.Publisher(ns+'/state_machine/state', StateMachine, queue_size=10)
 
 		# Gripper feedback topic
 		self.gripper_feedback	= GripperFeedback()
@@ -136,7 +136,7 @@ class StateMachineC( object ):
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 
 			self.rate.sleep()
-			self.command.publish(setp)
+			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
@@ -214,7 +214,7 @@ class StateMachineC( object ):
 
 		# set altitude
 		self.altK.zSp= self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
-		while not picked and not rospy.is_shutdown():
+		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
 			objectFound, xy = self.monitorObjects()							# monitor objects
 			if objectFound:										# found an object
 				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namspace+'/pix2m/altCal')
@@ -225,8 +225,12 @@ class StateMachineC( object ):
 				if self.inside_envelope(xy):
 					self.altK.zSp = max(self.altK.z - 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_ALT)	# descend if inside envelope
 			else:											# object not found
+				# TODO if at max ALT, exit state with signal='Failed'
+				if (self.altK.z >= self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep')):	# I am at max & no objects, return with 'Failed'
+					self.current_signal = 'Failed'
+
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)	# go to last location where object was seen
-				self.altK.zSp = self.altK.z + 0.1*abs(self.altK.z)				# increase altitude gradually, until an object is seen again
+				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep'))# increase altitude gradually, until an object is seen again
 
 			# TODO !!!!!!!! constrain your location inside your zone!!!!!!
 
@@ -248,6 +252,7 @@ class StateMachineC( object ):
 
 
 		# Done with Picking state, send signal
+		# TODO manage different signals
 		self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
@@ -276,6 +281,8 @@ class StateMachineC( object ):
 			# (x_enu, y_enu) = self.get_enu_from_gps(self.DROP_COORDS)
 			# self.home.x = x_enu
 			# self.home.y = y_enu
+
+			# TODO: implement trajectory to go to PRE_FROP
 			# (self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
@@ -306,6 +313,26 @@ class StateMachineC( object ):
 
 		return
 
+	# State: WaitToDrop
+	def execute_waittodrop(self):
+		self.current_state='WaitToDrop'
+		self.current_sginal='Running'
+
+		self.debug()
+
+		# TODO: Implement coordinated dropping below
+
+		# Done with GoToDrop state, send signal
+		self.current_signal = 'Done'
+		# publish state topic
+		self.state_topic.state = self.current_state
+		self.state_topic.signal = self.current_signal
+		self.state_pub.publish(self.state_topic)
+
+		self.debug()
+	
+		return
+
 	# State: Drop
 	def execute_drop(self):
 		self.current_state='Dropping'
@@ -313,7 +340,9 @@ class StateMachineC( object ):
 
 		self.debug()
 
-		# TODO: Implement coordinated dropping below
+		# TODO: look for dropbox (vision-based)
+		# once centerd, go to drop alt
+		# deactivate magnets, and keep checking gripper feedback!
 
 
 		# Done with Drop state, send signal
