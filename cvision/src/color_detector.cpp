@@ -241,14 +241,6 @@ int main(int argc, char** argv)
         else if (name1 == "iHighV") iss >> iHighV;
     }
 
-    int iLastX = -1;
-    int iLastY = -1;
-
-    //Capture a temporary image from the camera
-    //Mat imgTmp;
-    //cap.read(imgTmp)
-    //S=imgTmp.size();
-
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
         Mat imgOriginal;
@@ -289,7 +281,6 @@ int main(int argc, char** argv)
 
             cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
-
             ///////Thresholding
             inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
 
@@ -310,103 +301,148 @@ int main(int argc, char** argv)
             vector<Vec4i> hierarchy;
             findContours(imgContours, contours, hierarchy,
                          CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+            int cont_sz = contours.size();
 
-            vector<Moments> mu(contours.size());
-            vector<vector<Point> > contours_poly( contours.size() );
-            vector<Rect> boundRect( contours.size() );
-            vector<RotatedRect> minRect( contours.size() );
-            vector<Point2f> mc(contours.size());
-            vector<Point2f> mc_dist(contours.size());
-            vector<Point2f> cc(contours.size());
-            vector<float> cr(contours.size());
+            int x_SP = 0;
+            int y_SP = 0;
+            float r_SP = 0;
+            float t_SP = 0;
 
-            /// Get the moments
-
-            /// Approximate contours to polygons + get bounding rects and circles
-            for (int i = 0; i < contours.size(); i++)
+            if (cont_sz>0)
             {
-                //mu contains moments
-                mu[i] = moments(contours[i], false);
+                vector<Moments> mu(cont_sz);
+                vector<vector<Point> > contours_poly(cont_sz);
+                vector<Rect> boundRect(cont_sz);
+                vector<RotatedRect> minRect(cont_sz);
+                vector<Point2f> mc(cont_sz);
+                vector<Point2f> mc_dist(cont_sz);
+                vector<Point2f> cc(cont_sz);
+                vector<float> cr(cont_sz);
+                vector<int> minRectArea(cont_sz);
+                int max_idx_c= 0;
+                int max_idx_r= 0;
 
-                approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
-                if (bFitBoundingBox || bDebug) {
-                boundRect[i] = boundingRect( Mat(contours_poly[i]) );
-                }
-                if (bFitRotatedRect || bDebug) {
-                minRect[i] = minAreaRect( Mat(contours_poly[i]) );
-                }
-                if (bFitCircle || bDebug) {
-                minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
-                }
+                //center of frame
+                Point2f frameCenter(icols_imgOriginal / 2, irows_imgOriginal / 2);
 
-                //cout << "Bounding Box: " << boundRect[i] << endl;
-                //cout << "Smallest Rect: " << minRect[i] << endl;
-                //cout << "Smallest Circle: " << cc[i] << ", " << cr[i] << endl;
-
-            }
-
-            ///  Get the mass centers:
-            //center of frame
-            Point2f frameCenter(icols_imgOriginal / 2, irows_imgOriginal / 2);
-
-            for (int i = 0; i < contours.size(); i++)
-            {
-                //mc contains centers (posX, posY)
-                mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
-                mc_dist[i] = frameCenter - mc[i];
-            }
-
-            //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-            Scalar color = Scalar(0, 255, 255);
-            Scalar color1 = Scalar(255, 0, 0);
-            Scalar color2 = Scalar(0, 255, 0);
-            Scalar color3 = Scalar(0, 0, 255);
-
-            for (int i = 0; i< contours.size(); i++)
-            {
-                if (mu[i].m00 > min_obj_sz) //Minimum size for object, otherwise it is considered noise
+                /// Approximate contours to polygons + get bounding rects and circles
+                for (int i = 0; i < cont_sz; i++)
                 {
+                    // Get the moments
+                    mu[i] = moments(contours[i], false);
 
-                    if (bViz)
+                    if (mu[i].m00>min_obj_sz)
                     {
-                        if (bFitBoundingBox) {
-                        //bounding box
-                        rectangle(imgOriginal, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
+                        // Get the mass centers:
+                        mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+                        mc_dist[i] = frameCenter - mc[i];
+
+                        approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+                        if (bFitBoundingBox || bDebug)
+                        {
+                            boundRect[i] = boundingRect( Mat(contours_poly[i]) );
                         }
-                        if (bFitRotatedRect) {
+                        if (bFitRotatedRect || bDebug)
+                        {
+                            minRect[i] = minAreaRect( Mat(contours_poly[i]) );
+                            minRectArea[i]=minRect[i].size.width*minRect[i].size.height;
+                            if (minRectArea[max_idx_c]<minRectArea[i])
+                            {
+                                max_idx_c = i;
+                            }
+                        }
+                        if (bFitCircle || bDebug)
+                        {
+                            minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
+                        }
+                        if (minRectArea[max_idx_r]<minRectArea[i])
+                        {
+                            max_idx_r = i;
+                        }
+                        //cout << "Bounding Box: " << boundRect[i] << endl;
+                        //cout << "Smallest Rect: " << minRect[i] << endl;
+                        //cout << "Smallest Circle: " << cc[i] << ", " << cr[i] << endl;
+                    }
+                }
+
+
+                if (bFitCircle || bDebug)
+                {
+                    x_SP = cc[max_idx_c].x;
+                    y_SP = cc[max_idx_c].y;
+                    r_SP = cr[max_idx_c];
+                }
+                if (bFitRotatedRect || bDebug)
+                {
+                    x_SP = mc[max_idx_r].x;
+                    y_SP = mc[max_idx_r].y;
+                    t_SP = minRect[max_idx_r].angle;
+                }
+
+                cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
+
+                //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+                Scalar color = Scalar(0, 255, 255);
+                Scalar color1 = Scalar(255, 0, 0);
+                Scalar color2 = Scalar(0, 255, 0);
+                Scalar color3 = Scalar(0, 0, 255);
+
+                if (bViz)
+                {
+//                    if (bFitBoundingBox)
+//                    {
+//                        //bounding box
+//                        rectangle(imgOriginal, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
+//                    }
+                    if (bFitRotatedRect)
+                    {
                         //rotated rectangle
                         Point2f rect_points[4];
-                        minRect[i].points( rect_points );
+                        minRect[max_idx_r].points( rect_points );
                         for( int j = 0; j < 4; j++ )
                             line(imgOriginal, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
-                        }
-                        if (bFitCircle) {
-                        //min circle
-                        circle(imgOriginal, cc[i], (int)cr[i], color3, 2, 8, 0 );
-                        }
                         //Center
-                        circle(imgOriginal, mc[i], 5, color, -1, 8, 0);
-                        //putText(imgOriginal, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+                        circle(imgOriginal, mc[max_idx_r], 5, color, -1, 8, 0);
                     }
-                    if (bDebug)
+                    if (bFitCircle)
                     {
-
-                        /// Draw polygonal contour + bonding rects + circles
-                        //poly contours
-                        //drawContours( drawing, contours_poly, i, color, 1, 8, hierarchy, 0, Point() );
-                        drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
-                        //bounding box
-                        rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
-                        //rotated rectangle
-                        Point2f rect_points[4];
-                        minRect[i].points( rect_points );
-                        for( int j = 0; j < 4; j++ )
-                            line( drawing, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
                         //min circle
-                        circle( drawing, cc[i], (int)cr[i], color3, 2, 8, 0 );
+                        circle(imgOriginal, cc[max_idx_c], (int)cr[max_idx_c], color3, 2, 8, 0 );
+                        //Center
+                        circle(imgOriginal, cc[max_idx_c], 5, color, -1, 8, 0);
                     }
-
+                    //putText(imgOriginal, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
                 }
+
+                if (bDebug)
+                {
+                    for (int i = 0; i< contours.size(); i++)
+                    {
+                        if (mu[i].m00 > min_obj_sz) //Minimum size for object, otherwise it is considered noise
+                        {
+
+
+                            /// Draw polygonal contour + bonding rects + circles
+                            //poly contours
+                            //drawContours( drawing, contours_poly, i, color, 1, 8, hierarchy, 0, Point() );
+                            drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+                            //bounding box
+                            rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
+                            //rotated rectangle
+                            Point2f rect_points[4];
+                            minRect[i].points( rect_points );
+                            for( int j = 0; j < 4; j++ )
+                                line( drawing, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
+                            //min circle
+                            circle( drawing, cc[i], (int)cr[i], color3, 2, 8, 0 );
+                        }
+
+                    }
+                }
+            }
+            else
+            {
+                //No contours found
             }
 
 
@@ -536,11 +572,18 @@ int main(int argc, char** argv)
             //pose (setpoint - 2D float [m], heading - float [deg])
             //valid - bool
             //radius - float [m]
-            msg.pose.x = mc[0].x;
-            msg.pose.y = mc[0].y;
-            msg.pose.theta = 0;
-            msg.radius = cr[0];
-            msg.valid = true;
+            if (cont_sz>0)
+            {
+                msg.pose.x = x_SP;
+                msg.pose.y = y_SP;
+                msg.pose.theta = t_SP;
+                msg.radius = r_SP;
+                msg.valid = true;
+            }
+            else
+            {
+                msg.valid = false;
+            }
 
             //ROS Publisher
             object_pub.publish(msg);
