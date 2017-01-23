@@ -201,13 +201,20 @@ class StateMachineC( object ):
 		while  not objectFound and not rospy.is_shutdown():
 			# TODO executing circle trajectory (others?) for now
 
+			# check for objects
+			objectFound, _ = self.monitorObjects()
+	
+			# publish control commands
+			self.setp.velocity.z = self.altK.controller()
+			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+	
+			self.rate.sleep()
+			# publish setpoint to pixhawk
+			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
-
-			# check for objects
-			objectFound, _ = self.monitorObjects()
 	
 		# Done with searchobject state, send signal
 		self.current_signal = 'Done'
