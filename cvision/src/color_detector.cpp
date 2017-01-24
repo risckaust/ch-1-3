@@ -276,9 +276,6 @@ int main(int argc, char** argv)
 
             imgSz = Size(icols_imgOriginal,irows_imgOriginal);
 
-            //Create a black image with the size as the camera output
-            Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
-
             cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
             ///////Thresholding
@@ -297,10 +294,13 @@ int main(int argc, char** argv)
             erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
 
             imgContours = imgThresholded;
+            //Create a black image with the size as the camera output
+            Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
             vector<vector<Point> > contours;
             vector<Vec4i> hierarchy;
+            //cvFindContours()
             findContours(imgContours, contours, hierarchy,
-                         CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+                         CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
             int cont_sz = contours.size();
 
             int x_SP = 0;
@@ -387,7 +387,7 @@ int main(int argc, char** argv)
                 Scalar color2 = Scalar(0, 255, 0);
                 Scalar color3 = Scalar(0, 0, 255);
 
-                if (bViz)
+                if (bViz && !bCompetition)
                 {
 //                    if (bFitBoundingBox)
 //                    {
@@ -414,7 +414,7 @@ int main(int argc, char** argv)
                     //putText(imgOriginal, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
                 }
 
-                if (bDebug)
+                if (bDebug && !bCompetition)
                 {
                     for (int i = 0; i< contours.size(); i++)
                     {
@@ -446,6 +446,7 @@ int main(int argc, char** argv)
             }
 
 
+if (!bCompetition) {
             if (bDebug == true)
             {
                 namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
@@ -566,6 +567,7 @@ int main(int argc, char** argv)
 
 
 
+            }
             }
 
             //ROS Topics
