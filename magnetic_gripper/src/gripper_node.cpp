@@ -9,7 +9,7 @@
 /* Header bytes for feedback/command messages */
 #define FEEDBACK_HEADER 7
 #define COMMAND_HEADER 9
-#define MAX_BUFFER_SIZE
+#define MAX_BUFFER_SIZE 256
 
 using namespace std;
 
