@@ -71,7 +71,7 @@ class StateMachineC( object ):
 
 		self.ZGROUND		= 0.0				# Altitude at ground level
 		self.home		= autopilotLib.xyzVar()
-		self.PICK_ALT		= 0.2				# Altitude at which we pick object [m]
+		self.PICK_ALT		= 0.6				# Altitude at which we pick object [m]
 		self.CAMOFFSET		= 0.1				# [m]
 		self.ENVELOPE_XY_POS	= 0.2				# relative pos error where descend is allowed [m]
 		self.ENVELOPE_XY_V	= 0.1				# relative vel error where descend is allowed [m/s]
