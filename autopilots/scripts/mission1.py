@@ -205,6 +205,7 @@ class StateMachineC( object ):
 			objectFound, _ = self.monitorObjects()
 	
 			# publish control commands
+			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 	
