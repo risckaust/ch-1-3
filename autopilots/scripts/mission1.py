@@ -199,7 +199,7 @@ class StateMachineC( object ):
 		# keep checking vision feedback
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
-			# TODO executing circle trajectory (others?) for now
+			# TODO executing serach trajectory
 
 			# check for objects
 			objectFound, _ = self.monitorObjects()
@@ -517,7 +517,7 @@ class StateMachineC( object ):
 		# other colors..........?
 
 		# find the closest object
-		if len(r_list) > 1:
+		if len(r_list) > 0:
 			min_d_index = r_list.index(min(r_list))
 			# Finally return
 			return (objectFound, xy_list[min_d_index])
@@ -688,7 +688,7 @@ def mission():
 	sm = StateMachineC(ns)
 	sm.DEBUG=True
 	sm.current_state='Start'
-	sm.START_SIGNAL='Start'
+	sm.START_SIGNAL=True
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
