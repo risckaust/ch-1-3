@@ -9,6 +9,7 @@
 /* Header bytes for feedback/command messages */
 #define FEEDBACK_HEADER 7
 #define COMMAND_HEADER 9
+#define MAX_BUFFER_SIZE
 
 using namespace std;
 
@@ -63,7 +64,7 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(10);	/* Hz */
 
 	/* Serial setup */
-	uint8_t *buffer;		/* read buffer */
+	uint8_t buffer[MAX_BUFFER_SIZE];		/* read buffer */
 	size_t bytes_read;		/* number of bytes read from serail port returned by read() method*/
 	size_t bytes_available;		/* bytes available, returned by available() method*/
 	string port;
@@ -92,12 +93,13 @@ int main(int argc, char **argv)
 
 		if (serial_handle.isOpen())
 		{
+			bytes_read=0;
 			/* read serial buffer, if data is available */
 			bytes_available = serial_handle.available();
 			ROS_INFO("D: %d\n", bytes_available);
 			if ( bytes_available > 0)
 			{
-				bytes_read = serial_handle.read(buffer, serial_handle.available());
+				bytes_read = serial_handle.read(buffer, bytes_available);
 			}
 
 			/* parse data */
