@@ -199,7 +199,7 @@ class StateMachineC( object ):
 		# keep checking vision feedback
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
-			# TODO executing circle trajectory (others?) for now
+			# TODO executing serach trajectory
 
 			# check for objects
 			objectFound, _ = self.monitorObjects()
@@ -258,7 +258,7 @@ class StateMachineC( object ):
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
 			objectFound, xy = self.monitorObjects()							# monitor objects
 			if objectFound:										# found an object
-				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namspace+'/pix2m/altCal')
+				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
 				self.bodK.xSp = xy[0]*altCorrect
 				self.bodK.ySp = xy[1]*altCorrect
 				self.home.x = self.bodK.x       						# store most recent successful target
@@ -517,7 +517,7 @@ class StateMachineC( object ):
 		# other colors..........?
 
 		# find the closest object
-		if len(r_list) > 1:
+		if len(r_list) > 0:
 			min_d_index = r_list.index(min(r_list))
 			# Finally return
 			return (objectFound, xy_list[min_d_index])
@@ -546,7 +546,120 @@ class StateMachineC( object ):
 			if rospy.is_shutdown():
 				print '|------ ROS IS SHUTTING DOWN------|'
 	############### End of debug function ##################
+	######## for intermediate points along a great circle path:########################
 
+		#The function takes two coordinate pairs and a user-specified number of segments. 
+		#It yields a set of intermediate points along a great circle path. 
+		#def tweensegs(longitude1,latitude1,longitude2,latitude2,num_of_segments):
+
+	def intermediate(self,llaPointStart,llaPointEnd,num_of_segments):
+
+		ptlon1 = llaPointStart[0]
+		ptlat1 = llaPointStart[1]
+		ptlon2 = llaPointEnd[0]
+		ptlat2 = llaPointEnd[1]
+
+		numberofsegments = num_of_segments
+		onelessthansegments = numberofsegments - 1
+		fractionalincrement = (1.0/onelessthansegments)
+
+		ptlon1_radians = math.radians(ptlon1)
+		ptlat1_radians = math.radians(ptlat1)
+		ptlon2_radians = math.radians(ptlon2)
+		ptlat2_radians = math.radians(ptlat2)
+
+		distance_radians=2*math.asin(math.sqrt(math.pow((math.sin((ptlat1_radians-ptlat2_radians)/2)),2) + math.cos(ptlat1_radians)*math.cos(ptlat2_radians)*math.pow((math.sin((ptlon1_radians-ptlon2_radians)/2)),2)))
+		# 6371.009 represents the mean radius of the earth
+		# shortest path distance
+		distance_km = 6371.009 * distance_radians
+
+		mylats = []
+		mylons = []
+
+		# write the starting coordinates
+		mylats.append([])
+		mylons.append([])
+		mylats[0] = ptlat1
+		mylons[0] = ptlon1 
+
+		f = fractionalincrement
+		icounter = 1
+		while (icounter <  onelessthansegments):
+			icountmin1 = icounter - 1
+			mylats.append([])
+			mylons.append([])
+			# f is expressed as a fraction along the route from point 1 to point 2
+			A=math.sin((1-f)*distance_radians)/math.sin(distance_radians)
+			B=math.sin(f*distance_radians)/math.sin(distance_radians)
+			x = A*math.cos(ptlat1_radians)*math.cos(ptlon1_radians) + B*math.cos(ptlat2_radians)*math.cos(ptlon2_radians)
+			y = A*math.cos(ptlat1_radians)*math.sin(ptlon1_radians) +  B*math.cos(ptlat2_radians)*math.sin(ptlon2_radians)
+			z = A*math.sin(ptlat1_radians) + B*math.sin(ptlat2_radians)
+			newlat=math.atan2(z,math.sqrt(math.pow(x,2)+math.pow(y,2)))
+			newlon=math.atan2(y,x)
+			newlat_degrees = math.degrees(newlat)
+			newlon_degrees = math.degrees(newlon)
+			mylats[icounter] = newlat_degrees
+			mylons[icounter] = newlon_degrees
+			icounter += 1
+			f = f + fractionalincrement
+
+		# write the ending coordinates
+		mylats.append([])
+		mylons.append([])
+		mylats[onelessthansegments] = ptlat2
+		mylons[onelessthansegments] = ptlon2
+		return(mylats,mylons)
+
+		# Now, the array mylats[] and mylons[] have the coordinate pairs for intermediate points along the geodesic
+		# My mylat[0],mylat[0] and mylat[num_of_segments-1],mylat[num_of_segments-1] are the geodesic end point
+        ############### End of intermediate function ##################
+        
+
+
+
+
+
+    ######## function for converting LLA points to local xy(NED) :########################
+
+	def LLA_local_deltaxy(lat_0, lon_0,  lat,  lon):
+
+		M_DEG_TO_RAD = 0.01745329251994
+		CONSTANTS_RADIUS_OF_EARTH	= 6371000
+		DBL_EPSILON = 2.2204460492503131E-16
+
+		curr_lat_rad = lat_0 * M_DEG_TO_RAD
+		curr_lon_rad = lon_0 * M_DEG_TO_RAD
+		curr_sin_lat = sin(curr_lat_rad)
+		curr_cos_lat = cos(curr_lat_rad)
+
+		lat_rad = lat * M_DEG_TO_RAD
+		lon_rad = lon * M_DEG_TO_RAD
+
+		sin_lat = sin(lat_rad)
+		cos_lat = cos(lat_rad)
+
+		cos_d_lon = cos(lon_rad - curr_lon_rad)
+
+		arg = curr_sin_lat * sin_lat + curr_cos_lat * cos_lat * cos_d_lon
+
+		if (arg > 1.0):
+			arg = 1.0
+		elif (arg < -1.0):
+			arg = -1.0
+
+		c = acos(arg)
+
+		if(abs(c) < DBL_EPSILON):
+			k=1
+		else:
+			k=c/sin(c)
+
+
+		delta_x = k * (curr_cos_lat * sin_lat - curr_sin_lat * cos_lat * cos_d_lon) * CONSTANTS_RADIUS_OF_EARTH
+		delta_y = k * cos_lat * sin(lon_rad - curr_lon_rad) * CONSTANTS_RADIUS_OF_EARTH
+		return (delta_x,delta_y)
+
+	############### End of LLA_local_deltaxy function ##################
 	#                                           (End of helper functions)                                                                    #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -575,7 +688,7 @@ def mission():
 	sm = StateMachineC(ns)
 	sm.DEBUG=True
 	sm.current_state='Start'
-	sm.START_SIGNAL='Start'
+	sm.START_SIGNAL=True
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
