@@ -258,7 +258,7 @@ class StateMachineC( object ):
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
 			objectFound, xy = self.monitorObjects()							# monitor objects
 			if objectFound:										# found an object
-				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namspace+'/pix2m/altCal')
+				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
 				self.bodK.xSp = xy[0]*altCorrect
 				self.bodK.ySp = xy[1]*altCorrect
 				self.home.x = self.bodK.x       						# store most recent successful target
