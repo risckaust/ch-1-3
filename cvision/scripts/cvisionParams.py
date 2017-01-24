@@ -13,7 +13,7 @@ def setParams():
     rospy.set_param('/cvision/LX', 256)                          # full size screen width
     rospy.set_param('/cvision/LY', 256)                          # full size screen height
     rospy.set_param('/cvision/camRotate', False)                  # camera rotated 90 degrees CCW facing down
-    rospy.set_param('/cvision/feCamera', True)                   # use fisheye mask and pixel2meters
+    rospy.set_param('/cvision/feCamera', False)                   # use fisheye mask and pixel2meters
 
     # ROS parameters getLaunchPadx3
     rospy.set_param('/getLaunchPad/pxMasking', False)            # use proximity masking

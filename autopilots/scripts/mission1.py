@@ -72,7 +72,7 @@ class StateMachineC( object ):
 		self.ZGROUND		= 0.0				# Altitude at ground level
 		self.home		= autopilotLib.xyzVar()
 		self.PICK_ALT		= 0.6				# Altitude at which we pick object [m]
-		self.CAMOFFSET		= 0.1				# [m]
+		self.CAMOFFSET		= 0.0				# [m]
 		self.ENVELOPE_XY_POS	= 0.2				# relative pos error where descend is allowed [m]
 		self.ENVELOPE_XY_V	= 0.1				# relative vel error where descend is allowed [m/s]
 
@@ -261,6 +261,9 @@ class StateMachineC( object ):
 				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
 				self.bodK.xSp = xy[0]*altCorrect
 				self.bodK.ySp = xy[1]*altCorrect
+				# for debug
+				print 'XY setpoints: ', self.bodK.xSp, '/', self.bodK.ySp
+				# this is a good observation, store it
 				self.home.x = self.bodK.x       						# store most recent successful target
 				self.home.y = self.bodK.y
 				if self.inside_envelope(xy):
