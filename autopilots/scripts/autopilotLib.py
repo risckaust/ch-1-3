@@ -159,6 +159,7 @@ class kBodVel:
         self.vx = 0.0
         self.vy = 0.0
         self.engaged = False
+
         self.subPos = rospy.Subscriber(ns+'mavros/local_position/pose', PoseStamped, self.cbPos)
         self.subVel = rospy.Subscriber(ns+'mavros/local_position/velocity', TwistStamped, self.cbVel)
         self.subFCUstate = rospy.Subscriber(ns+'mavros/state', State, self.cbFCUstate)
@@ -174,8 +175,13 @@ class kBodVel:
             self.H[0,0] = 1.0
             self.H[1,1] = 1.0
             self.P = np.matrix(np.identity(5))
-            self.Q = np.matrix(np.identity(5))
-            self.R = np.matrix(np.identity(2))
+            self.Q = np.matrix(np.zeros( (5,5) ))
+            self.Q[0,0] = 0.01
+            self.Q[1,1] = 0.01
+            self.Q[2,2] = 0.01
+            self.Q[3,3] = 0.05
+            self.Q[4,4] = 0.05
+            self.R = np.matrix(np.identity(2))*0.1
             
 
     def cbPos(self,msg):
@@ -202,7 +208,7 @@ class kBodVel:
             else:
                 self.engaged = False
     
-    def ekfUpdate(self):
+    def ekfUpdate(self,seeIt):
     
         fbRate = rospy.get_param('/autopilot/fbRate')
         h = 1/fbRate
@@ -225,22 +231,23 @@ class kBodVel:
 
         self.ekf.P = self.ekf.F*self.ekf.P*self.ekf.F.T + self.ekf.Q
         
-        # Gather measurement and build residual
-        e = np.matrix(np.zeros( (2,1) ) )
-        bodyRot = self.yaw - pi/2.0                                 # rotation of NED y-axis
-        e[0] =  (self.x - self.xSp*sin(bodyRot) + self.ySp*cos(bodyRot)) - self.ekf.xhat[0]    # local ENU x
-        e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]    # local ENU y
-        
-        # build ekf gain
-        S = self.ekf.H*self.ekf.P*self.ekf.H.T + self.ekf.R
-        K = self.ekf.P*self.ekf.H.T*S.I
-        
-        # update state estimate posterior
-        self.ekf.xhat = self.ekf.xhat + K*e
-        
-        # update covariance posterior
-        Mtemp = np.matrix(np.identity(5)) - K*self.ekf.H
-        self.ekf.P = Mtemp*self.ekf.P*Mtemp.T + K*self.ekf.R*K.T
+        if seeIt:
+            # Gather measurement and build residual
+            e = np.matrix(np.zeros( (2,1) ) )
+            bodyRot = self.yaw - pi/2.0                                 # rotation of NED y-axis
+            e[0] =  (self.x - self.xSp*sin(bodyRot) + self.ySp*cos(bodyRot)) - self.ekf.xhat[0]    # local ENU x
+            e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]    # local ENU y
+            
+            # build ekf gain
+            S = self.ekf.H*self.ekf.P*self.ekf.H.T + self.ekf.R
+            K = self.ekf.P*self.ekf.H.T*S.I
+            
+            # update state estimate posterior 
+            self.ekf.xhat = self.ekf.xhat + K*e
+            
+            # update covariance posterior
+            Mtemp = np.matrix(np.identity(5)) - K*self.ekf.H
+            self.ekf.P = Mtemp*self.ekf.P*Mtemp.T + K*self.ekf.R*K.T
 
     def controller(self):
     
@@ -275,12 +282,14 @@ class kBodVel:
             vHat =  self.ekf.xhat[3]
             wHat = self.ekf.xhat[4]
             
-            VX = vHat*cos(thHat)                           
+            VX = vHat*cos(thHat)      # ENU coordinates                  
             VY = vHat*sin(thHat)
             
-            vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
-            vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
+            #### vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
+            #### vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
             
+            vxRef = vxRef - VX*sin(bodyRot) + VY*cos(bodyRot) # convert estimates to body coordinates
+            vyRef = vyRef + VX*cos(bodyRot) + VY*sin(bodyRot)
 
         vel = sqrt(vxRef**2 + vyRef**2)
         if vel > vMax:                            # anti-windup scaling      

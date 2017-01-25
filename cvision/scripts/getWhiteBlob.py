@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-# COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
-# Colors: red, blue, green, yellow
-
 import rospy
 import numpy as np
 import cv2
@@ -29,25 +26,21 @@ cvisionParams.setParams()
 
 ###################################
 
-def getColor():
+def getWhite():
 
     # Initialize node
 
-    rospy.init_node('colorTracker', anonymous=True)
-
-    # COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
-    color = rospy.get_param('local_color')
+    rospy.init_node('whiteTracker', anonymous=True)
     
     # Create publishers
-    targetPixels = rospy.Publisher('/getColors/' + color + '/xyPixels', Point32, queue_size=10)
+    targetPixels = rospy.Publisher('/getLaunchpad/white/xyPixels', Point32, queue_size=10)
     msgPixels = Point32()
-    targetMeters = rospy.Publisher('/getColors/' + color + '/xyMeters', Point32, queue_size=10)
-    msgMeters = Point32()
-    img_pub	 = 	   rospy.Publisher('/getColors/' + color + '/processedImage', Image, queue_size=10)
+    img_pub	 = 	   rospy.Publisher('/getLaunchpad/white/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
-    # Create setpoint generator
-    spGen = cvisionLib.pix2m() # setpoint generator
+    # Subscribe to launchpad for proximity masks
+    getLaunchpad = cvisionLib.xyzVar()
+    rospy.Subscriber('/getLaunchpad/launchpad/xyPixels', Point32, getLaunchpad.cbXYZ)
 
     # establish publish rate
     
@@ -74,55 +67,31 @@ def getColor():
     quadCam = cvisionLib.getFrame()
     
     # Code for testing from video file
-    if rospy.get_param('/getColors/testFileOn'):
-        cap = cv2.VideoCapture(rospy.get_param('/getColors/fileName'))
+    if rospy.get_param('/getLaunchpad/testFileOn'):
+        cap = cv2.VideoCapture(rospy.get_param('/getLaunchpad/fileName'))
 
     while not rospy.is_shutdown():
 
         # grab a frame
-        if rospy.get_param('/getColors/testFileOn'):
+        if rospy.get_param('/getLaunchpad/testFileOn'):
             _, frame = cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame = cv2.resize(frame,(LX,LY))
         else:
-            frame = quadCam.BGR
-        
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) # convert to HSV
-            
-    	# find the color in the image. red is a special cases
-    	
-    	if color == 'blue':
-            lower = np.array([100,0,127],np.uint8)
-            upper = np.array([120,255,255],np.uint8)
-        elif color == 'green':
-            lower = np.array([80,0,127],np.uint8)
-            upper = np.array([100,255,255],np.uint8) 
-        elif color == 'yellow':
-            lower = np.array([20,0,200],np.uint8)
-            upper = np.array([40,255,255],np.uint8)      
-        elif color == 'red':
-            # find the red in the image with low "H"
-            lower = np.array([0,0,200],np.uint8)
-            upper = np.array([10,255,255],np.uint8)
-            maskLow = cv2.inRange(hsv, lower, upper)
-        
-            # find the red in the image with high "H"
-            lower = np.array([170,0,200],np.uint8)
-            upper = np.array([180,255,255],np.uint8)
-            maskHigh = cv2.inRange(hsv, lower, upper)
-            
-        if  color == 'red':
-            mask = cv2.bitwise_or(maskLow,maskHigh)
-        else:
-            mask = cv2.inRange(hsv,lower,upper)
+            frame = quadCam.Gry
 
+        # extract superwhite
+        _, mask = cv2.threshold(frame,225,255,cv2.THRESH_BINARY)
+        
         # apply fisheye mask
         if rospy.get_param('/cvision/feCamera'):
             mask = cv2.bitwise_and(mask,feMask)
 
         # apply proximity mask
-        if rospy.get_param('/getColors/proximityOn') and MaskItNow:
+        if MaskItNow:
             mask = cv2.bitwise_and(mask,pxMask)
             
-        if rospy.get_param('/getColors/erodeOn'):
+        if rospy.get_param('/getLaunchpad/erodeOn'):
             # opening
             mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
             mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
@@ -156,7 +125,7 @@ def getColor():
             # compute centroid of max contour
             M = cv2.moments(c)
             
-            if M["m00"]>rospy.get_param('/getColors/minMass'):
+            if M["m00"]>rospy.get_param('/getLaunchpad/minMass'):
             
                 # flag positive detection
                 Detect = True
@@ -166,8 +135,8 @@ def getColor():
 	    	    
                 # construct & draw bounding circle
                 ((x, y), radius) = cv2.minEnclosingCircle(c)
-                cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-                # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
+                cv2.circle(frame, (int(x), int(y)), int(radius),(255, 255, 255), 3)
+                cv2.circle(frame, (int(center[0]), int(center[1])), 6, (0, 0, 0), -1)
     	    	
                 # use centroid (not circle center) as detected target
                 msgPixels.x=center[0]
@@ -175,51 +144,41 @@ def getColor():
                 msgPixels.z = radius # report radius of enclosing circle
                 
         # create proximity mask
+        # NOTE: Proximity masking is mandatory
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
-        if Detect and DetectHold and rospy.get_param('/getColors/proximityOn'): # create a proximity mask of radius multiple
-                cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getColors/pxRadius')),(255,255,255),-1)
-                MaskItNow = True
+        if Detect and DetectHold and getLaunchpad.z > 0:
+            cv2.circle(pxMask,(int(getLaunchpad.x),int(getLaunchpad.y)),int(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+            # Deleted code for white-based proximity
+            # cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
+            MaskItNow = True   
         else:
             MaskItNow = False
                 
         DetectHold = Detect # hold for next iteration
-        
-        # publish (unrotated) pixels and (rotated) meters
-        
+
+        # publish target pixels only
         rate.sleep()
-        
         targetPixels.publish(msgPixels)
 
-        if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
-            msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
-
-        if rospy.get_param('/cvision/feCamera'):                             # convert pixels to to meters
-            (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.targetFishEye(msgPixels)
-        else:
-            (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.target(msgPixels)
-
-        targetMeters.publish(msgMeters)
-
         # show processed images to screen
-        if rospy.get_param('/getColors/imgShow'):
-            cv2.imshow(color,frame)
-            #cv2.imshow('pxMask',pxMask)
+        if rospy.get_param('/getLaunchpad/imgShow'):
+            cv2.imshow('white',frame)
+            # cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image
-        STREAM_RATE = rospy.get_param('/getColors/imgStreamRate')
-        if rospy.get_param('/getColors/imgStream'): # stream processed image
+        STREAM_RATE = rospy.get_param('/getLaunchpad/imgStreamRate')
+        if rospy.get_param('/getLaunchpad/imgStream'): # stream processed image
             if (kc*STREAM_RATE)%rospy.get_param('/cvision/loopRate') < STREAM_RATE:
-                gray_frame=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                gray_frame=imutils.resize(gray_frame, width=rospy.get_param('/cvision/LX')/2)
-                img_pub.publish(bridge.cv2_to_imgmsg(gray_frame, encoding="passthrough"))
+                frame=imutils.resize(frame, width=rospy.get_param('/cvision/LX')/2)
+                img_pub.publish(bridge.cv2_to_imgmsg(frame, encoding="passthrough"))
 
         kc = kc + 1
 
 if __name__ == '__main__':
     try:
-        getColor()
+        getWhite()
     except rospy.ROSInterruptException:
         cap.release()
         cv2.destroyAllWindows()

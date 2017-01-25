@@ -27,23 +27,29 @@ cvisionParams.setParams()
 
 ###################################
 
-# Create publishers
-
-frameBGR  = rospy.Publisher('frameBGR', Image, queue_size=10)
-frameGry =  rospy.Publisher('frameGry', Image, queue_size=10)
-
-msgBGR = CvBridge()
-msgGry = CvBridge()
-
 def videoBridge():
 
-    # initialize node & set rate in Hz
+    # initialize node
     rospy.init_node('videoBridge', anonymous=True)
+    
+    # Create publishers
+
+    frameBGR  = rospy.Publisher('/cvision/frameBGR', Image, queue_size=10)
+    msgBGR = CvBridge()
+    frameGry =  rospy.Publisher('/cvision/frameGry', Image, queue_size=10)
+    msgGry = CvBridge()
+
+    # set publication rate
     rate = rospy.Rate(rospy.get_param('/cvision/loopRate'))
 
     # start video stream
     cap = cv2.VideoCapture(0)
-
+    
+    if cap.isOpened():
+        print 'videoBridge initialized...'
+    else:
+        print 'videoBridge error...'
+        
     while not rospy.is_shutdown():
 
         # grab a frame

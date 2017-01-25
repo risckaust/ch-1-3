@@ -10,9 +10,9 @@ from sensor_msgs.msg import Image
 #   Convert pixel center to distance setpoint in body NED (m)
 #
 # Modules:
-#   self.target(center) = position setpoint in body NED coordinates given center.x, center.y, center.z = -1/1 flag
+#   self.target(center) = position setpoint in body NED coordinates given center.x, center.y, center.z = detection info
 #   self.targetFE(center) = same but for FE lens
-#   (xSp,ySp,flag) = position setpoint (m) body NED coordinates with -1/+1 flag
+#   (xSp,ySp,info) = position setpoint (m) body NED coordinates with detection info (positive value <=> detection)
 #
 # NOTE: Altitude correction done in main loop using /cvision/altCal = altitude of camera calibration (m)
 #
@@ -21,7 +21,7 @@ from sensor_msgs.msg import Image
 #   /pix2m/altCal = calibration altitude (used in main loop)
 #
 # Fields:
-#   LX, LY, m2pix
+#   LX, LY, m2pix, gripperOffset
 #   target(), targetFE()
 #####
 
@@ -30,31 +30,29 @@ class pix2m():
         self.LX = rospy.get_param('/cvision/LX')
         self.LY = rospy.get_param('/cvision/LY')
         self.m2pix = rospy.get_param('/pix2m/m2pix')
+        self.gripperOffset = rospy.get_param('/cvision/gripperOffset')
         
     def target(self,center):
         xSp = 0.0
         ySp = 0.0
-        flag = -1
         
         if center.z > 0:
-            xSp = (center.x - self.LX/2)
+            xSp = (center.x - self.LX/2) - self.gripperOffset
             ySp = (self.LY/2 - center.y)
             xSp = xSp*self.m2pix
             ySp = ySp*self.m2pix
             hold = xSp                                  # switch for NED
             xSp = ySp
             ySp = hold
-            flag = 1
                 
-        return [xSp,ySp,flag]
+        return [xSp,ySp,center.z]                       # pass information through z-channel
                 
     def targetFishEye(self,center):
         xSp = 0.0
         ySp = 0.0
-        flag = -1
         
         if center.z > 0:
-            xSp = (center.x - self.LX/2)
+            xSp = (center.x - self.LX/2) - self.gripperOffset
             ySp = (self.LY/2 - center.y)
             radius = sqrt(xSp**2 + ySp**2)
             scale = 0.0019*radius + 0.1756              # empirical data fit
@@ -65,9 +63,8 @@ class pix2m():
             hold = xSp                                  # switch for NED
             xSp = ySp
             ySp = hold
-            flag = 1
 
-        return [xSp,ySp,flag]
+        return [xSp,ySp,center.z]                       # pass information through z-channel
         
 
 ###################################
@@ -89,7 +86,7 @@ class pix2m():
 #   subBGR = subscriber
 #   subGry = subscriber
 #####
-     
+
 class getFrame():
     def __init__(self):
         self.bridge = CvBridge()
@@ -97,8 +94,8 @@ class getFrame():
         self.LY = rospy.get_param('/cvision/LY')
         self.BGR = np.zeros((self.LY,self.LX,3), np.uint8)
         self.Gry = np.zeros((self.LY,self.LX,1), np.uint8)
-        self.subBGR = rospy.Subscriber('frameBGR', Image, self.cbBGR)
-        self.subGry = rospy.Subscriber('frameGry', Image, self.cbGry)
+        self.subBGR = rospy.Subscriber('/cvision/frameBGR', Image, self.cbBGR)
+        self.subGry = rospy.Subscriber('/cvision/frameGry', Image, self.cbGry)
     
     def cbBGR(self,msg):
         if not msg == None:
@@ -125,5 +122,30 @@ def camRotate(old_x,old_y):
     new_y = LY/2.0 - (old_x - LX/2.0)
     return new_x, new_y
 
-    
+###################################
+#
+# class xyzVar
+#   Generic class to subscribe to setpoints
+#
+# Subscriptions:
+#   
+#   rospy.Subscriber('xyzTopic', Point32, self.cbXYZ)
+#
+# Fields:
+#   x,y = target position
+#   z = detection information
+#
+#####
+
+class xyzVar:
+    def __init__(self):
+        self.x = 0.0
+        self.y = 0.0
+        self.z = -1.0
+        
+    def cbXYZ(self,msg):
+        if not msg == None:
+            self.x = msg.x
+            self.y = msg.y
+            self.z = msg.z
 

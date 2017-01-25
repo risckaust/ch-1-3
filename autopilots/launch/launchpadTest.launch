@@ -1,0 +1,24 @@
+<launch>
+
+        <arg name="fcu_url" default="/dev/ttyUSB0:921600" />
+        
+        <include file="$(find mavros)/launch/px4.launch">
+            <arg name="fcu_url" value="$(arg fcu_url)" />
+        </include>
+
+        <node pkg="cvision" type="videoBridge.py"  name="videoBridge" required="true" >
+        </node>
+        
+        <node pkg="cvision" type="getWhiteBlob.py"  name="getWhiteBlob" required="true" >
+        </node>
+        
+        <node pkg="cvision" type="getCircle.py"     name="getCircle"    required="true" >
+        </node>
+        
+        <node pkg="cvision" type="getCorners.py"    name="getCorners"   required="true" >
+        </node>
+        
+        <node pkg="cvision" type="getLaunchpad.py"  name="getLaunchpad" required="true" >
+        </node>
+
+</launch>
