@@ -22,6 +22,8 @@ import autopilotParams
 # TODO: include the namespace in the following function
 autopilotParams.setParams()
 
+# TODO: move the gripper msg definition from autopilots pckg toi gripper pckg
+
 #!!!!!!!!!!!!! Need to define a message type for the state machine !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ######################################################################################################
 # structure of the StateMachine.msg
@@ -65,6 +67,10 @@ class StateMachineC( object ):
 		self.START_SIGNAL	= False				# a flag to start the state machine, if true
 
 		# internal state-related fields
+		self.current_lat	= 0.0
+		self.current_lon	= 0.0
+		self.target_lat		=1.1
+		self.target_lon		=1.1
 		self.TKOFFALT		= 2.0				# takeoff altitude [m] to be set by external controller
 		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])	# Lat/Lon of pre-drop location: different for each vehicle
 		self.DROP_COORDS	= np.array([23.3, 12.5])	
@@ -98,6 +104,9 @@ class StateMachineC( object ):
 		self.fbRate 		= rospy.get_param(ns+'/autopilot/fbRate')
 		self.rate 		= rospy.Rate(self.fbRate)
 
+		# Subscriber to mavros GPS topic
+		rospy.Subscriber(ns+'/mavros/global_position/global', NavSatFix, self.gps_cb)
+
 		# setpoint publisher (velocity to Pixhawk)
 		self.command 		= rospy.Publisher(ns+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
 
@@ -107,11 +116,11 @@ class StateMachineC( object ):
 
 		# Gripper feedback topic
 		self.gripper_feedback	= GripperFeedback()
-		rospy.Subscriber(ns+'/gripper_feedback', GripperFeedback, self.gripper_cb)
+		rospy.Subscriber(ns+'/gripper_node/gripper_status', GripperFeedback, self.gripper_cb)
 
 		# Gripper command topic
 		self.gripper_action	= GripperAction()
-		self.gripper_pub	= rospy.Publisher(ns+'/gripper_action', GripperAction, queue_size=10)
+		self.gripper_pub	= rospy.Publisher(ns+'/gripper_node/gripper_command', GripperAction, queue_size=10)
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                                   (States implementation)                                                              #
@@ -200,6 +209,10 @@ class StateMachineC( object ):
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
 			# TODO executing serach trajectory
+
+			(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
+			self.home.x = self.bodK.x + dx_enu
+			self.home.y = self.bodK.y + dy_enu
 
 			# check for objects
 			objectFound, _ = self.monitorObjects()
@@ -627,7 +640,7 @@ class StateMachineC( object ):
 	def LLA_local_deltaxy(lat_0, lon_0,  lat,  lon):
 
 		M_DEG_TO_RAD = 0.01745329251994
-		CONSTANTS_RADIUS_OF_EARTH	= 6371000
+		CONSTANTS_RADIUS_OF_EARTH	= 6371000.0
 		DBL_EPSILON = 2.2204460492503131E-16
 
 		curr_lat_rad = lat_0 * M_DEG_TO_RAD
@@ -676,6 +689,13 @@ class StateMachineC( object ):
 			self.gripper_feedback.picked = msg.picked
 	########### End of Gripper callback function ##############
 
+	#################### MAVROS GPS Callback #################
+	def gps_cb(self, msg):
+		if msg is not None:
+			self.current_lat = msg.latitude
+			self.current.lon = msg.longitude
+	################## End of GPS callback ##################
+
 	#                                              (End of Callbacks)                                                                        #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 			
@@ -692,6 +712,8 @@ def mission():
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
+	self.target_lat = 1.0
+	self.target_lon = 1.0
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
