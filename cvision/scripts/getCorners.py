@@ -56,9 +56,10 @@ def getCorners():
     cv2.circle(feMask,(LX/2,LY/2),LX/2,(255,255,255),-1)
     
     # Parameters for Shi Tomasi corner detection
-    feature_params = dict( maxCorners = 20,
+    feature_params = dict( maxCorners = 10,
                        qualityLevel = 0.5,
-                       minDistance = 20) # blockSize = 7 ) 
+                       minDistance = 25,
+                       blockSize = 7 ) 
                        
     # Parameters for lucas kanade optical flow
     lk_params = dict( winSize  = (15,15),
@@ -131,10 +132,10 @@ def getCorners():
                 for i,(new,old) in enumerate(zip(good_new,good_old)):
                     a,b = new.ravel()
                     c,d = old.ravel()
-                    frame = cv2.circle(frame,(a,b),5,(255,255,255),-1)
+                    cv2.circle(frame,(a,b),5,(255,255,255),-1)
                     
                 # Now update the previous frame and previous points
-                frame = cv2.circle(frame,(mean1[0],mean1[1]),10,(0,0,0),-1)
+                cv2.circle(frame,(mean1[0],mean1[1]),10,(0,0,0),-1)
                     
                 msgPixels.x = mean1[0]
                 msgPixels.y = mean1[1]
@@ -145,7 +146,10 @@ def getCorners():
                 p0 = good_new.reshape(-1,1,2)
                 
                 Restart = False
-            
+        
+        #if kc%2 == 0:
+        #    Restart = True
+        
         if Restart:
             if rospy.get_param('/getLaunchpad/testFileOn'):
                 _, frame = cap.read()
