@@ -22,17 +22,20 @@ public:
 
 	autopilots::GripperAction _g_action;
 	serial::Serial* _serial_ptr;
+	uint8_t buffer[2];
 
 	// callback
 	void cb(const autopilots::GripperAction::ConstPtr& msg)
 	{
 		_g_action.command = msg->command;
-		ROS_INFO("I heard: [%d]", _g_action.command);
-
-		if(_serial_ptr->isOpen())
-			cout << " Yes." << endl;
+		ROS_INFO("Writing action: [%d]", _g_action.command);
+		buffer[0]= COMMAND_HEADER;
+		if (_g_action.command)
+			buffer[1]= 1;
 		else
-			cout << " No." << endl;
+			buffer[1]= 0;
+
+		_serial_ptr ->write(buffer, 2);
 	}
 
 	
@@ -126,10 +129,10 @@ int main(int argc, char **argv)
 			break;
 		}
 
-		ROS_INFO("%d\n", g_status.picked);
 
 		/* publish the gripper status */
 		gripper_pub.publish(g_status);
+
 
 		ros::spinOnce();
 
