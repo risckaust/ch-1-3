@@ -43,9 +43,9 @@ def getLaunchPad():
     CAMROTATE = rospy.get_param(ns+'/cvision/camRotate')
     FECAMERA = rospy.get_param(ns+'/cvision/feCamera')
 
-    IMGSHOW = rospy.get_param(ns+'/getLaunchPad/imgShow')
-    IMGSTREAM = rospy.get_param(ns+'/getLaunchPad/imgStream')
-    STREAM_RATE = rospy.get_param(ns+'/getLaunchPad/imgStreamRate')
+    IMGSHOW = rospy.get_param(ns+'/getColors/imgShow')
+    IMGSTREAM = rospy.get_param(ns+'/getColors/imgStream')
+    STREAM_RATE = rospy.get_param(ns+'/getColors/imgStreamRate')
 
     # Create publishers
     targetPixel = rospy.Publisher('blue_xyPixel', Point32, queue_size=10)
