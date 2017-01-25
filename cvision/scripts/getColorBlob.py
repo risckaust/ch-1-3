@@ -25,7 +25,7 @@ if OLDCV:
 
 import cvisionLib
 import cvisionParams
-cvisionParams.setParams()
+
 
 ###################################
 
@@ -34,6 +34,10 @@ def getColor():
     # Initialize node
 
     rospy.init_node('colorTracker', anonymous=True)
+    # get namspace
+    ns = rospy.get_namespace()
+    ns = ns[0:len(ns)-1]
+    cvisionParams.setParams(ns)
 
     # COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
     color = rospy.get_param('local_color')
@@ -47,11 +51,11 @@ def getColor():
     bridge = CvBridge()
     
     # Create setpoint generator
-    spGen = cvisionLib.pix2m() # setpoint generator
+    spGen = cvisionLib.pix2m(ns) # setpoint generator
 
     # establish publish rate
     
-    rate = rospy.Rate(rospy.get_param('/cvision/loopRate'))
+    rate = rospy.Rate(rospy.get_param(ns+'/cvision/loopRate'))
 
     # initializations
     
@@ -63,24 +67,24 @@ def getColor():
     MaskItNow = False
     
     # Create fisheye mask
-    LX = rospy.get_param('/cvision/LX')
-    LY = rospy.get_param('/cvision/LY')
+    LX = rospy.get_param(ns+'/cvision/LX')
+    LY = rospy.get_param(ns+'/cvision/LY')
     feMask = np.zeros((LY,LX,1), np.uint8)
     cv2.circle(feMask,(LX/2,LY/2),LX/2,(255,255,255),-1)
 
     # start video stream: Replaces
     #   cap = cv2.VideoCapture(0) or cap = cv2.VideoCapture('file.mp4')
     #   _, frame = cap.read()
-    quadCam = cvisionLib.getFrame()
+    quadCam = cvisionLib.getFrame(ns)
     
     # Code for testing from video file
-    if rospy.get_param('/getColors/testFileOn'):
-        cap = cv2.VideoCapture(rospy.get_param('/getColors/fileName'))
+    if rospy.get_param(ns+'/getColors/testFileOn'):
+        cap = cv2.VideoCapture(rospy.get_param(ns+'/getColors/fileName'))
 
     while not rospy.is_shutdown():
 
         # grab a frame
-        if rospy.get_param('/getColors/testFileOn'):
+        if rospy.get_param(ns+'/getColors/testFileOn'):
             _, frame = cap.read()
         else:
             frame = quadCam.BGR
@@ -115,14 +119,14 @@ def getColor():
             mask = cv2.inRange(hsv,lower,upper)
 
         # apply fisheye mask
-        if rospy.get_param('/cvision/feCamera'):
+        if rospy.get_param(ns+'/cvision/feCamera'):
             mask = cv2.bitwise_and(mask,feMask)
 
         # apply proximity mask
-        if rospy.get_param('/getColors/proximityOn') and MaskItNow:
+        if rospy.get_param(ns+'/getColors/proximityOn') and MaskItNow:
             mask = cv2.bitwise_and(mask,pxMask)
             
-        if rospy.get_param('/getColors/erodeOn'):
+        if rospy.get_param(ns+'/getColors/erodeOn'):
             # opening
             mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
             mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
@@ -156,7 +160,7 @@ def getColor():
             # compute centroid of max contour
             M = cv2.moments(c)
             
-            if M["m00"]>rospy.get_param('/getColors/minMass'):
+            if M["m00"]>rospy.get_param(ns+'/getColors/minMass'):
             
                 # flag positive detection
                 Detect = True
@@ -176,9 +180,9 @@ def getColor():
                 
         # create proximity mask
 
-        pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
-        if Detect and DetectHold and rospy.get_param('/getColors/proximityOn'): # create a proximity mask of radius multiple
-                cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getColors/pxRadius')),(255,255,255),-1)
+        pxMask = np.zeros((rospy.get_param(ns+'/cvision/LY'),rospy.get_param(ns+'/cvision/LX'),1), np.uint8)
+        if Detect and DetectHold and rospy.get_param(ns+'/getColors/proximityOn'): # create a proximity mask of radius multiple
+                cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param(ns+'/getColors/pxRadius')),(255,255,255),-1)
                 MaskItNow = True
         else:
             MaskItNow = False
@@ -191,10 +195,10 @@ def getColor():
         
         targetPixels.publish(msgPixels)
 
-        if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
+        if rospy.get_param(ns+'/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
             msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
 
-        if rospy.get_param('/cvision/feCamera'):                             # convert pixels to to meters
+        if rospy.get_param(ns+'/cvision/feCamera'):                             # convert pixels to to meters
             (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.targetFishEye(msgPixels)
         else:
             (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.target(msgPixels)
@@ -202,17 +206,17 @@ def getColor():
         targetMeters.publish(msgMeters)
 
         # show processed images to screen
-        if rospy.get_param('/getColors/imgShow'):
+        if rospy.get_param(ns+'/getColors/imgShow'):
             cv2.imshow(color,frame)
             #cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image
-        STREAM_RATE = rospy.get_param('/getColors/imgStreamRate')
-        if rospy.get_param('/getColors/imgStream'): # stream processed image
-            if (kc*STREAM_RATE)%rospy.get_param('/cvision/loopRate') < STREAM_RATE:
+        STREAM_RATE = rospy.get_param(ns+'/getColors/imgStreamRate')
+        if rospy.get_param(ns+'/getColors/imgStream'): # stream processed image
+            if (kc*STREAM_RATE)%rospy.get_param(ns+'/cvision/loopRate') < STREAM_RATE:
                 gray_frame=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                gray_frame=imutils.resize(gray_frame, width=rospy.get_param('/cvision/LX')/2)
+                gray_frame=imutils.resize(gray_frame, width=rospy.get_param(ns+'/cvision/LX')/2)
                 img_pub.publish(bridge.cv2_to_imgmsg(gray_frame, encoding="passthrough"))
 
         kc = kc + 1

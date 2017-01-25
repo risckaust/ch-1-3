@@ -707,7 +707,7 @@ def mission():
 
 	# get namespace
 	ns=rospy.get_namespace()
-	ns=''
+	ns = ns[0:len(ns)-1]
 	sm = StateMachineC(ns)
 	sm.DEBUG=True
 	sm.current_state='Start'

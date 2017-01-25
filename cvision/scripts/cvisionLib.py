@@ -26,11 +26,12 @@ from sensor_msgs.msg import Image
 #####
 
 class pix2m():
-    def __init__(self):
-        self.LX = rospy.get_param('/cvision/LX')
-        self.LY = rospy.get_param('/cvision/LY')
-        self.m2pix = rospy.get_param('/pix2m/m2pix')
-        self.gripperOffset = rospy.get_param('/cvision/gripperOffset')
+    def __init__(self, ns):
+	self.ns=ns
+        self.LX = rospy.get_param(ns+'/cvision/LX')
+        self.LY = rospy.get_param(ns+'/cvision/LY')
+        self.m2pix = rospy.get_param(ns+'/pix2m/m2pix')
+        self.gripperOffset = rospy.get_param(ns+'/cvision/gripperOffset')
         
     def target(self,center):
         xSp = 0.0
@@ -88,14 +89,15 @@ class pix2m():
 #####
 
 class getFrame():
-    def __init__(self):
+    def __init__(self, ns):
+	self.ns=ns
         self.bridge = CvBridge()
-        self.LX = rospy.get_param('/cvision/LX')
-        self.LY = rospy.get_param('/cvision/LY')
+        self.LX = rospy.get_param(ns+'/cvision/LX')
+        self.LY = rospy.get_param(ns+'/cvision/LY')
         self.BGR = np.zeros((self.LY,self.LX,3), np.uint8)
         self.Gry = np.zeros((self.LY,self.LX,1), np.uint8)
-        self.subBGR = rospy.Subscriber('/cvision/frameBGR', Image, self.cbBGR)
-        self.subGry = rospy.Subscriber('/cvision/frameGry', Image, self.cbGry)
+        self.subBGR = rospy.Subscriber(ns+'/cvision/frameBGR', Image, self.cbBGR)
+        self.subGry = rospy.Subscriber(ns+'/cvision/frameGry', Image, self.cbGry)
     
     def cbBGR(self,msg):
         if not msg == None:
@@ -115,9 +117,9 @@ class getFrame():
 #
 #####
 
-def camRotate(old_x,old_y):
-    LX = rospy.get_param('/cvision/LX')
-    LY = rospy.get_param('/cvision/LY')
+def camRotate(old_x,old_y, ns):
+    LX = rospy.get_param(ns+'/cvision/LX')
+    LY = rospy.get_param(ns+'/cvision/LY')
     new_x = LX/2.0 + (old_y - LY/2.0)
     new_y = LY/2.0 - (old_x - LX/2.0)
     return new_x, new_y

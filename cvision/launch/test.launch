@@ -1,0 +1,11 @@
+<launch>
+
+	<group ns="Quad1">
+        <node pkg="cvision" type="videoBridge.py"   name="videoBridge"  required="true" >
+        </node>
+
+        <node pkg="cvision" type="getBlueBlob.py"  name="getBlueBlob" required="true" >
+        </node>
+       </group>
+
+</launch>

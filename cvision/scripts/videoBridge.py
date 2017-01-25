@@ -23,7 +23,6 @@ if OLDCV:
 # Import vision parameters
 
 import cvisionParams
-cvisionParams.setParams()
 
 ###################################
 
@@ -31,16 +30,23 @@ def videoBridge():
 
     # initialize node
     rospy.init_node('videoBridge', anonymous=True)
+
+    # get the namespace
+    ns = rospy.get_namespace()
+    ns = ns[0:len(ns)-1]
+
+    # import vision params
+    cvisionParams.setParams(ns)
     
     # Create publishers
 
-    frameBGR  = rospy.Publisher('/cvision/frameBGR', Image, queue_size=10)
+    frameBGR  = rospy.Publisher(ns+'/cvision/frameBGR', Image, queue_size=10)
     msgBGR = CvBridge()
-    frameGry =  rospy.Publisher('/cvision/frameGry', Image, queue_size=10)
+    frameGry =  rospy.Publisher(ns+'/cvision/frameGry', Image, queue_size=10)
     msgGry = CvBridge()
 
     # set publication rate
-    rate = rospy.Rate(rospy.get_param('/cvision/loopRate'))
+    rate = rospy.Rate(rospy.get_param(ns+'/cvision/loopRate'))
 
     # start video stream
     cap = cv2.VideoCapture(0)

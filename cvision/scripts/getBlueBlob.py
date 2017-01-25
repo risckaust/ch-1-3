@@ -22,38 +22,40 @@ if OLDCV:
 
 import cvisionLib
 import cvisionParams
-cvisionParams.setParams()
-
-###################################
-
-# Flags & Constants
-
-LOOP_RATE = rospy.get_param('/cvision/loopRate')
-LX = rospy.get_param('/cvision/LX')
-LY = rospy.get_param('/cvision/LY')
-CAMROTATE = rospy.get_param('/cvision/camRotate')
-FECAMERA = rospy.get_param('/cvision/feCamera')
-
-IMGSHOW = rospy.get_param('/getLaunchPad/imgShow')
-IMGSTREAM = rospy.get_param('/getLaunchPad/imgStream')
-STREAM_RATE = rospy.get_param('/getLaunchPad/imgStreamRate')
-
-# Create publishers
-targetPixel = rospy.Publisher('blue_xyPixel', Point32, queue_size=10)
-targetSp = rospy.Publisher('blue_xySp', Point32, queue_size=10)
-img_pub	 = 	rospy.Publisher('processed_Image', Image, queue_size=10)
-
-msgPixel = Point32()
-msgSp = Point32()
-bridge = CvBridge()
-
-spGen = cvisionLib.pix2m() # setpoint generator
 
 def getLaunchPad():
 
     # initialize node & set rate in Hz
 
     rospy.init_node('tracker', anonymous=True)
+    # get the namespace
+    ns = rospy.get_namespace()
+    ns = ns[0:len(ns)-1]
+    cvisionParams.setParams(ns)
+
+    ###################################
+
+    # Flags & Constants
+
+    LOOP_RATE = rospy.get_param(ns+'/cvision/loopRate')
+    LX = rospy.get_param(ns+'/cvision/LX')
+    LY = rospy.get_param(ns+'/cvision/LY')
+    CAMROTATE = rospy.get_param(ns+'/cvision/camRotate')
+    FECAMERA = rospy.get_param(ns+'/cvision/feCamera')
+
+    IMGSHOW = rospy.get_param(ns+'/getLaunchPad/imgShow')
+    IMGSTREAM = rospy.get_param(ns+'/getLaunchPad/imgStream')
+    STREAM_RATE = rospy.get_param(ns+'/getLaunchPad/imgStreamRate')
+
+    # Create publishers
+    targetPixel = rospy.Publisher('blue_xyPixel', Point32, queue_size=10)
+    targetSp = rospy.Publisher('blue_xySp', Point32, queue_size=10)
+    img_pub	 = 	rospy.Publisher('processed_Image', Image, queue_size=10)
+
+    msgPixel = Point32()
+    msgSp = Point32()
+    bridge = CvBridge()
+    spGen = cvisionLib.pix2m(ns) # setpoint generator
     rate = rospy.Rate(LOOP_RATE)
 
     # Initializations
@@ -68,7 +70,7 @@ def getLaunchPad():
     morph_height=2
 
     # start video stream: replaces cap = cv2.VideoCapture(0)
-    quadCam = cvisionLib.getFrame()
+    quadCam = cvisionLib.getFrame(ns)
 
     while not rospy.is_shutdown():
 
