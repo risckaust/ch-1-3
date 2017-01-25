@@ -637,7 +637,7 @@ class StateMachineC( object ):
 
     ######## function for converting LLA points to local xy(NED) :########################
 
-	def LLA_local_deltaxy(lat_0, lon_0,  lat,  lon):
+	def LLA_local_deltaxy(self, lat_0, lon_0,  lat,  lon):
 
 		M_DEG_TO_RAD = 0.01745329251994
 		CONSTANTS_RADIUS_OF_EARTH	= 6371000.0
@@ -693,7 +693,7 @@ class StateMachineC( object ):
 	def gps_cb(self, msg):
 		if msg is not None:
 			self.current_lat = msg.latitude
-			self.current.lon = msg.longitude
+			self.current_lon = msg.longitude
 	################## End of GPS callback ##################
 
 	#                                              (End of Callbacks)                                                                        #
@@ -712,8 +712,8 @@ def mission():
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
-	sm.target_lat = 1.0
-	sm.target_lon = 1.0
+	sm.target_lat = 47.3978434
+	sm.target_lon = 8.5432450
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
