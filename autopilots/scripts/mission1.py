@@ -712,8 +712,8 @@ def mission():
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
-	self.target_lat = 1.0
-	self.target_lon = 1.0
+	sm.target_lat = 1.0
+	sm.target_lon = 1.0
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
