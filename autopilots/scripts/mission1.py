@@ -20,7 +20,7 @@ import myLib
 import autopilotParams
 
 # TODO: include the namespace in the following function
-autopilotParams.setParams()
+
 
 # TODO: move the gripper msg definition from autopilots pckg toi gripper pckg
 
@@ -58,6 +58,7 @@ autopilotParams.setParams()
 #	Land:		{'Done', 'Running'}
 class StateMachineC( object ):
 	def __init__(self, ns):
+		autopilotParams.setParams(ns)
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
@@ -94,11 +95,13 @@ class StateMachineC( object ):
     
 		# Instantiate a tracker (blue)
 		self.blue_target 		= autopilotLib.xyzVar()		# xyz location of object w.r.t quad [m]. z only used to indicate if object is tracked or not
-		rospy.Subscriber(ns+'/blue_xySp', Point32, self.blue_target.cbXYZ)
+		rospy.Subscriber(ns+'/getColors/blue/xyMeters', Point32, self.blue_target.cbXYZ)
 
 		# Instantiate a tracker (green)
 		self.green_target 		= autopilotLib.xyzVar()
-		rospy.Subscriber(ns+'/green_xySp', Point32, self.green_target.cbXYZ)
+		rospy.Subscriber(ns+'/getColors/green/xyMeters', Point32, self.green_target.cbXYZ)
+
+		# other colors.......?
 
 		# Establish a rate
 		self.fbRate 		= rospy.get_param(ns+'/autopilot/fbRate')
@@ -381,7 +384,7 @@ class StateMachineC( object ):
 		# TODO: Implement coordinated dropping below
 
 			
-		# Done with GoToDrop state, send signal
+		# Done with WaitToDrop state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
@@ -444,7 +447,7 @@ class StateMachineC( object ):
 
 		# send land command to Pixhawk, or execute landing routine using the velocity controller
 
-		# Done with GoHome state, send signal
+		# Done with Land state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state

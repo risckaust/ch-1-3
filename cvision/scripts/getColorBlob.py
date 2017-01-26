@@ -46,11 +46,11 @@ def getColor(color):
     print 'color: ', color
     
     # Create publishers
-    targetPixels = rospy.Publisher('/getColors/' + color + '/xyPixels', Point32, queue_size=10)
+    targetPixels = rospy.Publisher(ns+'/getColors/' + color + '/xyPixels', Point32, queue_size=10)
     msgPixels = Point32()
-    targetMeters = rospy.Publisher('/getColors/' + color + '/xyMeters', Point32, queue_size=10)
+    targetMeters = rospy.Publisher(ns+'/getColors/' + color + '/xyMeters', Point32, queue_size=10)
     msgMeters = Point32()
-    img_pub	 = 	   rospy.Publisher('/getColors/' + color + '/processedImage', Image, queue_size=10)
+    img_pub	 = 	   rospy.Publisher(ns+'/getColors/' + color + '/processedImage', Image, queue_size=10)
     bridge = CvBridge()
     
     # Create setpoint generator

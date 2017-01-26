@@ -8,6 +8,7 @@
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
 
+<group ns="Quad1">
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
 		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -19,9 +20,11 @@
 		<arg name="log_output" value="$(arg log_output)" />
 	</include>
 
-        <node pkg="cvision" type="videoBridge.py" name="videoBridge" required="true" >
+        <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
         </node>
-	<node pkg="cvision" type="getBlueBlob.py" name="getBlueBlob" required="true" >
+	<node pkg="cvision" type="getColorBlob.py" name="getGreenBlob" args="'green'" respawn="true">
+        </node>
+	<node pkg="cvision" type="getColorBlob.py" name="getBlueBlob" args="'blue'" respawn="true">
         </node>
 
         <!--node pkg="topic_tools" type="throttle" name="throttle" args="messages /frameBGR 5.0 /frameBGR_reduced" required="true" >
@@ -30,7 +33,8 @@
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
 
-	<node pkg="autopilots" type="mission1.py" name="mission1" required="true" output="screen">
+	<node pkg="autopilots" type="mission1.py" name="mission1" output="screen" respawn="true">
         </node>
+</group>
 
 </launch>
