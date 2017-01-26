@@ -18,16 +18,13 @@ autopilotParams.setParams()
 
 ###################################
 
-# Publishers
-
-command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
-
-###################################
-
 # Main loop
 
 def autopilot():
     rospy.init_node('autopilot', anonymous=True)
+
+    # Publishers
+    command = rospy.Publisher('/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
 
     # Instantiate a setpoint
     setp = PositionTarget()
@@ -41,7 +38,8 @@ def autopilot():
     
     # Instantiate a tracker
     target = autopilotLib.xyzVar()
-    rospy.Subscriber('target_xySp', Point32, target.cbXYZ)
+    rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
+    #rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
     
     # Instantiate a mode switcher
     modes = autopilotLib.fcuModes()
@@ -120,7 +118,6 @@ def autopilot():
             if False: # altK.z < zGround + 0.1:
                 altK.zSp = zGround + 0.1
                 setp.velocity.z = altK.controller()
-
                     
         else:
             (bodK.xSp,bodK.ySp) = autopilotLib.wayHome(bodK,home)

@@ -78,7 +78,7 @@ def autopilot():
     # Track circling trajectory
     #####
     
-    V = 4.0
+    V = 4.0*0.1
     omega = 0.1
     theta = pi/2.0
     home.x = 10.0
@@ -99,10 +99,10 @@ def autopilot():
         rate.sleep()
         command.publish(setp)
         
-        bodK.ekfUpdate()
+        bodK.ekfUpdate(True)
         
         error = sqrt((home.x - bodK.x)**2 + (home.y - bodK.y)**2)
-        print "err/yawR/wHat/vHat: ", error, setp.yaw_rate, np.asscalar(bodK.ekf.xhat[4]), np.asscalar(bodK.ekf.xhat[3])
+        print "errors:", error, np.asscalar(bodK.ekf.xhat[3]), np.asscalar(bodK.ekf.P[3,3]), np.asscalar(bodK.ekf.P[4,4])
 
         
 if __name__ == '__main__':

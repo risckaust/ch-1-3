@@ -45,17 +45,17 @@ from mavros_msgs.srv import *
 class kAltVel:
     def __init__(self,ns):
 
-	
+	self.ns=ns
         self.ezInt = 0.0
         self.zSp = 0.0
         self.z = 0.0
         self.vz = 0.0
         self.engaged = False
         self.airborne = False
-        self.subPos = rospy.Subscriber(ns+'mavros/local_position/pose', PoseStamped, self.cbPos)
-        self.subVel = rospy.Subscriber(ns+'mavros/local_position/velocity', TwistStamped, self.cbVel)
-        self.subFCUstate = rospy.Subscriber(ns+'mavros/state', State, self.cbFCUstate)
-        self.subFCUexState = rospy.Subscriber(ns+'mavros/extended_state', ExtendedState, self.cbFCUexState)
+        self.subPos = rospy.Subscriber(ns+'/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber(ns+'/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber(ns+'/mavros/state', State, self.cbFCUstate)
+        self.subFCUexState = rospy.Subscriber(ns+'/mavros/extended_state', ExtendedState, self.cbFCUexState)
 
     def cbPos(self,msg):
         if not msg == None:
@@ -80,11 +80,11 @@ class kAltVel:
 
     def controller(self):
     
-        fbRate = rospy.get_param('/autopilot/fbRate')
-        gP = rospy.get_param('/kAltVel/gP')
-        gI = rospy.get_param('/kAltVel/gI')
-        vMaxU = rospy.get_param('/kAltVel/vMaxU')
-        vMaxD = rospy.get_param('/kAltVel/vMaxD')
+        fbRate = rospy.get_param(self.ns+'/autopilot/fbRate')
+        gP = rospy.get_param(self.ns+'/kAltVel/gP')
+        gI = rospy.get_param(self.ns+'/kAltVel/gI')
+        vMaxU = rospy.get_param(self.ns+'/kAltVel/vMaxU')
+        vMaxD = rospy.get_param(self.ns+'/kAltVel/vMaxD')
 
         ez = self.zSp - self.z                              # altitude error
 
@@ -148,7 +148,7 @@ class kAltVel:
 
 class kBodVel:
     def __init__(self,ns):
-
+	self.ns=ns
         self.exInt = 0.0
         self.eyInt = 0.0
         self.xSp = 0.0
@@ -159,9 +159,10 @@ class kBodVel:
         self.vx = 0.0
         self.vy = 0.0
         self.engaged = False
-        self.subPos = rospy.Subscriber(ns+'mavros/local_position/pose', PoseStamped, self.cbPos)
-        self.subVel = rospy.Subscriber(ns+'mavros/local_position/velocity', TwistStamped, self.cbVel)
-        self.subFCUstate = rospy.Subscriber(ns+'mavros/state', State, self.cbFCUstate)
+
+        self.subPos = rospy.Subscriber(ns+'/mavros/local_position/pose', PoseStamped, self.cbPos)
+        self.subVel = rospy.Subscriber(ns+'/mavros/local_position/velocity', TwistStamped, self.cbVel)
+        self.subFCUstate = rospy.Subscriber(ns+'/mavros/state', State, self.cbFCUstate)
 
         self.ekf = self.EKF()
         
@@ -174,8 +175,13 @@ class kBodVel:
             self.H[0,0] = 1.0
             self.H[1,1] = 1.0
             self.P = np.matrix(np.identity(5))
-            self.Q = np.matrix(np.identity(5))
-            self.R = np.matrix(np.identity(2))
+            self.Q = np.matrix(np.zeros( (5,5) ))
+            self.Q[0,0] = 0.01
+            self.Q[1,1] = 0.01
+            self.Q[2,2] = 0.01
+            self.Q[3,3] = 0.05
+            self.Q[4,4] = 0.05
+            self.R = np.matrix(np.identity(2))*0.1
             
 
     def cbPos(self,msg):
@@ -202,9 +208,9 @@ class kBodVel:
             else:
                 self.engaged = False
     
-    def ekfUpdate(self):
+    def ekfUpdate(self,seeIt):
     
-        fbRate = rospy.get_param('/autopilot/fbRate')
+        fbRate = rospy.get_param(self.ns+'/autopilot/fbRate')
         h = 1/fbRate
                 
         # Update state estimate prior
@@ -225,34 +231,35 @@ class kBodVel:
 
         self.ekf.P = self.ekf.F*self.ekf.P*self.ekf.F.T + self.ekf.Q
         
-        # Gather measurement and build residual
-        e = np.matrix(np.zeros( (2,1) ) )
-        bodyRot = self.yaw - pi/2.0                                 # rotation of NED y-axis
-        e[0] =  (self.x - self.xSp*sin(bodyRot) + self.ySp*cos(bodyRot)) - self.ekf.xhat[0]    # local ENU x
-        e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]    # local ENU y
-        
-        # build ekf gain
-        S = self.ekf.H*self.ekf.P*self.ekf.H.T + self.ekf.R
-        K = self.ekf.P*self.ekf.H.T*S.I
-        
-        # update state estimate posterior
-        self.ekf.xhat = self.ekf.xhat + K*e
-        
-        # update covariance posterior
-        Mtemp = np.matrix(np.identity(5)) - K*self.ekf.H
-        self.ekf.P = Mtemp*self.ekf.P*Mtemp.T + K*self.ekf.R*K.T
+        if seeIt:
+            # Gather measurement and build residual
+            e = np.matrix(np.zeros( (2,1) ) )
+            bodyRot = self.yaw - pi/2.0                                 # rotation of NED y-axis
+            e[0] =  (self.x - self.xSp*sin(bodyRot) + self.ySp*cos(bodyRot)) - self.ekf.xhat[0]    # local ENU x
+            e[1] =  (self.y + self.xSp*cos(bodyRot) + self.ySp*sin(bodyRot)) - self.ekf.xhat[1]    # local ENU y
+            
+            # build ekf gain
+            S = self.ekf.H*self.ekf.P*self.ekf.H.T + self.ekf.R
+            K = self.ekf.P*self.ekf.H.T*S.I
+            
+            # update state estimate posterior 
+            self.ekf.xhat = self.ekf.xhat + K*e
+            
+            # update covariance posterior
+            Mtemp = np.matrix(np.identity(5)) - K*self.ekf.H
+            self.ekf.P = Mtemp*self.ekf.P*Mtemp.T + K*self.ekf.R*K.T
 
     def controller(self):
     
-        fbRate = rospy.get_param('/autopilot/fbRate')
-        gP = rospy.get_param('/kBodVel/gP')
-        gI = rospy.get_param('/kBodVel/gI')
-        vMax = rospy.get_param('/kBodVel/vMax')
-        gPyaw = rospy.get_param('/kBodVel/gPyaw')
-        yawOff = rospy.get_param('/kBodVel/yawOff')
-        yawCone = rospy.get_param('/kBodVel/yawCone')
-        yawTurnRate = rospy.get_param('/kBodVel/yawTurnRate')
-        feedForward = rospy.get_param('/kBodVel/feedForward')
+        fbRate = rospy.get_param(self.ns+'/autopilot/fbRate')
+        gP = rospy.get_param(self.ns+'/kBodVel/gP')
+        gI = rospy.get_param(self.ns+'/kBodVel/gI')
+        vMax = rospy.get_param(self.ns+'/kBodVel/vMax')
+        gPyaw = rospy.get_param(self.ns+'/kBodVel/gPyaw')
+        yawOff = rospy.get_param(self.ns+'/kBodVel/yawOff')
+        yawCone = rospy.get_param(self.ns+'/kBodVel/yawCone')
+        yawTurnRate = rospy.get_param(self.ns+'/kBodVel/yawTurnRate')
+        feedForward = rospy.get_param(self.ns+'/kBodVel/feedForward')
 
         ######
         # longitudinal/lateral control
@@ -275,12 +282,14 @@ class kBodVel:
             vHat =  self.ekf.xhat[3]
             wHat = self.ekf.xhat[4]
             
-            VX = vHat*cos(thHat)                           
+            VX = vHat*cos(thHat)      # ENU coordinates                  
             VY = vHat*sin(thHat)
             
-            vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
-            vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
+            #### vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
+            #### vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
             
+            vxRef = vxRef - VX*sin(bodyRot) + VY*cos(bodyRot) # convert estimates to body coordinates
+            vyRef = vyRef + VX*cos(bodyRot) + VY*sin(bodyRot)
 
         vel = sqrt(vxRef**2 + vyRef**2)
         if vel > vMax:                            # anti-windup scaling      
@@ -390,59 +399,61 @@ class xyzVar:
 #####
 
 class fcuModes:
+    def __init__(self,ns):
+	self.ns=ns
 
     def setArm(self):
-        rospy.wait_for_service('/mavros/cmd/arming')
+        rospy.wait_for_service(self.ns+'/mavros/cmd/arming')
         try:
-            armService = rospy.ServiceProxy('/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
+            armService = rospy.ServiceProxy(self.ns+'/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
             armService(True)
         except rospy.ServiceException, e:
             print "Service arming call failed: %s"%e
 
     def setDisarm(self):
-        rospy.wait_for_service('/mavros/cmd/arming')
+        rospy.wait_for_service(self.ns+'/mavros/cmd/arming')
         try:
-            armService = rospy.ServiceProxy('/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
+            armService = rospy.ServiceProxy(self.ns+'/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
             armService(False)
         except rospy.ServiceException, e:
             print "Service disarming call failed: %s"%e
 
     def setStabilizedMode(self):
-        rospy.wait_for_service('/mavros/set_mode')
+        rospy.wait_for_service(self.ns+'/mavros/set_mode')
         try:
-            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService = rospy.ServiceProxy(self.ns+'/mavros/set_mode', mavros_msgs.srv.SetMode)
             flightModeService(custom_mode='STABILIZED')
         except rospy.ServiceException, e:
             print "service set_mode call failed: %s. Stabilized Mode could not be set."%e
 
     def setOffboardMode(self):
-        rospy.wait_for_service('/mavros/set_mode')
+        rospy.wait_for_service(self.ns+'/mavros/set_mode')
         try:
-            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService = rospy.ServiceProxy(self.ns+'/mavros/set_mode', mavros_msgs.srv.SetMode)
             flightModeService(custom_mode='OFFBOARD')
         except rospy.ServiceException, e:
             print "service set_mode call failed: %s. Offboard Mode could not be set."%e
 
     def setAltitudeMode(self):
-        rospy.wait_for_service('/mavros/set_mode')
+        rospy.wait_for_service(self.ns+'/mavros/set_mode')
         try:
-            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService = rospy.ServiceProxy(self.ns+'/mavros/set_mode', mavros_msgs.srv.SetMode)
             flightModeService(custom_mode='ALTCTL')
         except rospy.ServiceException, e:
             print "service set_mode call failed: %s. Altitude Mode could not be set."%e
 
     def setPositionMode(self):
-        rospy.wait_for_service('/mavros/set_mode')
+        rospy.wait_for_service(self.ns+'/mavros/set_mode')
         try:
-            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService = rospy.ServiceProxy(self.ns+'/mavros/set_mode', mavros_msgs.srv.SetMode)
             flightModeService(custom_mode='POSCTL')
         except rospy.ServiceException, e:
             print "service set_mode call failed: %s. Position Mode could not be set."%e
 
     def setAutoLandMode(self):
-        rospy.wait_for_service('/mavros/set_mode')
+        rospy.wait_for_service(self.ns+'/mavros/set_mode')
         try:
-            flightModeService = rospy.ServiceProxy('/mavros/set_mode', mavros_msgs.srv.SetMode)
+            flightModeService = rospy.ServiceProxy(self.ns+'/mavros/set_mode', mavros_msgs.srv.SetMode)
             flightModeService(custom_mode='AUTO.LAND')
         except rospy.ServiceException, e:
             print "service set_mode call failed: %s. Autoland Mode could not be set."%e
