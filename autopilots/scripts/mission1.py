@@ -5,6 +5,7 @@
 import rospy
 import numpy as np
 import tf
+import datetime
 
 from math import *
 from std_msgs.msg import *
@@ -59,13 +60,23 @@ autopilotParams.setParams()
 class StateMachineC( object ):
 	def __init__(self, ns):
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
+		self.areaBoundaries=    = []				# The list of the different field refence points (to be provided)
+		self.cameraView		=1				#Parameter that caracterize the camera precision and field of view
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
 		self.error_str		= 'No error'			# Error description (for debug)
 		self.DEBUG		= False				# Turn debug mode on/off
 		self.START_SIGNAL	= False				# a flag to start the state machine, if true
-
+		if(ns="/Quad1"):
+			ns_other_1="/Quad2"
+			ns_other_2="/Quad3"
+		elif(ns="/Quad2"):
+			ns_other_1="/Quad1"
+			ns_other_2="/Quad3"
+		elif(ns="/Quad3"):
+			ns_other_1="/Quad1"
+			ns_other_2="/Quad2"
 		# internal state-related fields
 		self.current_lat	= 0.0
 		self.current_lon	= 0.0
@@ -106,6 +117,14 @@ class StateMachineC( object ):
 
 		# Subscriber to mavros GPS topic
 		rospy.Subscriber(ns+'/mavros/global_position/global', NavSatFix, self.gps_cb)
+		# Subscriber to mavros others GPS topic
+		rospy.Subscriber(ns_other_1+'/mavros/global_position/global', NavSatFix, self.gps_other_1_cb)
+		rospy.Subscriber(ns_other_2+'/mavros/global_position/global', NavSatFix, self.gps_other_2_cb)
+		
+		# Subscriber to mavros others states topic
+		rospy.Subscriber(ns_other_1+'/state_machine/state', StateMachine, self.state_other_1_cb)
+		rospy.Subscriber(ns_other_2+'/state_machine/state', StateMachine, self.state_other_2_cb)
+
 
 		# setpoint publisher (velocity to Pixhawk)
 		self.command 		= rospy.Publisher(ns+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
@@ -122,6 +141,17 @@ class StateMachineC( object ):
 		self.gripper_action	= GripperAction()
 		self.gripper_pub	= rospy.Publisher(ns+'/gripper_node/gripper_command', GripperAction, queue_size=10)
 
+
+###### path tracker Class ######
+class path_tracker( object ):
+	def __init__(self):
+		self.index
+		self.start
+		self.stop
+		self.elapsed
+		self.state
+		self.way_points_list
+	
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                                   (States implementation)                                                              #
 
@@ -196,23 +226,45 @@ class StateMachineC( object ):
 	######### Done with Takeof State #########
 
 	# State: ObjectSearch
-	def execute_objectSearch(self):
+	def execute_objectSearch(self,way_points_tracker):
 		self.current_state = 'ObjectSearch'
 		self.current_signal= 'Running'
 
 		self.debug()
 
 		objectFound = False
-
+		
 		# execute some trajectory, e.g. circle
 		# keep checking vision feedback
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
-			# TODO executing serach trajectory
-
-			(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
-			self.home.x = self.bodK.x + dx_enu
-			self.home.y = self.bodK.y + dy_enu
+			# TODO executing search trajectory
+			if(way_points_tracker.index<len(way_points_list)):
+				self.target_lat=way_points_tracker.way_points_list[way_points_tracker.index][0]
+				self.target_lon=way_points_tracker.way_points_list[way_points_tracker.index][1]
+				if((way_points_tracker.state="still")and(sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
+					way_points_tracker.start = datetime.datetime.now()
+					way_points_tracker.state="checking"
+				if((way_points_tracker.state="checking"):
+					way_points_tracker.stop = datetime.datetime.now()
+					way_points_tracker.elapsed = way_points_tracker.stop - way_points_tracker.start
+					if (datetime.timedelta(seconds=int(way_points_tracker.elapsed))>2);
+					    way_points_tracker.state="reached"
+				if((way_points_tracker.state="reached")
+					way_points_tracker.index=way_points_tracker.index+1
+					self.target_lat=way_points_tracker.way_points_list[way_points_tracker.index][0]
+					self.target_lon=way_points_tracker.way_points_list[way_points_tracker.index][1]
+					way_points_tracker.state="still"
+					way_points_tracker.start=datetime.datetime.now()
+					way_points_tracker.stop = way_points_tracker.start
+					way_points_tracker.elapsed = way_points_tracker.stop - way_points_tracker.start
+				
+				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
+				self.home.x = self.bodK.x + dx_enu
+				self.home.y = self.bodK.y + dy_enu
+			else:
+				way_points_tracker.index=0
+			
 
 			# check for objects
 			objectFound, _ = self.monitorObjects()
@@ -341,7 +393,19 @@ class StateMachineC( object ):
 			# self.home.y = y_enu
 
 			# TODO: implement trajectory to go to PRE_DROP zone
-			# (self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
+			if(ns="/Quad1"):
+				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[8][0], self.areaBoundaries[8][1])
+				self.home.x = self.bodK.x + dx_enu
+				self.home.y = self.bodK.y + dy_enu 
+			elif(ns="/Quad1"):
+				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[10][0], self.areaBoundaries[10][1])
+				self.home.x = self.bodK.x + dx_enu
+				self.home.y = self.bodK.y + dy_enu
+			elif(ns="/Quad1"):
+				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[12][0], self.areaBoundaries[12][1])
+				self.home.x = self.bodK.x + dx_enu
+				self.home.y = self.bodK.y + dy_enu
+			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
 			# check if arrived
@@ -379,10 +443,23 @@ class StateMachineC( object ):
 		self.debug()
 
 		# TODO: Implement coordinated dropping below
+		(dy_enu_other_1, dx_enu_other_1) = self.LLA_local_deltaxy(self.areaBoundaries[13][0], self.areaBoundaries[13][1], self.other_1_current_lat, self.other_1_current_lon)
+		distance_other_1=sqrt(pow(dy_enu_other_1,2)+pow(dx_enu_other_1,2))
+		(dy_enu_other_2, dx_enu_other_2) = self.LLA_local_deltaxy(self.areaBoundaries[13][0], self.areaBoundaries[13][1], self.other_2_current_lat, self.other_2_current_lon)
+		distance_other_2=sqrt(pow(dy_enu_other_2,2)+pow(dx_enu_other_2,2))
 
-			
-		# Done with GoToDrop state, send signal
-		self.current_signal = 'Done'
+		if(ns="/Quad1"):
+			if (not(self.other_1_state="Dropping") and  not(self.other_2_state="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
+				self.current_signal = 'Done'
+
+
+		elif(ns="/Quad2"):
+			if (not(self.other_1_state="WaitToDrop") and not(self.other_1_state="Dropping") and not(self.other_2_state="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
+				self.current_signal = 'Done'
+
+		elif(ns="/Quad3"):
+			if (not(self.other_1_state="WaitToDrop") and not(self.other_1_state="Dropping") and not(self.other_2_state="WaitToDrop") and not(self.other_2_state="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
+				self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -570,10 +647,10 @@ class StateMachineC( object ):
 
 	def intermediate(self,llaPointStart,llaPointEnd,num_of_segments):
 
-		ptlon1 = llaPointStart[0]
-		ptlat1 = llaPointStart[1]
-		ptlon2 = llaPointEnd[0]
-		ptlat2 = llaPointEnd[1]
+		ptlon1 = llaPointStart[1]
+		ptlat1 = llaPointStart[0]
+		ptlon2 = llaPointEnd[1]
+		ptlat2 = llaPointEnd[0]
 
 		numberofsegments = num_of_segments
 		onelessthansegments = numberofsegments - 1
@@ -624,16 +701,74 @@ class StateMachineC( object ):
 		mylons.append([])
 		mylats[onelessthansegments] = ptlat2
 		mylons[onelessthansegments] = ptlon2
-		return(mylats,mylons)
+		listOfPoints=[]
+		for i in range(0,len(mylats)):
+			listOfPoints.append((mylats[i],mylons[i]))
+		return listOfPoints
 
 		# Now, the array mylats[] and mylons[] have the coordinate pairs for intermediate points along the geodesic
 		# My mylat[0],mylat[0] and mylat[num_of_segments-1],mylat[num_of_segments-1] are the geodesic end point
         ############### End of intermediate function ##################
         
 
+    ######## function for defining the field boundqries :########################
+	
+	def path(ns,areaBoundaries,cameraView):
+		dividerUnity=min(cameraView,5)
+		if (ns=="/Quad1"):
+
+			num_of_segments_up_1=int(7/dividerUnity)
+			upperBoundaries_1=intermediate(self,areaBoundaries[1],areaBoundaries[0],num_of_segments_up_1)
+			num_of_segments_up_2=int(18/dividerUnity)
+			upperBoundaries_2=intermediate(self,areaBoundaries[0],areaBoundaries[7],num_of_segments_up_2)
+			num_of_segments_up_3=int(5/dividerUnity)
+			upperBoundaries_3=intermediate(self,areaBoundaries[8],areaBoundaries[9],num_of_segments_up_3)
+			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
+			downBoundaries=intermediate(self,areaBoundaries[2],areaBoundaries[3],num_of_segments_down)
+
+			upperBoundaries=upperBoundaries_1
+			upperBoundaries.append(upperBoundaries_2)
+			upperBoundaries.append(upperBoundaries_3)
+
+			way_point_list=[]
+			for i in range(0,len(downBoundaries)-1):
+				way_points_list.append(downBoundaries[i])
+				way_points_list.append(upperBoundaries[i])
+		if (ns=="/Quad2"):
+
+			num_of_segments_up_3=int(7/dividerUnity)
+			upperBoundaries_3=intermediate(self,areaBoundaries[6],areaBoundaries[5],num_of_segments_up_3)
+			num_of_segments_up_2=int(18/dividerUnity)
+			upperBoundaries_2=intermediate(self,areaBoundaries[11],areaBoundaries[6],num_of_segments_up_2)
+			num_of_segments_up_1=int(5/dividerUnity)
+			upperBoundaries_1=intermediate(self,areaBoundaries[9],areaBoundaries[10],num_of_segments_up_1)
+			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
+			downBoundaries=intermediate(self,areaBoundaries[3],areaBoundaries[4],num_of_segments_down)
+
+			upperBoundaries=upperBoundaries_1
+			upperBoundaries.append(upperBoundaries_2)
+			upperBoundaries.append(upperBoundaries_3)
+
+			way_points_list=[]
+			for i in range(0,len(downBoundaries)-1):
+				way_points_list.append(downBoundaries[i])
+				way_points_list.append(upperBoundaries[i])
+
+		if (ns=="/Quad3"):
+
+			num_of_segments=int(46/dividerUnity)
+
+			upperBoundaries=intermediate(self,areaBoundaries[0],areaBoundaries[6],num_of_segments)
+		
+			downBoundaries=intermediate(self,areaBoundaries[7],areaBoundaries[11],num_of_segments)
+
+			way_points_list=[]
+			for i in range(0,len(downBoundaries)-1):
+				way_points_list.append(downBoundaries[i])
+				way_points_list.append(upperBoundaries[i])
 
 
-
+		return(way_points_list)
 
     ######## function for converting LLA points to local xy(NED) :########################
 
@@ -696,10 +831,29 @@ class StateMachineC( object ):
 			self.current_lon = msg.longitude
 	################## End of GPS callback ##################
 
+	#################### MAVROS other GPS Callback #################
+	def gps_other_1_cb(self, msg):
+		if msg is not None:
+			self.other_1_current_lat = msg.latitude
+			self.other_1_current_lon = msg.longitude
+
+	def gps_other_2_cb(self, msg):
+		if msg is not None:
+			self.other_2_current_lat = msg.latitude
+			self.other_2_current_lon = msg.longitude
+	################## End of other GPS callback ##################
+	#################### MAVROS others states Callback #################
+	def state_other_1_cb(self, msg):
+		if msg is not None:
+			self.other_1_state = msg.state
+
+	def state_other_2_cb(self, msg):
+		if msg is not None:
+			self.other_2_state = msg.state
+	################## End of other others states callback ##################
+
 	#                                              (End of Callbacks)                                                                        #
-	#----------------------------------------------------------------------------------------------------------------------------------------#
-			
-		
+	#----------------------------------------------------------------------------------------------------------------------------------------#	
 		
 #############################################
 def mission():
@@ -714,6 +868,10 @@ def mission():
 	sm.START_SIGNAL=True
 	sm.target_lat = 47.3978434
 	sm.target_lon = 8.5432450
+	
+	sm.cameraView=1;
+	sm.areaBoundaries= ##
+	sm.way_points_list=path(ns,sm.areaBoundaries,sm.cameraView)
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
