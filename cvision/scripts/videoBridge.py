@@ -45,6 +45,9 @@ def videoBridge():
     # start video stream
     cap = cv2.VideoCapture(0)
     
+    # wait a second
+    time.sleep(1.0)
+    
     if cap.isOpened():
         print 'videoBridge initialized...'
     else:
@@ -54,6 +57,10 @@ def videoBridge():
 
         # grab a frame
         _, bgr = cap.read()
+        
+        # resize if needed
+        if rospy.get_param('/cvision/reduce'):
+            bgr = cv2.resize(bgr,(rospy.get_param('/cvision/LX'),rospy.get_param('/cvision/LY')))
         
         # convert to grayscale
         

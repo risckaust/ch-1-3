@@ -9,13 +9,19 @@ import rospy
 def setParams():
 
     # ROS parameters for general vision tasks
-    rospy.set_param('/cvision/loopRate', 10.0)                   # loop rate for vision algorithms
-    rospy.set_param('/cvision/LX', 640)                          # full size screen width
-    rospy.set_param('/cvision/LY', 480)                          # full size screen height
-    rospy.set_param('/cvision/camRotate', False)                  # camera rotated 90 degrees CCW facing down
+    rospy.set_param('/cvision/loopRate', 20.0)                   # loop rate for vision algorithms
+    rospy.set_param('/cvision/reduce', False)                     # reduce frame size
+    if rospy.get_param('/cvision/reduce'):
+        rospy.set_param('/cvision/LX', 320)                          # half size screen width
+        rospy.set_param('/cvision/LY', 240)                          # half size screen height
+    else:
+        rospy.set_param('/cvision/LX', 640)                          # full size screen width
+        rospy.set_param('/cvision/LY', 480)                          # full size screen height
+
+    rospy.set_param('/cvision/camRotate', False)                 # camera rotated 90 degrees CCW facing down
     rospy.set_param('/cvision/feCamera', True)                   # use fisheye mask and meter conversions
     rospy.set_param('/cvision/gripperOffset', 0.0)               # gripper location from screen center in NED x-axis 
-                                                                 # measured in pixels when landed
+                                                                 # measured in pixels when landed at full size screen
     
     # ROS parameters getLaunchpad
     rospy.set_param('/getLaunchpad/minMass',50.0)                # minimum mass to detect a white blob
@@ -42,7 +48,7 @@ def setParams():
     rospy.set_param('/getColors/proximityOn',True)               # use proximity filter on most recent detection
     rospy.set_param('/getColors/pxRadius', 5.0)                  # radius multiplier for proximity mask
     
-    rospy.set_param('/getColors/testFileOn',True)               # binary for testing on file
+    rospy.set_param('/getColors/testFileOn',False)               # binary for testing on file
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
     rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen

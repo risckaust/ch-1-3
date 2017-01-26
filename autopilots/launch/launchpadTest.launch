@@ -20,5 +20,9 @@
         
         <node pkg="cvision" type="getLaunchpad.py"  name="getLaunchpad" required="true" >
         </node>
+        
+        <node pkg="cvision" type="getColorBlob.py"  name="getBlueBlob"  required="true">
+        <remap from="local_color" to="/getColors/blue" />
+        </node>
 
 </launch>

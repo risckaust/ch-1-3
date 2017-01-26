@@ -38,8 +38,8 @@ def autopilot():
     
     # Instantiate a tracker
     target = autopilotLib.xyzVar()
-    rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
-    #rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
+    #rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
+    rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
     
     # Instantiate a mode switcher
     modes = autopilotLib.fcuModes()
