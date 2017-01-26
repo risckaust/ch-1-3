@@ -3,6 +3,7 @@
 # COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
 # Colors: red, blue, green, yellow
 
+import sys
 import rospy
 import numpy as np
 import cv2
@@ -29,7 +30,7 @@ import cvisionParams
 
 ###################################
 
-def getColor():
+def getColor(color):
 
     # Initialize node
 
@@ -40,7 +41,9 @@ def getColor():
     cvisionParams.setParams(ns)
 
     # COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
-    color = rospy.get_param('local_color')
+    #rospy.set_param(ns+'/local_color', 'red')
+    #color = rospy.get_param(ns+'/local_color')
+    print 'color: ', color
     
     # Create publishers
     targetPixels = rospy.Publisher('/getColors/' + color + '/xyPixels', Point32, queue_size=10)
@@ -223,7 +226,10 @@ def getColor():
 
 if __name__ == '__main__':
     try:
-        getColor()
+	if len(sys.argv) < 2:
+        	print("usage: getColor.py 'red' ")
+    	else:
+        	getColor(sys.argv[1])
     except rospy.ROSInterruptException:
         cap.release()
         cv2.destroyAllWindows()

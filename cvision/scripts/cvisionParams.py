@@ -28,6 +28,7 @@ def setParams(ns):
     rospy.set_param(ns+'/getColors/erodeOn',False)                  # use erode/dilate vs blurring 
     rospy.set_param(ns+'/getColors/proximityOn',True)               # use proximity filter on most recent detection
     rospy.set_param(ns+'/getColors/pxRadius', 5.0)                  # radius multiplier for proximity mask
+    rospy.set_param(ns+'/getColors/testFileOn', False)
     
     # ROS parameters for pix2m
     rospy.set_param(ns+'/pix2m/m2pix', 0.00104167)                  # 0.5m = 480pixels
