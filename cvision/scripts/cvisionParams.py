@@ -12,6 +12,14 @@ def setParams(ns):
     rospy.set_param(ns+'/cvision/loopRate', 20.0)                   # loop rate for vision algorithms
     rospy.set_param(ns+'/cvision/LX', 640)                          # full size screen width
     rospy.set_param(ns+'/cvision/LY', 480)                          # full size screen height
+    rospy.set_param(ns+'/cvision/reduce', False)                     # reduce frame size
+    if rospy.get_param(ns+'/cvision/reduce'):
+        rospy.set_param(ns+'/cvision/LX', 320)                          # half size screen width
+        rospy.set_param(ns+'/cvision/LY', 240)                          # half size screen height
+    else:
+        rospy.set_param(ns+'/cvision/LX', 640)                          # full size screen width
+        rospy.set_param(ns+'/cvision/LY', 480)
+
     rospy.set_param(ns+'/cvision/camRotate', False)                  # camera rotated 90 degrees CCW facing down
     rospy.set_param(ns+'/cvision/feCamera', False)                   # use fisheye mask and pixel2meters
     rospy.set_param(ns+'/cvision/gripperOffset', 0.0)               # gripper location from screen center in NED x-axis 

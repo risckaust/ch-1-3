@@ -32,14 +32,19 @@ class pix2m():
         self.LY = rospy.get_param(ns+'/cvision/LY')
         self.m2pix = rospy.get_param(ns+'/pix2m/m2pix')
         self.gripperOffset = rospy.get_param(ns+'/cvision/gripperOffset')
+	self.scale = 1.0
+	if rospy.get_param(ns+'/cvision/reduce'):
+		self.scale = 2.0
+        else:
+		self.scale = 1.0
         
     def target(self,center):
         xSp = 0.0
         ySp = 0.0
         
         if center.z > 0:
-            xSp = (center.x - self.LX/2) - self.gripperOffset
-            ySp = (self.LY/2 - center.y)
+            xSp = self.scale*(center.x - self.LX/2) - self.gripperOffset
+            ySp = self.scale*(self.LY/2 - center.y)
             xSp = xSp*self.m2pix
             ySp = ySp*self.m2pix
             hold = xSp                                  # switch for NED
@@ -53,8 +58,8 @@ class pix2m():
         ySp = 0.0
         
         if center.z > 0:
-            xSp = (center.x - self.LX/2) - self.gripperOffset
-            ySp = (self.LY/2 - center.y)
+            xSp = self.scale*(center.x - self.LX/2) - self.gripperOffset
+            ySp = self.scale*(self.LY/2 - center.y)
             radius = sqrt(xSp**2 + ySp**2)
             scale = 0.0019*radius + 0.1756              # empirical data fit
             xSp = xSp*scale                             # convert to centimeters

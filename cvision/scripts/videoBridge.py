@@ -60,6 +60,10 @@ def videoBridge():
 
         # grab a frame
         _, bgr = cap.read()
+
+        # resize if needed
+        if rospy.get_param(ns+'/cvision/reduce'):
+            bgr = cv2.resize(bgr,(rospy.get_param(ns+'/cvision/LX'),rospy.get_param(ns+'/cvision/LY')))
         
         # convert to grayscale
         
