@@ -27,6 +27,12 @@
 	<node pkg="cvision" type="getColorBlob.py" name="getBlueBlob" args="'blue'" respawn="true">
         </node>
 
+	<node pkg="cvision" type="getColorBlob.py" name="getRedBlob" args="'red'" respawn="true">
+        </node>
+
+	<node pkg="cvision" type="getColorBlob.py" name="getYellowBlob" args="'yellow'" respawn="true">
+        </node>
+
         <!--node pkg="topic_tools" type="throttle" name="throttle" args="messages /frameBGR 5.0 /frameBGR_reduced" required="true" >
         </node>
 
