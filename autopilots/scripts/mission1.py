@@ -68,13 +68,13 @@ class StateMachineC( object ):
 		self.error_str		= 'No error'			# Error description (for debug)
 		self.DEBUG		= False				# Turn debug mode on/off
 		self.START_SIGNAL	= False				# a flag to start the state machine, if true
-		if(ns="/Quad1"):
+		if(ns=="/Quad1"):
 			ns_other_1="/Quad2"
 			ns_other_2="/Quad3"
-		elif(ns="/Quad2"):
+		elif(ns=="/Quad2"):
 			ns_other_1="/Quad1"
 			ns_other_2="/Quad3"
-		elif(ns="/Quad3"):
+		elif(ns=="/Quad3"):
 			ns_other_1="/Quad1"
 			ns_other_2="/Quad2"
 		# internal state-related fields
@@ -702,7 +702,7 @@ class path_tracker( object ):
 		mylats[onelessthansegments] = ptlat2
 		mylons[onelessthansegments] = ptlon2
 		listOfPoints=[]
-		for i in range(0,len(mylats)):
+		for i in range(0,len(mylats)-1):
 			listOfPoints.append((mylats[i],mylons[i]))
 		return listOfPoints
 
@@ -715,39 +715,40 @@ class path_tracker( object ):
 	
 	def path(ns,areaBoundaries,cameraView):
 		dividerUnity=min(cameraView,5)
+		upperBoundaries=[]
 		if (ns=="/Quad1"):
 
 			num_of_segments_up_1=int(7/dividerUnity)
 			upperBoundaries_1=intermediate(self,areaBoundaries[1],areaBoundaries[0],num_of_segments_up_1)
 			num_of_segments_up_2=int(18/dividerUnity)
 			upperBoundaries_2=intermediate(self,areaBoundaries[0],areaBoundaries[7],num_of_segments_up_2)
+			del upperBoundaries_2(0)			
 			num_of_segments_up_3=int(5/dividerUnity)
 			upperBoundaries_3=intermediate(self,areaBoundaries[8],areaBoundaries[9],num_of_segments_up_3)
+			del upperBoundaries_3(0)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
 			downBoundaries=intermediate(self,areaBoundaries[2],areaBoundaries[3],num_of_segments_down)
 
-			upperBoundaries=upperBoundaries_1
-			upperBoundaries.append(upperBoundaries_2)
-			upperBoundaries.append(upperBoundaries_3)
+			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
-			way_point_list=[]
-			for i in range(0,len(downBoundaries)-1):
+			way_points_list=[]
+			for i in range(0,len(upperBoundaries)-1):
 				way_points_list.append(downBoundaries[i])
 				way_points_list.append(upperBoundaries[i])
 		if (ns=="/Quad2"):
 
 			num_of_segments_up_3=int(7/dividerUnity)
 			upperBoundaries_3=intermediate(self,areaBoundaries[6],areaBoundaries[5],num_of_segments_up_3)
+			del upperBoundaries_3(0)
 			num_of_segments_up_2=int(18/dividerUnity)
 			upperBoundaries_2=intermediate(self,areaBoundaries[11],areaBoundaries[6],num_of_segments_up_2)
+			del upperBoundaries_2(0)
 			num_of_segments_up_1=int(5/dividerUnity)
 			upperBoundaries_1=intermediate(self,areaBoundaries[9],areaBoundaries[10],num_of_segments_up_1)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
 			downBoundaries=intermediate(self,areaBoundaries[3],areaBoundaries[4],num_of_segments_down)
 
-			upperBoundaries=upperBoundaries_1
-			upperBoundaries.append(upperBoundaries_2)
-			upperBoundaries.append(upperBoundaries_3)
+			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
