@@ -44,7 +44,17 @@ autopilotParams.setParams()
 # structure of the GripperAction.msg
 #	Headaer header
 #	bool	command	# true: activate. false: deactivate
-
+###### Helper Classes ######
+###### path tracker Class ######
+class path_tracker( object ):
+	def __init__(self):
+		self.index
+		self.start
+		self.stop
+		self.elapsed
+		self.state
+		self.way_points_list
+#### end of path tracker Class ####
 
 ###### State Machine Class ######
 # States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
@@ -68,15 +78,15 @@ class StateMachineC( object ):
 		self.error_str		= 'No error'			# Error description (for debug)
 		self.DEBUG		= False				# Turn debug mode on/off
 		self.START_SIGNAL	= False				# a flag to start the state machine, if true
-		if(ns=="/Quad1"):
-			ns_other_1="/Quad2"
-			ns_other_2="/Quad3"
-		elif(ns=="/Quad2"):
-			ns_other_1="/Quad1"
-			ns_other_2="/Quad3"
-		elif(ns=="/Quad3"):
-			ns_other_1="/Quad1"
-			ns_other_2="/Quad2"
+		if(self.namespace=="/Quad1"):
+			self.ns_other_1="/Quad2"
+			self.ns_other_2="/Quad3"
+		elif(self.namespace=="/Quad2"):
+			self.ns_other_1="/Quad1"
+			self.ns_other_2="/Quad3"
+		elif(self.namespace=="/Quad3"):
+			self.ns_other_1="/Quad1"
+			self.ns_other_2="/Quad2"
 		# internal state-related fields
 		self.current_lat	= 0.0
 		self.current_lon	= 0.0
@@ -118,12 +128,12 @@ class StateMachineC( object ):
 		# Subscriber to mavros GPS topic
 		rospy.Subscriber(ns+'/mavros/global_position/global', NavSatFix, self.gps_cb)
 		# Subscriber to mavros others GPS topic
-		rospy.Subscriber(ns_other_1+'/mavros/global_position/global', NavSatFix, self.gps_other_1_cb)
-		rospy.Subscriber(ns_other_2+'/mavros/global_position/global', NavSatFix, self.gps_other_2_cb)
+		rospy.Subscriber(self.ns_other_1+'/mavros/global_position/global', NavSatFix, self.gps_other_1_cb)
+		rospy.Subscriber(self.ns_other_2+'/mavros/global_position/global', NavSatFix, self.gps_other_2_cb)
 		
 		# Subscriber to mavros others states topic
-		rospy.Subscriber(ns_other_1+'/state_machine/state', StateMachine, self.state_other_1_cb)
-		rospy.Subscriber(ns_other_2+'/state_machine/state', StateMachine, self.state_other_2_cb)
+		rospy.Subscriber(self.ns_other_1+'/state_machine/state', StateMachine, self.state_other_1_cb)
+		rospy.Subscriber(self.ns_other_2+'/state_machine/state', StateMachine, self.state_other_2_cb)
 
 
 		# setpoint publisher (velocity to Pixhawk)
@@ -141,16 +151,6 @@ class StateMachineC( object ):
 		self.gripper_action	= GripperAction()
 		self.gripper_pub	= rospy.Publisher(ns+'/gripper_node/gripper_command', GripperAction, queue_size=10)
 
-
-###### path tracker Class ######
-class path_tracker( object ):
-	def __init__(self):
-		self.index
-		self.start
-		self.stop
-		self.elapsed
-		self.state
-		self.way_points_list
 	
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                                   (States implementation)                                                              #
@@ -393,15 +393,15 @@ class path_tracker( object ):
 			# self.home.y = y_enu
 
 			# TODO: implement trajectory to go to PRE_DROP zone
-			if(ns="/Quad1"):
+			if(self.namespace=="/Quad1"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[8][0], self.areaBoundaries[8][1])
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu 
-			elif(ns="/Quad1"):
+			elif(self.namespace=="/Quad2"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[10][0], self.areaBoundaries[10][1])
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu
-			elif(ns="/Quad1"):
+			elif(self.namespace=="/Quad3"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[12][0], self.areaBoundaries[12][1])
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu
@@ -448,17 +448,17 @@ class path_tracker( object ):
 		(dy_enu_other_2, dx_enu_other_2) = self.LLA_local_deltaxy(self.areaBoundaries[13][0], self.areaBoundaries[13][1], self.other_2_current_lat, self.other_2_current_lon)
 		distance_other_2=sqrt(pow(dy_enu_other_2,2)+pow(dx_enu_other_2,2))
 
-		if(ns="/Quad1"):
-			if (not(self.other_1_state="Dropping") and  not(self.other_2_state="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
+		if(self.namespace=="/Quad1"):
+			if (not(self.other_1_state=="Dropping") and  not(self.other_2_state=="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
 				self.current_signal = 'Done'
 
 
-		elif(ns="/Quad2"):
-			if (not(self.other_1_state="WaitToDrop") and not(self.other_1_state="Dropping") and not(self.other_2_state="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
+		elif(self.namespace=="/Quad2"):
+			if (not(self.other_1_state=="WaitToDrop") and not(self.other_1_state=="Dropping") and not(self.other_2_state=="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
 				self.current_signal = 'Done'
 
-		elif(ns="/Quad3"):
-			if (not(self.other_1_state="WaitToDrop") and not(self.other_1_state="Dropping") and not(self.other_2_state="WaitToDrop") and not(self.other_2_state="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
+		elif(self.namespace=="/Quad3"):
+			if (not(self.other_1_state=="WaitToDrop") and not(self.other_1_state=="Dropping") and not(self.other_2_state=="WaitToDrop") and not(self.other_2_state=="Dropping") and (distance_other_1>6) and (distance_other_2>6)):
 				self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
@@ -713,18 +713,18 @@ class path_tracker( object ):
 
     ######## function for defining the field boundqries :########################
 	
-	def path(ns,areaBoundaries,cameraView):
-		dividerUnity=min(cameraView,5)
-		if (ns=="/Quad1"):
+	def path(self):
+		dividerUnity=min(self.cameraView,5)
+		if (self.namespace=="/Quad1"):
 
 			num_of_segments_up_1=int(7/dividerUnity)
-			upperBoundaries_1=intermediate(self,areaBoundaries[1],areaBoundaries[0],num_of_segments_up_1)
+			upperBoundaries_1=intermediate(self,self.areaBoundaries[1],self.areaBoundaries[0],num_of_segments_up_1)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=intermediate(self,areaBoundaries[0],areaBoundaries[7],num_of_segments_up_2)			
+			upperBoundaries_2=intermediate(self,self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)			
 			num_of_segments_up_3=int(5/dividerUnity)
-			upperBoundaries_3=intermediate(self,areaBoundaries[8],areaBoundaries[9],num_of_segments_up_3)
+			upperBoundaries_3=intermediate(self,self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=intermediate(self,areaBoundaries[2],areaBoundaries[3],num_of_segments_down)
+			downBoundaries=intermediate(self,self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
 
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
@@ -732,16 +732,16 @@ class path_tracker( object ):
 			for i in range(0,len(upperBoundaries)-1):
 				way_points_list.append(downBoundaries[i])
 				way_points_list.append(upperBoundaries[i])
-		if (ns=="/Quad2"):
+		if (self.namespace=="/Quad2"):
 
 			num_of_segments_up_3=int(7/dividerUnity)
-			upperBoundaries_3=intermediate(self,areaBoundaries[6],areaBoundaries[5],num_of_segments_up_3)
+			upperBoundaries_3=intermediate(self,self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=intermediate(self,areaBoundaries[11],areaBoundaries[6],num_of_segments_up_2)
+			upperBoundaries_2=intermediate(self,self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
 			num_of_segments_up_1=int(5/dividerUnity)
-			upperBoundaries_1=intermediate(self,areaBoundaries[9],areaBoundaries[10],num_of_segments_up_1)
+			upperBoundaries_1=intermediate(self,self.areaBoundaries[9],self.areaBoundaries[10],num_of_segments_up_1)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=intermediate(self,areaBoundaries[3],areaBoundaries[4],num_of_segments_down)
+			downBoundaries=intermediate(self,self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
 
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
@@ -750,13 +750,13 @@ class path_tracker( object ):
 				way_points_list.append(downBoundaries[i])
 				way_points_list.append(upperBoundaries[i])
 
-		if (ns=="/Quad3"):
+		if (self.namespace=="/Quad3"):
 
 			num_of_segments=int(46/dividerUnity)
 
-			upperBoundaries=intermediate(self,areaBoundaries[0],areaBoundaries[6],num_of_segments)
+			upperBoundaries=intermediate(self,self.areaBoundaries[0],self.areaBoundaries[6],num_of_segments)
 		
-			downBoundaries=intermediate(self,areaBoundaries[7],areaBoundaries[11],num_of_segments)
+			downBoundaries=intermediate(self,self.areaBoundaries[7],self.areaBoundaries[11],num_of_segments)
 
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
@@ -867,7 +867,10 @@ def mission():
 	
 	sm.cameraView=1;
 	sm.areaBoundaries= ##
-	sm.way_points_list=path(ns,sm.areaBoundaries,sm.cameraView)
+	
+	tracker=path_tracker( ns )
+	tracker.way_points_list=path(sm)
+
 	while not rospy.is_shutdown():
 		sm.update_state()
 	
