@@ -715,17 +715,14 @@ class path_tracker( object ):
 	
 	def path(ns,areaBoundaries,cameraView):
 		dividerUnity=min(cameraView,5)
-		upperBoundaries=[]
 		if (ns=="/Quad1"):
 
 			num_of_segments_up_1=int(7/dividerUnity)
 			upperBoundaries_1=intermediate(self,areaBoundaries[1],areaBoundaries[0],num_of_segments_up_1)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=intermediate(self,areaBoundaries[0],areaBoundaries[7],num_of_segments_up_2)
-			del upperBoundaries_2(0)			
+			upperBoundaries_2=intermediate(self,areaBoundaries[0],areaBoundaries[7],num_of_segments_up_2)			
 			num_of_segments_up_3=int(5/dividerUnity)
 			upperBoundaries_3=intermediate(self,areaBoundaries[8],areaBoundaries[9],num_of_segments_up_3)
-			del upperBoundaries_3(0)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
 			downBoundaries=intermediate(self,areaBoundaries[2],areaBoundaries[3],num_of_segments_down)
 
@@ -739,10 +736,8 @@ class path_tracker( object ):
 
 			num_of_segments_up_3=int(7/dividerUnity)
 			upperBoundaries_3=intermediate(self,areaBoundaries[6],areaBoundaries[5],num_of_segments_up_3)
-			del upperBoundaries_3(0)
 			num_of_segments_up_2=int(18/dividerUnity)
 			upperBoundaries_2=intermediate(self,areaBoundaries[11],areaBoundaries[6],num_of_segments_up_2)
-			del upperBoundaries_2(0)
 			num_of_segments_up_1=int(5/dividerUnity)
 			upperBoundaries_1=intermediate(self,areaBoundaries[9],areaBoundaries[10],num_of_segments_up_1)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
