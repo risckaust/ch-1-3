@@ -68,12 +68,13 @@ class path_tracker( ):
 #	GoHome:		{'Done', 'Running'}
 #	Land:		{'Done', 'Running'}
 class StateMachineC( object ):
-	def __init__(self, ns):
+	def __init__(self, ns, field_map):
 		autopilotParams.setParams(ns)
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
-		self.areaBoundaries=    = []				# The list of the different field refence points (to be provided)
+		self.areaBoundaries     = field_map			# The list of the different field refence points (to be provided)
 		self.cameraView		=1				#Parameter that caracterize the camera precision and field of view
 		self.way_points_tracker=path_tracker( )			# object that is used for the tracking of points to be visited
+		self.way_points_tracker.way_points_list=self.path()
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
@@ -252,7 +253,7 @@ class StateMachineC( object ):
 				if(self.way_points_tracker.state == "checking"):
 					self.way_points_tracker.stop = datetime.datetime.now()
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
-					if (datetime.timedelta(seconds=int(self.way_points_tracker.elapsed))>2);
+					if (datetime.timedelta(seconds=int(self.way_points_tracker.elapsed))>2):
 					    self.way_points_tracker.state="reached"
 				if(self.way_points_tracker.state == "reached"):
 					self.way_points_tracker.index=self.way_points_tracker.index+1
@@ -936,7 +937,11 @@ def mission():
 	# get namespace
 	ns=rospy.get_namespace()
 	ns = ns[0:len(ns)-1]
-	sm = StateMachineC(ns)
+	field_map=[]
+	if len(field_map) < 13:
+		print 'Field map is empty. Exiting.....'
+		return
+	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
@@ -944,13 +949,6 @@ def mission():
 	sm.target_lon = 8.5432450
 	
 	sm.cameraView=1;
-	sm.areaBoundaries=[] ##
-
-	if len(sm.areaBoundaries) < 13:
-		# quit
-		return
-		
-	sm.way_points_list=sm.path()
 
 	while not rospy.is_shutdown():
 		sm.update_state()
