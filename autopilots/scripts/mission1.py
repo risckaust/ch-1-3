@@ -46,14 +46,14 @@ autopilotParams.setParams()
 #	bool	command	# true: activate. false: deactivate
 ###### Helper Classes ######
 ###### path tracker Class ######
-class path_tracker( object ):
+class path_tracker( ):
 	def __init__(self):
-		self.index
-		self.start
-		self.stop
-		self.elapsed
-		self.state
-		self.way_points_list
+		self.index=0
+		self.start=0
+		self.stop=0
+		self.elapsed=0
+		self.state=""
+		self.way_points_list=[]
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
@@ -72,6 +72,7 @@ class StateMachineC( object ):
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
 		self.areaBoundaries=    = []				# The list of the different field refence points (to be provided)
 		self.cameraView		=1				#Parameter that caracterize the camera precision and field of view
+		self.way_points_tracker=path_tracker( )			# object that is used for the tracking of points to be visited
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
@@ -226,7 +227,7 @@ class StateMachineC( object ):
 	######### Done with Takeof State #########
 
 	# State: ObjectSearch
-	def execute_objectSearch(self,way_points_tracker):
+	def execute_objectSearch(self):
 		self.current_state = 'ObjectSearch'
 		self.current_signal= 'Running'
 
@@ -239,31 +240,31 @@ class StateMachineC( object ):
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
 			# TODO executing search trajectory
-			if(way_points_tracker.index<len(way_points_list)):
-				self.target_lat=way_points_tracker.way_points_list[way_points_tracker.index][0]
-				self.target_lon=way_points_tracker.way_points_list[way_points_tracker.index][1]
-				if((way_points_tracker.state="still")and(sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
-					way_points_tracker.start = datetime.datetime.now()
-					way_points_tracker.state="checking"
-				if((way_points_tracker.state="checking"):
-					way_points_tracker.stop = datetime.datetime.now()
-					way_points_tracker.elapsed = way_points_tracker.stop - way_points_tracker.start
-					if (datetime.timedelta(seconds=int(way_points_tracker.elapsed))>2);
-					    way_points_tracker.state="reached"
-				if((way_points_tracker.state="reached")
-					way_points_tracker.index=way_points_tracker.index+1
-					self.target_lat=way_points_tracker.way_points_list[way_points_tracker.index][0]
-					self.target_lon=way_points_tracker.way_points_list[way_points_tracker.index][1]
-					way_points_tracker.state="still"
-					way_points_tracker.start=datetime.datetime.now()
-					way_points_tracker.stop = way_points_tracker.start
-					way_points_tracker.elapsed = way_points_tracker.stop - way_points_tracker.start
+			if(self.way_points_tracker.index<len(self.way_points_tracker.way_points_list)):
+				self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
+				self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
+				if((self.way_points_tracker.state="still")and(sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
+					self.way_points_tracker.start = datetime.datetime.now()
+					self.way_points_tracker.state="checking"
+				if((self.way_points_tracker.state="checking"):
+					self.way_points_tracker.stop = datetime.datetime.now()
+					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
+					if (datetime.timedelta(seconds=int(self.way_points_tracker.elapsed))>2);
+					    self.way_points_tracker.state="reached"
+				if((self.way_points_tracker.state="reached")
+					self.way_points_tracker.index=self.way_points_tracker.index+1
+					self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
+					self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
+					self.way_points_tracker.state="still"
+					self.way_points_tracker.start=datetime.datetime.now()
+					self.way_points_tracker.stop = self.way_points_tracker.start
+					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
 				
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu
 			else:
-				way_points_tracker.index=0
+				self.way_points_tracker.index=0
 			
 
 			# check for objects
@@ -711,7 +712,7 @@ class StateMachineC( object ):
         ############### End of intermediate function ##################
         
 
-    ######## function for defining the field boundqries :########################
+    ######## function for defining the field boundaries :########################
 	
 	def path(self):
 		dividerUnity=min(self.cameraView,5)
@@ -867,9 +868,8 @@ def mission():
 	
 	sm.cameraView=1;
 	sm.areaBoundaries= ##
-	
-	tracker=path_tracker( ns )
-	tracker.way_points_list=path(sm)
+
+	sm.way_points_list=sm.path()
 
 	while not rospy.is_shutdown():
 		sm.update_state()
