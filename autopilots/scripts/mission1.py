@@ -735,12 +735,12 @@ class StateMachineC( object ):
 		onelessthansegments = numberofsegments - 1
 		fractionalincrement = (1.0/onelessthansegments)
 
-		ptlon1_radians = math.radians(ptlon1)
-		ptlat1_radians = math.radians(ptlat1)
-		ptlon2_radians = math.radians(ptlon2)
-		ptlat2_radians = math.radians(ptlat2)
+		ptlon1_radians = radians(ptlon1)
+		ptlat1_radians = radians(ptlat1)
+		ptlon2_radians = radians(ptlon2)
+		ptlat2_radians = radians(ptlat2)
 
-		distance_radians=2*math.asin(math.sqrt(math.pow((math.sin((ptlat1_radians-ptlat2_radians)/2)),2) + math.cos(ptlat1_radians)*math.cos(ptlat2_radians)*math.pow((math.sin((ptlon1_radians-ptlon2_radians)/2)),2)))
+		distance_radians=2*asin(sqrt(pow((sin((ptlat1_radians-ptlat2_radians)/2)),2) + cos(ptlat1_radians)*cos(ptlat2_radians)*pow((sin((ptlon1_radians-ptlon2_radians)/2)),2)))
 		# 6371.009 represents the mean radius of the earth
 		# shortest path distance
 		distance_km = 6371.009 * distance_radians
@@ -761,15 +761,15 @@ class StateMachineC( object ):
 			mylats.append([])
 			mylons.append([])
 			# f is expressed as a fraction along the route from point 1 to point 2
-			A=math.sin((1-f)*distance_radians)/math.sin(distance_radians)
-			B=math.sin(f*distance_radians)/math.sin(distance_radians)
-			x = A*math.cos(ptlat1_radians)*math.cos(ptlon1_radians) + B*math.cos(ptlat2_radians)*math.cos(ptlon2_radians)
-			y = A*math.cos(ptlat1_radians)*math.sin(ptlon1_radians) +  B*math.cos(ptlat2_radians)*math.sin(ptlon2_radians)
-			z = A*math.sin(ptlat1_radians) + B*math.sin(ptlat2_radians)
-			newlat=math.atan2(z,math.sqrt(math.pow(x,2)+math.pow(y,2)))
-			newlon=math.atan2(y,x)
-			newlat_degrees = math.degrees(newlat)
-			newlon_degrees = math.degrees(newlon)
+			A=sin((1-f)*distance_radians)/sin(distance_radians)
+			B=sin(f*distance_radians)/sin(distance_radians)
+			x = A*cos(ptlat1_radians)*cos(ptlon1_radians) + B*cos(ptlat2_radians)*cos(ptlon2_radians)
+			y = A*cos(ptlat1_radians)*sin(ptlon1_radians) +  B*cos(ptlat2_radians)*sin(ptlon2_radians)
+			z = A*sin(ptlat1_radians) + B*sin(ptlat2_radians)
+			newlat=atan2(z,sqrt(pow(x,2)+pow(y,2)))
+			newlon=atan2(y,x)
+			newlat_degrees = degrees(newlat)
+			newlon_degrees = degrees(newlon)
 			mylats[icounter] = newlat_degrees
 			mylons[icounter] = newlon_degrees
 			icounter += 1
@@ -797,13 +797,13 @@ class StateMachineC( object ):
 		if (self.namespace=="/Quad1"):
 
 			num_of_segments_up_1=int(7/dividerUnity)
-			upperBoundaries_1=intermediate(self,self.areaBoundaries[1],self.areaBoundaries[0],num_of_segments_up_1)
+			upperBoundaries_1=self.intermediate(self.areaBoundaries[1],self.areaBoundaries[0],num_of_segments_up_1)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=intermediate(self,self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)			
+			upperBoundaries_2=self.intermediate(self,self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)			
 			num_of_segments_up_3=int(5/dividerUnity)
-			upperBoundaries_3=intermediate(self,self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
+			upperBoundaries_3=self.intermediate(self,self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=intermediate(self,self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
+			downBoundaries=self.intermediate(self,self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
 
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
@@ -814,13 +814,13 @@ class StateMachineC( object ):
 		if (self.namespace=="/Quad2"):
 
 			num_of_segments_up_3=int(7/dividerUnity)
-			upperBoundaries_3=intermediate(self,self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
+			upperBoundaries_3=self.intermediate(self,self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=intermediate(self,self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
+			upperBoundaries_2=self.intermediate(self,self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
 			num_of_segments_up_1=int(5/dividerUnity)
-			upperBoundaries_1=intermediate(self,self.areaBoundaries[9],self.areaBoundaries[10],num_of_segments_up_1)
+			upperBoundaries_1=self.intermediate(self,self.areaBoundaries[9],self.areaBoundaries[10],num_of_segments_up_1)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=intermediate(self,self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
+			downBoundaries=self.intermediate(self,self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
 
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
@@ -833,9 +833,9 @@ class StateMachineC( object ):
 
 			num_of_segments=int(46/dividerUnity)
 
-			upperBoundaries=intermediate(self,self.areaBoundaries[0],self.areaBoundaries[6],num_of_segments)
+			upperBoundaries=self.intermediate(self,self.areaBoundaries[0],self.areaBoundaries[6],num_of_segments)
 		
-			downBoundaries=intermediate(self,self.areaBoundaries[7],self.areaBoundaries[11],num_of_segments)
+			downBoundaries=self.intermediate(self,self.areaBoundaries[7],self.areaBoundaries[11],num_of_segments)
 
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
