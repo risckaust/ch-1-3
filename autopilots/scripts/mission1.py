@@ -799,11 +799,11 @@ class StateMachineC( object ):
 			num_of_segments_up_1=int(7/dividerUnity)
 			upperBoundaries_1=self.intermediate(self.areaBoundaries[1],self.areaBoundaries[0],num_of_segments_up_1)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=self.intermediate(self,self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)			
+			upperBoundaries_2=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)			
 			num_of_segments_up_3=int(5/dividerUnity)
-			upperBoundaries_3=self.intermediate(self,self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
+			upperBoundaries_3=self.intermediate(self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=self.intermediate(self,self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
+			downBoundaries=self.intermediate(self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
 
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
@@ -814,13 +814,13 @@ class StateMachineC( object ):
 		if (self.namespace=="/Quad2"):
 
 			num_of_segments_up_3=int(7/dividerUnity)
-			upperBoundaries_3=self.intermediate(self,self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
+			upperBoundaries_3=self.intermediate(self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
 			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=self.intermediate(self,self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
+			upperBoundaries_2=self.intermediate(self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
 			num_of_segments_up_1=int(5/dividerUnity)
-			upperBoundaries_1=self.intermediate(self,self.areaBoundaries[9],self.areaBoundaries[10],num_of_segments_up_1)
+			upperBoundaries_1=self.intermediate(self.areaBoundaries[9],self.areaBoundaries[10],num_of_segments_up_1)
 			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=self.intermediate(self,self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
+			downBoundaries=self.intermediate(self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
 
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
@@ -833,9 +833,9 @@ class StateMachineC( object ):
 
 			num_of_segments=int(46/dividerUnity)
 
-			upperBoundaries=self.intermediate(self,self.areaBoundaries[0],self.areaBoundaries[6],num_of_segments)
+			upperBoundaries=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[6],num_of_segments)
 		
-			downBoundaries=self.intermediate(self,self.areaBoundaries[7],self.areaBoundaries[11],num_of_segments)
+			downBoundaries=self.intermediate(self.areaBoundaries[7],self.areaBoundaries[11],num_of_segments)
 
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
