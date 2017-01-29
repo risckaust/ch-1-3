@@ -49,10 +49,10 @@ import autopilotParams
 class path_tracker( ):
 	def __init__(self):
 		self.index=0
-		self.start=datetime.datetime.now()
-		self.stop=datetime.datetime.now()
+		self.start=rospy.get_time()
+		self.stop=rospy.get_time()
 		self.elapsed=self.start-self.stop
-		self.state=""
+		self.state="still"
 		self.way_points_list=[]
 #### end of path tracker Class ####
 
@@ -72,7 +72,7 @@ class StateMachineC( object ):
 		autopilotParams.setParams(ns)
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
 		self.areaBoundaries     = field_map			# The list of the different field refence points (to be provided)
-		self.cameraView		=1				#Parameter that caracterize the camera precision and field of view
+		self.cameraView		=5				#Parameter that caracterize the camera precision and field of view
 		self.way_points_tracker=path_tracker( )			# object that is used for the tracking of points to be visited
 		self.way_points_tracker.way_points_list=self.path()
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
@@ -248,19 +248,25 @@ class StateMachineC( object ):
 				self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
 				self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
 				if((self.way_points_tracker.state == "still") and (sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
-					self.way_points_tracker.start = datetime.datetime.now()
+					self.way_points_tracker.start = rospy.get_time()
 					self.way_points_tracker.state="checking"
+					print("cheking")
 				if(self.way_points_tracker.state == "checking"):
-					self.way_points_tracker.stop = datetime.datetime.now()
+					self.way_points_tracker.stop = rospy.get_time()
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
-					if (datetime.timedelta(seconds=int(self.way_points_tracker.elapsed))>2):
+					if (self.way_points_tracker.elapsed>2):
 					    self.way_points_tracker.state="reached"
+					    print("reached")
 				if(self.way_points_tracker.state == "reached"):
 					self.way_points_tracker.index=self.way_points_tracker.index+1
+					print(self.way_points_tracker.index)
 					self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
 					self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
 					self.way_points_tracker.state="still"
-					self.way_points_tracker.start=datetime.datetime.now()
+					print("Going to :")
+					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][0])
+					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][1])
+					self.way_points_tracker.start=rospy.get_time()
 					self.way_points_tracker.stop = self.way_points_tracker.start
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
 				
@@ -782,7 +788,7 @@ class StateMachineC( object ):
 		mylons[onelessthansegments] = ptlon2
 		listOfPoints=[]
 		for i in range(0,numberofsegments):
-			listOfPoints.append((mylats[i],mylons[i]))
+			listOfPoints.append([mylats[i],mylons[i]])
 		return listOfPoints
 
 		# Now, the array mylats[] and mylons[] have the coordinate pairs for intermediate points along the geodesic
@@ -949,7 +955,7 @@ def mission():
 	P8=[22.3053738,39.1068978]
 	P9=[22.3054055,39.1068724]
 	P10=[22.3054466,39.1068329]
-	P11=[22,3053919,39.1067598]
+	P11=[22.3053919,39.1067598]
 	P12=[22.3053557,39.1067947]
 	P13=[22.3053749,39.1068168]
 
