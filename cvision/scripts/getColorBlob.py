@@ -97,14 +97,14 @@ def getColor(color):
     	# find the color in the image. red is a special cases
     	
     	if color == 'blue':
-            lower = np.array([100,0,127],np.uint8)
-            upper = np.array([120,255,255],np.uint8)
+            lower = np.array([84,184,203],np.uint8)
+            upper = np.array([134,234,253],np.uint8)
         elif color == 'green':
-            lower = np.array([80,0,127],np.uint8)
-            upper = np.array([100,255,255],np.uint8) 
+            lower = np.array([71,133,154],np.uint8)
+            upper = np.array([121,183,204],np.uint8) 
         elif color == 'yellow':
-            lower = np.array([20,0,200],np.uint8)
-            upper = np.array([40,255,255],np.uint8)      
+            lower = np.array([5,0,206],np.uint8)
+            upper = np.array([55,35,255],np.uint8)      
         elif color == 'red':
             # find the red in the image with low "H"
             lower = np.array([0,0,200],np.uint8)
