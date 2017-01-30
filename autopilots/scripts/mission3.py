@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 
-# Modules import 
+# Modules import
 import rospy
 import numpy as np
 import tf
@@ -14,14 +14,11 @@ from geometry_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
 
-from autopilots.msg import StateMachine, GripperFeedback, GripperAction
+from autopilots.msg import StateMachine
 
 import autopilotLib
 import myLib
 import autopilotParams
-
-# TODO: include the namespace in the following function
-
 
 # TODO: move the gripper msg definition from autopilots pckg toi gripper pckg
 
@@ -106,16 +103,18 @@ class path_tracker():
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
-# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
+# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land, Hover}
 # Possible Signals for each state:
 #	Start:		{'Waiting', 'Ready'}
 #	Takeoff:	{'Done', 'Running'}
 #	ObjectSearch:	{'Done', 'Running'}
 #	Picking:	{'Done', 'Running', 'Failed'}
 #	GoToDrop:	{'Done', 'Running'}
+#   WaitToDrop: {'Done', 'Running'}
 #	Dropping:	{'Done', 'Running'}
 #	GoHome:		{'Done', 'Running'}
 #	Land:		{'Done', 'Running'}
+#	Hover:		{'Done', 'Running'}
 class StateMachineC( object ):
 	def __init__(self, ns, field_map):
 		autopilotParams.setParams(ns)
@@ -124,7 +123,7 @@ class StateMachineC( object ):
 		self.cameraView		=6				#Parameter that caracterize the camera precision and field of view
 		self.way_points_tracker=path_tracker( )			# object that is used for the tracking of points to be visited
 		self.way_points_tracker.way_points_list=self.path()
-		self.quad_op_area =quad_zone(ns,field_map)			
+		self.quad_op_area =quad_zone(ns,field_map)
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
@@ -153,7 +152,7 @@ class StateMachineC( object ):
 		self.target_lon		= 1.1
 		self.TKOFFALT		= 2.0				# takeoff altitude [m] to be set by external controller
 		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])	# Lat/Lon of pre-drop location: different for each vehicle
-		self.DROP_COORDS	= np.array([23.3, 12.5])	
+		self.DROP_COORDS	= np.array([23.3, 12.5])
 
 		self.ZGROUND		= 0.0				# Altitude at ground level
 		self.home		= autopilotLib.xyzVar()
@@ -164,14 +163,14 @@ class StateMachineC( object ):
 
 		# Instantiate a setpoint topic structure
 		self.setp		= PositionTarget()
-		self.setp.type_mask	= int('010111000111', 2)
+		self.setp.type_mask	= int('010111000111', 2)  # use velocity setpoints
 
 		# Instantiate altitude controller object (from autopilot library)
 		self.altK 		= autopilotLib.kAltVel(ns)
 
 		# Instantiate body controller object (from autopilot library)
 		self.bodK 		= autopilotLib.kBodVel(ns)
-    
+
 		# Instantiate a tracker (blue)
 		self.blue_target 		= autopilotLib.xyzVar()		# xyz location of object w.r.t quad [m]. z only used to indicate if object is tracked or not
 		rospy.Subscriber(ns+'/getColors/blue/xyMeters', Point32, self.blue_target.cbXYZ)
@@ -191,7 +190,7 @@ class StateMachineC( object ):
 		# Subscriber to mavros others GPS topic
 		rospy.Subscriber(self.ns_other_1+'/mavros/global_position/global', NavSatFix, self.gps_other_1_cb)
 		rospy.Subscriber(self.ns_other_2+'/mavros/global_position/global', NavSatFix, self.gps_other_2_cb)
-		
+
 		# Subscriber to mavros others states topic
 		rospy.Subscriber(self.ns_other_1+'/state_machine/state', StateMachine, self.state_other_1_cb)
 		rospy.Subscriber(self.ns_other_2+'/state_machine/state', StateMachine, self.state_other_2_cb)
@@ -200,19 +199,19 @@ class StateMachineC( object ):
 		# setpoint publisher (velocity to Pixhawk)
 		self.command 		= rospy.Publisher(ns+'/mavros/setpoint_raw/local', PositionTarget, queue_size=10)
 
-		# State Machine topic & its publisher 
+		# State Machine topic & its publisher
 		self.state_topic	= StateMachine()
 		self.state_pub		= rospy.Publisher(ns+'/state_machine/state', StateMachine, queue_size=10)
 
 		# Gripper feedback topic
-		self.gripper_feedback	= GripperFeedback()
-		rospy.Subscriber(ns+'/gripper_node/gripper_status', GripperFeedback, self.gripper_cb)
+		self.gripperIsPicked	= False         # False: not picked, True: picked
+		rospy.Subscriber(ns+'/gripper_status', Bool, self.gripper_cb)
 
 		# Gripper command topic
-		self.gripper_action	= GripperAction()
-		self.gripper_pub	= rospy.Publisher(ns+'/gripper_node/gripper_command', GripperAction, queue_size=10)
+		self.gripper_action	= Bool()              # .data=True: activate magnets, .data=False: deactivate
+		self.gripper_pub	= rospy.Publisher(ns+'/gripper_command', Bool, queue_size=10)
 
-	
+
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                                   (States implementation)                                                              #
 
@@ -236,34 +235,39 @@ class StateMachineC( object ):
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
-		
+
 		self.debug()
-	
-		return	
-			
-	
+
+		return
+
+
 	# State: Takeoff
 	def execute_takeoff(self):
 		self.current_state = 'Takeoff'
 		self.current_signal = 'Running'
-		
+
 		self.debug()
-		
-		# set the controllers setpoints
+
+        # cycle for some time to register local poisiton
+        c=0
+        while c<10:
+            self.rate.sleep()
+            c = c + 1
+		# get ground level
+        self.ZGROUND = self.altK.z
+        # set the controllers setpoints
 		self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
-		print self.altK.zSp
 		self.home.x = self.bodK.x
 		self.home.y = self.bodK.y
 		# takeoff
-		print abs(self.altK.zSp - self.altK.z) < 0.2
 		while self.current_state == 'Takeoff' and not abs(self.altK.zSp - self.altK.z) < 0.2 and not rospy.is_shutdown():
 			self.setp.header.stamp = rospy.Time.now()
 
 			self.setp.velocity.z = self.altK.controller()
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
-
 			self.rate.sleep()
+            self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
@@ -271,7 +275,7 @@ class StateMachineC( object ):
 			self.state_pub.publish(self.state_topic)
 
 			print 'State/Set/Alt/Gnd:', self.current_state, self.altK.zSp, self.altK.z, self.ZGROUND
-			
+
 
 		# Done with takoeff, send signal
 		self.current_signal = 'Done'
@@ -279,9 +283,16 @@ class StateMachineC( object ):
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
-		
+        # update setpoint topic
+		self.setp.velocity.z = self.altK.controller()
+		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+		self.rate.sleep()
+		# publish setpoints
+        self.setp.header.stamp = rospy.Time.now()
+		self.command.publish(self.setp)
+
 		self.debug()
-	
+
 		return
 
 	######### Done with Takeof State #########
@@ -294,7 +305,7 @@ class StateMachineC( object ):
 		self.debug()
 
 		objectFound = False
-		
+
 		# execute some trajectory, e.g. circle
 		# keep checking vision feedback
 		# once an object is found, exit current state
@@ -324,7 +335,7 @@ class StateMachineC( object ):
 					self.way_points_tracker.start=rospy.get_time()
 					self.way_points_tracker.stop = self.way_points_tracker.start
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
-				
+
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu
@@ -353,36 +364,43 @@ class StateMachineC( object ):
 					self.way_points_tracker.start=rospy.get_time()
 					self.way_points_tracker.stop = self.way_points_tracker.start
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
-				
+
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu
 			else:
 				self.way_points_tracker.index=0
-			
+
 
 			# check for objects
 			objectFound, _ = self.monitorObjects()
-	
+
 			# publish control commands
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
-	
 			self.rate.sleep()
 			# publish setpoint to pixhawk
+            self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
-	
+
 		# Done with searchobject state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
+        # update setpoint topic
+		self.setp.velocity.z = self.altK.controller()
+		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+		self.rate.sleep()
+		# publish setpoints
+        self.setp.header.stamp = rospy.Time.now()
+		self.command.publish(self.setp)
 
 		self.debug()
 
@@ -412,7 +430,7 @@ class StateMachineC( object ):
 		self.altK.zSp= self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
 		# TODO: Activate gripper (write the ROS node for the gripper feedback/command)
-		self.gripper_action.command = True
+		self.gripper_action.data = True
 		self.gripper_pub.publish(self.gripper_action)
 
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
@@ -429,7 +447,7 @@ class StateMachineC( object ):
 				if self.inside_envelope(xy):
 					self.altK.zSp = max(self.altK.z - 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_ALT)	# descend if inside envelope
 			else:											# object not found
-				# if at max ALT (stil did not find objects), exit state with signal='Failed'
+				# if at max ALT (stil did not find objects), exit state with signal='Failed', to search again
 				if (self.altK.z >= self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep')):
 					self.current_signal = 'Failed'
 
@@ -439,15 +457,15 @@ class StateMachineC( object ):
 			# TODO !!!!!!!! constrain your location inside your zone!!!!!!
 
 			# check if object is picked, fly up
-			if (self.gripper_feedback.picked):
+			if (self.gripperIsPicked):
 				picked = True	# set True to exit the while loop
 				self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
-			
+
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
-	
 			self.rate.sleep()
 			# publish setpoint to pixhawk
+            self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
@@ -465,13 +483,20 @@ class StateMachineC( object ):
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
-		
+        # update setpoint topic
+		self.setp.velocity.z = self.altK.controller()
+		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+		self.rate.sleep()
+		# publish setpoints
+        self.setp.header.stamp = rospy.Time.now()
+		self.command.publish(self.setp)
+
 		self.debug()
 
 		return
-				
-					
-	
+
+
+
 
 	# State: GoToDrop
 	def execute_gotodrop(self):
@@ -493,7 +518,7 @@ class StateMachineC( object ):
 			if(self.namespace=="/Quad1"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[8][0], self.areaBoundaries[8][1])
 				self.home.x = self.bodK.x + dx_enu
-				self.home.y = self.bodK.y + dy_enu 
+				self.home.y = self.bodK.y + dy_enu
 			elif(self.namespace=="/Quad2"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[10][0], self.areaBoundaries[10][1])
 				self.home.x = self.bodK.x + dx_enu
@@ -512,9 +537,9 @@ class StateMachineC( object ):
 			# compute setpoints
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
-
 			self.rate.sleep()
 			# publish setpoints
+            self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
@@ -527,6 +552,13 @@ class StateMachineC( object ):
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
+        # update setpoint topic
+		self.setp.velocity.z = self.altK.controller()
+		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+		self.rate.sleep()
+        self.setp.header.stamp = rospy.Time.now()
+		# publish setpoints
+		self.command.publish(self.setp)
 
 		self.debug()
 
@@ -567,7 +599,7 @@ class StateMachineC( object ):
 			if(self.namespace=="/Quad1"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[8][0], self.areaBoundaries[8][1])
 				self.home.x = self.bodK.x + dx_enu
-				self.home.y = self.bodK.y + dy_enu 
+				self.home.y = self.bodK.y + dy_enu
 			elif(self.namespace=="/Quad2"):
 				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[10][0], self.areaBoundaries[10][1])
 				self.home.x = self.bodK.x + dx_enu
@@ -585,6 +617,7 @@ class StateMachineC( object ):
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
 			# publish setpoints
+            self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
@@ -598,6 +631,7 @@ class StateMachineC( object ):
 		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 		self.rate.sleep()
 		# publish setpoints
+        self.setp.header.stamp = rospy.Time.now()
 		self.command.publish(self.setp)
 		# publish state topic
 		self.state_topic.state = self.current_state
@@ -605,7 +639,7 @@ class StateMachineC( object ):
 		self.state_pub.publish(self.state_topic)
 
 		self.debug()
-	
+
 		return
 
 	# State: Drop
@@ -619,25 +653,38 @@ class StateMachineC( object ):
 		# once centerd, go to drop alt
 		# deactivate magnets, and keep checking gripper feedback!
 		# while loop
-		while not rospy.is_shutdown():
+        dropped = False
+		while not dropped and not rospy.is_shutdown():
 
-			# compute home
+			# compute direction to drop waypoint
 			drop_waypoint_index=13
 			(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.areaBoundaries[drop_waypoint_index][0], self.areaBoundaries[drop_waypoint_index][1])
 			self.home.x = self.bodK.x + dx_enu
 			self.home.y = self.bodK.y + dy_enu
-			# TODO switch to vision-based guidance once available
+			# TODO: switch to vision-based guidance once available
+            # TODO: boxIsFound, xy = self.findBox()
 
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
+            # try to drop if arrived
+            distance = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
+            if distance < 0.2:
+                # deactivate gripper
+        		self.gripper_action.data = False
+        		self.gripper_pub.publish(self.gripper_action)
+
 			#TODO break once drop is confirmed
+            distance = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
+            if distance < 0.2 and not self.gripperIsPicked:
+                dropped = True
 
 			# update setpoint topic
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
 			# publish setpoints
+            self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
@@ -645,19 +692,19 @@ class StateMachineC( object ):
 			self.state_pub.publish(self.state_topic)
 		# end of while loop
 
-		(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
-		self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
-
-		# update setpoint topic
-		self.setp.velocity.z = self.altK.controller()
-		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
-
 		# Done with Drop state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
+        # update setpoint topic
+		self.setp.velocity.z = self.altK.controller()
+		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+		self.rate.sleep()
+		# publish setpoints
+        self.setp.header.stamp = rospy.Time.now()
+		self.command.publish(self.setp)
 
 		self.debug()
 
@@ -703,22 +750,60 @@ class StateMachineC( object ):
 
 		return
 
+    # State: Hover
+	def execute_hover(self):
+		self.current_state='Hover'
+		self.current_sginal='Running'
+
+		self.debug()
+
+        # cycle to register local position
+        c=0
+        while c<10:
+            self.rate.sleep()
+            c = c + 1
+        self.altK.zSp = self.altK.z
+        self.home.x = self.bodK.x
+        self.home.y = self.bodK.y
+		# while loop
+		while not rospy.is_shutdown():
+            # update setpoint topic
+    		self.setp.velocity.z = self.altK.controller()
+    		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+    		self.rate.sleep()
+    		# publish setpoints
+            self.setp.header.stamp = rospy.Time.now()
+    		self.command.publish(self.setp)
+
+        # Done with Hover state, send signal
+		self.current_signal = 'Done'
+		# publish state topic
+		self.state_topic.state = self.current_state
+		self.state_topic.signal = self.current_signal
+		self.state_pub.publish(self.state_topic)
+
+        self.debug()
+        return
+
 	#                                          (End of States Implementation)                                                                #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                          (State Transition Function)	                                                                 #
 	def update_state(self):
-		
+
 		# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
 		# Possible Signals for each state:
 		#	Takeoff:	{'Done', 'Running'}
 		#	ObjectSearch:	{'Done', 'Running'}
 		#	Picking:	{'Done', 'Running', 'Failed'}
 		#	GoToDrop:	{'Done', 'Running'}
+        #	WaitToDrop:	{'Done', 'Running'}
 		#	Dropping:	{'Done', 'Running'}
 		#	GoHome:		{'Done', 'Running'}
 		#	Land:		{'Done', 'Running'}
+        #	Hover:	{'Done', 'Running'}
+
 		# manage the transition between states
 		state = self.current_state
 		signal = self.current_signal
@@ -730,9 +815,9 @@ class StateMachineC( object ):
 			self.execute_objectSearch()
 		elif (state == 'ObjectSearch' and signal == 'Done'): # Done: ObjectSearch -> go to: Picking state
 			self.execute_picking()
-		elif (state == 'Picking'):			# Two cases: 
+		elif (state == 'Picking'):			# Two cases:
 			if (signal == 'Failed'):			# Failed -> go to: ObjectSearch state
-				self.execute_objectSearch()	
+				self.execute_objectSearch()
 			if (signal == 'Done'):				# Done: Picking -> go to: GoToDrop state
 				self.execute_gotodrop()
 		elif (state == 'GoToDrop' and signal == 'Done'):	# Done: GoToDrop -> go to: WiatToDrop state
@@ -760,7 +845,7 @@ class StateMachineC( object ):
 		r_list=[]
 		# list of x/y coords of found objects
 		xy_list=[]
-	
+
 		# flag if object is found
 		objectFound = False
 
@@ -776,7 +861,7 @@ class StateMachineC( object ):
 			d_to_green = np.sqrt(self.green_target.x**2 + self.green_target.y**2)
 			r_list.append(d_to_green)
 			xy_list.append([self.green_target.x, self.green_target.y])
-			objectFound = True			
+			objectFound = True
 
 		# other colors..........?
 
@@ -787,8 +872,8 @@ class StateMachineC( object ):
 			return (objectFound, xy_list[min_d_index])
 		else:
 			return (objectFound, [])
-	
-		
+
+
 	########## End of Monitoring Objects #######################
 
 	# determins if an object is inside an allowable descend envelope
@@ -806,14 +891,14 @@ class StateMachineC( object ):
 			print '#--------------------------------------#'
 			print 'State/Signal: ', self.current_state, ' -> ', self.current_signal
 			print '#--------------------------------------#'
-			
+
 			if rospy.is_shutdown():
 				print '|------ ROS IS SHUTTING DOWN------|'
 	############### End of debug function ##################
 	######## for intermediate points along a great circle path:########################
 
-		#The function takes two coordinate pairs and a user-specified number of segments. 
-		#It yields a set of intermediate points along a great circle path. 
+		#The function takes two coordinate pairs and a user-specified number of segments.
+		#It yields a set of intermediate points along a great circle path.
 		#def tweensegs(longitude1,latitude1,longitude2,latitude2,num_of_segments):
 
 	def intermediate(self,llaPointStart,llaPointEnd,num_of_segments):
@@ -844,7 +929,7 @@ class StateMachineC( object ):
 		mylats.append([])
 		mylons.append([])
 		mylats[0] = ptlat1
-		mylons[0] = ptlon1 
+		mylons[0] = ptlon1
 
 		f = fractionalincrement
 		icounter = 1
@@ -880,10 +965,10 @@ class StateMachineC( object ):
 		# Now, the array mylats[] and mylons[] have the coordinate pairs for intermediate points along the geodesic
 		# My mylat[0],mylat[0] and mylat[num_of_segments-1],mylat[num_of_segments-1] are the geodesic end point
         ############### End of intermediate function ##################
-        
+
 
     ######## function for defining the field boundaries :########################
-	
+
 	def path(self):
 		if (self.namespace=="/Quad1"):
 
@@ -891,13 +976,13 @@ class StateMachineC( object ):
 			upperBoundaries_1=self.intermediate(self.areaBoundaries[1],self.areaBoundaries[0],num_of_segments_up_1)
 
 			num_of_segments_up_2=max(int(18/self.cameraView),4)
-			upperBoundaries_2=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)		
+			upperBoundaries_2=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)
 			del upperBoundaries_2[0]
-	
+
 			num_of_segments_up_3=max(int(5/self.cameraView),3)
 			upperBoundaries_3=self.intermediate(self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
 			del upperBoundaries_3[-1]
-			
+
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
 			num_of_segments_down=len(upperBoundaries)+1
@@ -916,7 +1001,7 @@ class StateMachineC( object ):
 
 			num_of_segments_up_2=max(int(18/self.cameraView),4)
 			upperBoundaries_2=self.intermediate(self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
-			del upperBoundaries_2[-1]	
+			del upperBoundaries_2[-1]
 
 			num_of_segments_up_3=max(int(7/self.cameraView),3)
 			upperBoundaries_3=self.intermediate(self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
@@ -926,7 +1011,7 @@ class StateMachineC( object ):
 			downBoundaries=self.intermediate(self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
 			del downBoundaries[0]
 
-			
+
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
 				way_points_list.append(downBoundaries[i])
@@ -1020,7 +1105,18 @@ class StateMachineC( object ):
 		lon = lon_rad * 180.0 / pi
 		return(lat,lon)
 	############### End of local_deltaxy_LLA function ##################
-	
+
+    ################ test gripper actuation ##########################
+    def test_gripper(self, cmd):
+        # activate/deactivate gripper
+        self.gripper_action.data = cmd
+        self.gripper_pub.publish(self.gripper_action)
+        # print gripper status
+        print '#---------------------------------#'
+        print 'Gripper status: ', self.gripperIsPicked
+        print '#---------------------------------#'
+    ############### End of test_gripper #############################
+
 	#                                           (End of helper functions)                                                                    #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -1031,7 +1127,7 @@ class StateMachineC( object ):
 	############ Gripper callback function #####################
 	def gripper_cb(self,msg):
 		if msg is not None:
-			self.gripper_feedback.picked = msg.picked
+			self.gripperIsPicked = msg.data
 	########### End of Gripper callback function ##############
 
 	#################### MAVROS GPS Callback #################
@@ -1063,8 +1159,8 @@ class StateMachineC( object ):
 	################## End of other others states callback ##################
 
 	#                                              (End of Callbacks)                                                                        #
-	#----------------------------------------------------------------------------------------------------------------------------------------#	
-		
+	#----------------------------------------------------------------------------------------------------------------------------------------#
+
 #############################################
 def mission():
 	rospy.init_node('mission1', anonymous=True)
@@ -1072,7 +1168,7 @@ def mission():
 	# get namespace
 	ns=rospy.get_namespace()
 	ns = ns[0:len(ns)-1]
-	
+
 	field_map=[]
     # read field_map from a YAML config file as a ros parameter
     # check if the field_map parameter is set
@@ -1080,23 +1176,20 @@ def mission():
         field_map = rospy.get_param(ns+'/field_map')
 
     print 'Length of field map= ', len(field_map)
-	
+
 	if len(field_map) < 14:
 		print 'Field map is not set properly. Exiting.....'
 		return
-    
+
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
-	sm.target_lat = 47.3978434
-	sm.target_lon = 8.5432450
-	
 	sm.cameraView=1;
 
 	while not rospy.is_shutdown():
 		sm.update_state()
-	
+
 
 ######### Main ##################
 if __name__ == '__main__':
