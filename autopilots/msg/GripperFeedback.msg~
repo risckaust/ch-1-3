@@ -1,3 +1,0 @@
-std_msgs/Headaer header
-bool[] pushbutton_state
-bool picked
