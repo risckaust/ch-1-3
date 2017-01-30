@@ -8,6 +8,8 @@
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
 
+	
+
 <group ns="Quad3">
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
@@ -19,6 +21,8 @@
 		<arg name="tgt_component" value="$(arg tgt_component)" />
 		<arg name="log_output" value="$(arg log_output)" />
 	</include>
+	
+	<rosparam command="load" file="$(find autopilots)/configs/field_map.yaml" />
 
         <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
         </node>
@@ -40,6 +44,7 @@
         </node-->
 
 	<node pkg="autopilots" type="mission1.py" name="mission1" output="screen" respawn="true">
+		
         </node>
 </group>
 

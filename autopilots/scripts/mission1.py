@@ -943,39 +943,29 @@ def mission():
 	# get namespace
 	ns=rospy.get_namespace()
 	ns = ns[0:len(ns)-1]
-	
-	P0=[22.3050958,39.1066679]
-	P1=[22.3050349,39.1067199]
-	P2=[22.3052779,39.1070748]
-	P3=[22.3054460,39.1069465]
-	P4=[22.3056180,39.1068244]
-	P5=[22.3053760,39.1064333]
-	P6=[22.3053110,39.1064941]
-	P7=[22.3053171,39.1068244]
-	P8=[22.3053738,39.1068978]
-	P9=[22.3054055,39.1068724]
-	P10=[22.3054466,39.1068329]
-	P11=[22.3053919,39.1067598]
-	P12=[22.3053557,39.1067947]
-	P13=[22.3053749,39.1068168]
 
-	field_map=[P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13]
+	field_map = []
+
+	# read field_map from a YAML config file as a ros parameter
+	# check if the field_map parameter is set
+	if rospy.has_param(ns+'/field_map'):
+		field_map = rospy.get_param(ns+'/field_map')
+
+	print 'Length of field map= ', len(field_map)
+
 	
-	if len(field_map) < 13:
-		print 'Field map is empty. Exiting.....'
+	if len(field_map) < 14:
+		print 'Field map is not set properly. Exiting.....'
 		return
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
-	sm.target_lat = 47.3978434
-	sm.target_lon = 8.5432450
 	
 	sm.cameraView=1;
 
 	while not rospy.is_shutdown():
 		sm.update_state()
-	
 
 ######### Main ##################
 if __name__ == '__main__':
