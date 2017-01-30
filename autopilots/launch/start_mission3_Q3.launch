@@ -47,7 +47,7 @@
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
 
-	<node pkg="autopilots" type="mission1.py" name="mission1" output="screen" respawn="true">
+	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">
 		
         </node>
 </group>
