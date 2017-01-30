@@ -38,6 +38,35 @@ def getColor(color):
     # get namspace
     ns = rospy.get_namespace()
     ns = ns[0:len(ns)-1]
+
+    # check if color threshods are available as parameters
+    if not rospy.has_param(ns+'/GreenHSV/low'):
+     	print 'Green HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/GreenHSV/high'):
+     	print 'Green HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/BlueHSV/low'):
+     	print 'Blue HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/BlueHSV/high'):
+     	print 'Blue HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/YellowHSV/low'):
+     	print 'Yellow HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/YellowHSV/high'):
+     	print 'Yellow HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/RedHSV/low'):
+     	print 'Red HSV parameters are not loaded'
+    	return
+    if not rospy.has_param(ns+'/RedHSV/high'):
+     	print 'Red HSV parameters are not loaded'
+    	return
+
+    print '####Found all HSV parameters####'
+
     cvisionParams.setParams(ns)
 
     # COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
@@ -97,14 +126,14 @@ def getColor(color):
     	# find the color in the image. red is a special cases
     	
     	if color == 'blue':
-            lower = np.array([84,184,203],np.uint8)
-            upper = np.array([134,234,253],np.uint8)
+            lower = np.array(rospy.get_param(ns+'/BlueHSV/low'),np.uint8)
+            upper = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
         elif color == 'green':
-            lower = np.array([71,133,154],np.uint8)
-            upper = np.array([121,183,204],np.uint8) 
+            lower = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
+            upper = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8) 
         elif color == 'yellow':
-            lower = np.array([5,0,206],np.uint8)
-            upper = np.array([55,35,255],np.uint8)      
+            lower = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
+            upper = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)      
         elif color == 'red':
             # find the red in the image with low "H"
             lower = np.array([0,0,200],np.uint8)
