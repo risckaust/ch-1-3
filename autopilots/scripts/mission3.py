@@ -991,7 +991,7 @@ class StateMachineC( object ):
 	############### End of LLA_local_deltaxy function ##################
 
 	######## function for converting local delta xy(NED) to LLA points :########################
-	def local_deltaxy_LLA(lat_0, lon_0,  delta_x,  delta_y):
+	def local_deltaxy_LLA(self,lat_0, lon_0,  delta_x,  delta_y):
 
 		M_DEG_TO_RAD = 0.01745329251994
 		CONSTANTS_RADIUS_OF_EARTH	= 6371000.0
