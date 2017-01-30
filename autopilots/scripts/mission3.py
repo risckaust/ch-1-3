@@ -699,6 +699,7 @@ class StateMachineC( object ):
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
         # update setpoint topic
+        self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 		self.setp.velocity.z = self.altK.controller()
 		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 		self.rate.sleep()
