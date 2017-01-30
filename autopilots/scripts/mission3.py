@@ -45,15 +45,64 @@ import autopilotParams
 #	Headaer header
 #	bool	command	# true: activate. false: deactivate
 ###### Helper Classes ######
+
+###### quad_zone Class ######
+class quad_zone(object):
+
+    def __init__(self,ns,field_map):
+	"""Creates a polygon.
+        Keyword arguments:
+        poly -- should be tuple of tuples contaning vertex in (x, y) form.
+            e.g. [  [0,0],
+                    [0,1],
+                    [1,1],
+                    [1,0],
+                ]
+        """
+	if(ns=="/Quad1"):
+		self.shape= [field_map[0],field_map[1],field_map[2],field_map[3],field_map[9],field_map[8],field_map[7]]
+	elif(ns=="/Quad2"):
+		self.shape= [field_map[6],field_map[5],field_map[4],field_map[3],field_map[9],field_map[10],field_map[11]]
+	elif(ns=="/Quad3"):
+        	self.shape= [field_map[0],field_map[7],field_map[11],field_map[6]]
+	self.id=ns
+
+    def is_inside(self, point):
+        """Returns True if the point lies inside the polygon, False otherwise.
+        Works on Ray Casting Method (https://en.wikipedia.org/wiki/Point_in_polygon)
+
+        Keyword arguments:
+        point -- a tuple representing the coordinates of point to be tested in (x ,y) form.
+        """
+        poly = self.shape
+        n = len(self.shape)
+        x, y = point
+        inside = False
+
+        p1x,p1y = self.shape[0]
+        for i in range(n+1):
+            p2x,p2y = self.shape[i % n]
+            if y > min(p1y,p2y):
+                if y <= max(p1y,p2y):
+                    if x <= max(p1x,p2x):
+                        if p1y != p2y:
+                            xints = (y-p1y)*(p2x-p1x)/float(p2y-p1y)+p1x
+                        if p1x == p2x or x <= xints:
+                            inside = not inside
+            p1x,p1y = p2x,p2y
+
+        return inside
+#### end of quad_zone Class ####
 ###### path tracker Class ######
-class path_tracker( ):
-	def __init__(self):
+class path_tracker():
+	def __init__(self,areaBoundaries):
 		self.index=0
 		self.start=rospy.get_time()
 		self.stop=rospy.get_time()
 		self.elapsed=self.start-self.stop
 		self.state="still"
 		self.way_points_list=[]
+		self.object_position=[]
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
@@ -72,9 +121,10 @@ class StateMachineC( object ):
 		autopilotParams.setParams(ns)
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
 		self.areaBoundaries     = field_map			# The list of the different field refence points (to be provided)
-		self.cameraView		=5				#Parameter that caracterize the camera precision and field of view
+		self.cameraView		=6				#Parameter that caracterize the camera precision and field of view
 		self.way_points_tracker=path_tracker( )			# object that is used for the tracking of points to be visited
 		self.way_points_tracker.way_points_list=self.path()
+		self.quad_op_area =quad_zone(ns,field_map)			
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
@@ -93,8 +143,14 @@ class StateMachineC( object ):
 		# internal state-related fields
 		self.current_lat	= 0.0
 		self.current_lon	= 0.0
-		self.target_lat		=1.1
-		self.target_lon		=1.1
+		self.other_1_current_lat= 0.0
+		self.other_2_current_lat= 0.0
+		self.other_1_current_lon= 0.0
+		self.other_2_current_lon= 0.0
+		self.other_1_state	= 0.0
+		self.other_2_state	= 0.0
+		self.target_lat		= 1.1
+		self.target_lon		= 1.1
 		self.TKOFFALT		= 2.0				# takeoff altitude [m] to be set by external controller
 		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])	# Lat/Lon of pre-drop location: different for each vehicle
 		self.DROP_COORDS	= np.array([23.3, 12.5])	
@@ -244,8 +300,36 @@ class StateMachineC( object ):
 		# once an object is found, exit current state
 		while  not objectFound and not rospy.is_shutdown():
 			# TODO executing search trajectory
-			if(self.way_points_tracker.index < len(self.way_points_tracker.way_points_list)):
-				self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
+			if(self.way_points_tracker.object_position!=[]):
+				self.target_lat=self.way_points_tracker.object_position[0]
+				self.target_lon=self.way_points_tracker.object_position[1]
+				if((self.way_points_tracker.state == "still") and (sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
+					self.way_points_tracker.start = rospy.get_time()
+					self.way_points_tracker.state="checking"
+					print("cheking")
+				if(self.way_points_tracker.state == "checking"):
+					self.way_points_tracker.stop = rospy.get_time()
+					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
+					if (self.way_points_tracker.elapsed>2):
+					    self.way_points_tracker.state="reached"
+					    print("reached")
+				if(self.way_points_tracker.state == "reached"):
+					self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
+					self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
+					self.way_points_tracker.state="still"
+					print("Going to :")
+					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][0])
+					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][1])
+					self.way_points_tracker.object_position=[]
+					self.way_points_tracker.start=rospy.get_time()
+					self.way_points_tracker.stop = self.way_points_tracker.start
+					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
+				
+				(dy_enu, dx_enu) = self.LLA_local_deltaxy(self.current_lat, self.current_lon, self.target_lat, self.target_lon)
+				self.home.x = self.bodK.x + dx_enu
+				self.home.y = self.bodK.y + dy_enu
+			elif(self.way_points_tracker.index < len(self.way_points_tracker.way_points_list)):
+								self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
 				self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
 				if((self.way_points_tracker.state == "still") and (sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
 					self.way_points_tracker.start = rospy.get_time()
@@ -375,6 +459,8 @@ class StateMachineC( object ):
 		# Make sure the signal is not 'Failed', before declaring 'Done' signal
 		if (self.current_signal != 'Failed'):
 			self.current_signal = 'Done'
+		#save the picked object position
+		self.way_points_tracker.object_position=[self.current_lat,self.current_lon]
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -429,7 +515,7 @@ class StateMachineC( object ):
 
 			self.rate.sleep()
 			# publish setpoints
-			self.command.publish(setp)
+			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
@@ -499,7 +585,7 @@ class StateMachineC( object ):
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
 			# publish setpoints
-			self.command.publish(setp)
+			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
@@ -512,7 +598,7 @@ class StateMachineC( object ):
 		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 		self.rate.sleep()
 		# publish setpoints
-		self.command.publish(setp)
+		self.command.publish(self.setp)
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -552,7 +638,7 @@ class StateMachineC( object ):
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
 			# publish setpoints
-			self.command.publish(setp)
+			self.command.publish(self.setp)
 			# publish state topic
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
@@ -799,37 +885,48 @@ class StateMachineC( object ):
     ######## function for defining the field boundaries :########################
 	
 	def path(self):
-		dividerUnity=min(self.cameraView,5)
 		if (self.namespace=="/Quad1"):
 
-			num_of_segments_up_1=int(7/dividerUnity)
+			num_of_segments_up_1=max(int(7/self.cameraView),3)
 			upperBoundaries_1=self.intermediate(self.areaBoundaries[1],self.areaBoundaries[0],num_of_segments_up_1)
-			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)			
-			num_of_segments_up_3=int(5/dividerUnity)
-			upperBoundaries_3=self.intermediate(self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
-			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=self.intermediate(self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
 
+			num_of_segments_up_2=max(int(18/self.cameraView),4)
+			upperBoundaries_2=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[7],num_of_segments_up_2)		
+			del upperBoundaries_2[0]
+	
+			num_of_segments_up_3=max(int(5/self.cameraView),3)
+			upperBoundaries_3=self.intermediate(self.areaBoundaries[8],self.areaBoundaries[9],num_of_segments_up_3)
+			del upperBoundaries_3[-1]
+			
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
+
+			num_of_segments_down=len(upperBoundaries)+1
+			downBoundaries=self.intermediate(self.areaBoundaries[2],self.areaBoundaries[3],num_of_segments_down)
+			del downBoundaries[-1]
+
 
 			way_points_list=[]
 			for i in range(0,len(upperBoundaries)-1):
 				way_points_list.append(downBoundaries[i])
 				way_points_list.append(upperBoundaries[i])
 		if (self.namespace=="/Quad2"):
-
-			num_of_segments_up_3=int(7/dividerUnity)
-			upperBoundaries_3=self.intermediate(self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
-			num_of_segments_up_2=int(18/dividerUnity)
-			upperBoundaries_2=self.intermediate(self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
-			num_of_segments_up_1=int(5/dividerUnity)
+			num_of_segments_up_1=max(int(5/self.cameraView),3)
 			upperBoundaries_1=self.intermediate(self.areaBoundaries[9],self.areaBoundaries[10],num_of_segments_up_1)
-			num_of_segments_down=num_of_segments_up_1+num_of_segments_up_2+num_of_segments_up_3
-			downBoundaries=self.intermediate(self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
+			del upperBoundaries_1[0]
 
+			num_of_segments_up_2=max(int(18/self.cameraView),4)
+			upperBoundaries_2=self.intermediate(self.areaBoundaries[11],self.areaBoundaries[6],num_of_segments_up_2)
+			del upperBoundaries_2[-1]	
+
+			num_of_segments_up_3=max(int(7/self.cameraView),3)
+			upperBoundaries_3=self.intermediate(self.areaBoundaries[6],self.areaBoundaries[5],num_of_segments_up_3)
 			upperBoundaries=upperBoundaries_1+upperBoundaries_2+upperBoundaries_3
 
+			num_of_segments_down=len(upperBoundaries)+1
+			downBoundaries=self.intermediate(self.areaBoundaries[3],self.areaBoundaries[4],num_of_segments_down)
+			del downBoundaries[0]
+
+			
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
 				way_points_list.append(downBoundaries[i])
@@ -837,21 +934,21 @@ class StateMachineC( object ):
 
 		if (self.namespace=="/Quad3"):
 
-			num_of_segments=int(46/dividerUnity)
+			num_of_segments=int(46/self.cameraView)
 
 			upperBoundaries=self.intermediate(self.areaBoundaries[0],self.areaBoundaries[6],num_of_segments)
-		
+			del upperBoundaries[0]
 			downBoundaries=self.intermediate(self.areaBoundaries[7],self.areaBoundaries[11],num_of_segments)
-
+			del downBoundaries[0]
 			way_points_list=[]
 			for i in range(0,len(downBoundaries)-1):
-				way_points_list.append(downBoundaries[i])
 				way_points_list.append(upperBoundaries[i])
+				way_points_list.append(downBoundaries[i])
 
 
 		return(way_points_list)
 
-    ######## function for converting LLA points to local xy(NED) :########################
+    ######## function for converting LLA points to local delta xy(NED) :########################
 
 	def LLA_local_deltaxy(self, lat_0, lon_0,  lat,  lon):
 
@@ -892,6 +989,38 @@ class StateMachineC( object ):
 		return (delta_x,delta_y)
 
 	############### End of LLA_local_deltaxy function ##################
+
+	######## function for converting local delta xy(NED) to LLA points :########################
+	def local_deltaxy_LLA(lat_0, lon_0,  delta_x,  delta_y):
+
+		M_DEG_TO_RAD = 0.01745329251994
+		CONSTANTS_RADIUS_OF_EARTH	= 6371000.0
+		DBL_EPSILON = 2.2204460492503131E-16
+
+		curr_lat_rad = lat_0 * M_DEG_TO_RAD
+		curr_lon_rad = lon_0 * M_DEG_TO_RAD
+		curr_sin_lat = sin(curr_lat_rad)
+		curr_cos_lat = cos(curr_lat_rad)
+
+		x_rad = delta_x / CONSTANTS_RADIUS_OF_EARTH
+		y_rad = delta_y / CONSTANTS_RADIUS_OF_EARTH
+		c = sqrt(x_rad * x_rad + y_rad * y_rad)
+		sin_c = sin(c)
+		cos_c = cos(c)
+
+		if (fabs(c) > DBL_EPSILON):
+			lat_rad = asin(cos_c * curr_sin_lat + (x_rad * sin_c * curr_cos_lat) / c)
+			lon_rad = (curr_lon_rad + atan2(y_rad * sin_c, c * curr_cos_lat * cos_c - x_rad * curr_sin_lat * sin_c))
+
+		else:
+			lat_rad = curr_lat_rad
+			lon_rad = curr_lon_rad
+
+		lat = lat_rad * 180.0 / pi
+		lon = lon_rad * 180.0 / pi
+		return(lat,lon)
+	############### End of local_deltaxy_LLA function ##################
+	
 	#                                           (End of helper functions)                                                                    #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -943,29 +1072,39 @@ def mission():
 	# get namespace
 	ns=rospy.get_namespace()
 	ns = ns[0:len(ns)-1]
-
-	field_map = []
-
-	# read field_map from a YAML config file as a ros parameter
-	# check if the field_map parameter is set
-	if rospy.has_param(ns+'/field_map'):
-		field_map = rospy.get_param(ns+'/field_map')
-
-	print 'Length of field map= ', len(field_map)
-
 	
-	if len(field_map) < 14:
-		print 'Field map is not set properly. Exiting.....'
+	P0=[22.3050958,39.1066679]
+	P1=[22.3050349,39.1067199]
+	P2=[22.3052779,39.1070748]
+	P3=[22.3054460,39.1069465]
+	P4=[22.3056180,39.1068244]
+	P5=[22.3053760,39.1064333]
+	P6=[22.3053110,39.1064941]
+	P7=[22.3053171,39.1068244]
+	P8=[22.3053738,39.1068978]
+	P9=[22.3054055,39.1068724]
+	P10=[22.3054466,39.1068329]
+	P11=[22.3053919,39.1067598]
+	P12=[22.3053557,39.1067947]
+	P13=[22.3053749,39.1068168]
+
+	field_map=[P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12,P13]
+	
+	if len(field_map) < 13:
+		print 'Field map is empty. Exiting.....'
 		return
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
+	sm.target_lat = 47.3978434
+	sm.target_lon = 8.5432450
 	
 	sm.cameraView=1;
 
 	while not rospy.is_shutdown():
 		sm.update_state()
+	
 
 ######### Main ##################
 if __name__ == '__main__':
