@@ -103,7 +103,7 @@ class path_tracker():
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
-# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land, Hover}
+# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Drop, GoHome, Land, Hover}
 # Possible Signals for each state:
 #	Start:        {'Waiting', 'Ready'}
 #	Takeoff:      {'Done', 'Running', 'Interrupted'}
@@ -530,7 +530,7 @@ class StateMachineC( object ):
 
 	# State: GoToDrop
 	def execute_gotodrop(self):
-		self.current_state = 'Picking'
+		self.current_state = 'GoToDrop'
 		self.current_signal = 'Running'
 
 		self.debug()
@@ -690,7 +690,7 @@ class StateMachineC( object ):
 
 	# State: Drop
 	def execute_drop(self):
-		self.current_state='Dropping'
+		self.current_state='Drop'
 		self.current_sginal='Running'
 
 		self.debug()
