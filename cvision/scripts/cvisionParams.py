@@ -19,7 +19,7 @@ def setParams():
         rospy.set_param('/cvision/LY', 480)                          # full size screen height
 
     rospy.set_param('/cvision/camRotate', False)                 # camera rotated 90 degrees CCW facing down
-    rospy.set_param('/cvision/feCamera', True)                   # use fisheye mask and meter conversions
+    rospy.set_param('/cvision/feCamera', False)                   # use fisheye mask and meter conversions
     rospy.set_param('/cvision/gripperOffset', 0.0)               # gripper location from screen center in NED x-axis 
                                                                  # measured in pixels when landed at full size screen
     
@@ -33,7 +33,7 @@ def setParams():
     #rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/jeff_ws/variable.m4v')
     rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
+    rospy.set_param('/getLaunchpad/imgShow', False)               # show processed images to screen
     rospy.set_param('/getLaunchpad/imgStream', True)             # stream reduced processed images
     rospy.set_param('/getLaunchpad/imgStreamRate', 3)            # streaming rate
     

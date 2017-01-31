@@ -81,7 +81,7 @@ def getWhite():
             frame = quadCam.Gry
 
         # extract superwhite
-        _, mask = cv2.threshold(frame,225,255,cv2.THRESH_BINARY)
+        _, mask = cv2.threshold(frame,200,255,cv2.THRESH_BINARY)
         
         # apply fisheye mask
         if rospy.get_param('/cvision/feCamera'):
