@@ -66,11 +66,13 @@ def getWhite():
     #   _, frame = cap.read()
     #####LINES REMOVED#####
     # quadCam = cvisionLib.getFrame()
+    bridge = CvBridge()
     
     # Code for testing from video file
     if rospy.get_param('/getLaunchpad/testFileOn'):
         cap = cv2.VideoCapture(rospy.get_param('/getLaunchpad/fileName'))
 
+    
     while not rospy.is_shutdown():
 
         # grab a frame
@@ -81,7 +83,8 @@ def getWhite():
         else:
             #####LINES REMOVED#####
             # frame = quadCam.Gry
-            frame = rospy.wait_for_message('/cvision/frameGry', Image)
+            msg = rospy.wait_for_message('/cvision/frameGry', Image)
+            frame = bridge.imgmsg_to_cv2(msg, "passthrough")
 
         # extract superwhite
         _, mask = cv2.threshold(frame,200,255,cv2.THRESH_BINARY)
@@ -93,7 +96,7 @@ def getWhite():
         # apply proximity mask
         if MaskItNow:
             mask = cv2.bitwise_and(mask,pxMask)
-            
+
         if rospy.get_param('/getLaunchpad/erodeOn'):
             # opening
             mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(morph_width,morph_height)), iterations=1)
