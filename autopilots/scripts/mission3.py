@@ -1291,7 +1291,7 @@ def mission():
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
-	sm.cameraView=1;
+	sm.cameraView=1
 
 	while not rospy.is_shutdown():
 		sm.update_state()
