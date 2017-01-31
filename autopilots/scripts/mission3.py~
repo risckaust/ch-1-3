@@ -435,8 +435,19 @@ class StateMachineC( object ):
 		self.gripper_pub.publish(self.gripper_action)
 
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
-			objectFound, xy = self.monitorObjects()							# monitor objects
+			objectFound, xy,~ = self.monitorObjects()							# monitor objects
 
+			############################################################################################################################			
+			#TODO Need to be checked by Abdelkader			
+			#check whether the object is within the operation area otherwise just neglect the object
+			if objectFound:
+				dx_enu = xy[0] - self.bodK.x 
+				dy_enu = xy[1] - self.bodK.y 
+				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
+				if( not self.quad_op_area.is_inside([lat_object,lon_object]) )
+					objectFound=0	
+					self.current_signal = 'Failed'
+			############################################################################################################################
 			if objectFound:										# found an object
 				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
 				self.bodK.xSp = xy[0]*altCorrect
