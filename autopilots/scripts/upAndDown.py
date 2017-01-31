@@ -38,8 +38,8 @@ def autopilot():
     
     # Instantiate a tracker
     target = autopilotLib.xyzVar()
-    #rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
-    rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
+    rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
+    #rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
     
     # Instantiate a mode switcher
     modes = autopilotLib.fcuModes()
@@ -110,10 +110,11 @@ def autopilot():
             (setp.velocity.x,setp.velocity.y,setp.yaw_rate) = bodK.controller()
             
             error = sqrt(bodK.xSp**2 + bodK.ySp**2)
-            if error < 0.05:
-                setp.velocity.z = -0.1
+            if error < 0.25:
+                setp.velocity.z = -0.3
             else:
-                setp.velocity.z = 0.0
+		altK.zSp = altK.z
+                setp.velocity.z = 0*altK.controller()
 
             if False: # altK.z < zGround + 0.1:
                 altK.zSp = zGround + 0.1
@@ -132,11 +133,11 @@ def autopilot():
         command.publish(setp)
 
         print 'xSp/ySp/error/seeIt: ', bodK.xSp, bodK.ySp, error, seeIt
-        print 'airborne: ', altK.airborne
+        print 'z, airborne: ', altK.z, altK.airborne
         
         if not altK.airborne:
             airborne = False
-            modes.setDisarm()
+            # modes.setDisarm()
         
 if __name__ == '__main__':
     try:

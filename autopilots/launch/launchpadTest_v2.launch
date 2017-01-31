@@ -1,9 +1,11 @@
 <launch>
 
-        <arg name="fcu_url" default="/dev/ttyUSB0:921600" />
+        <arg name="fcu_url" default="/dev/ttySAC0:921600" />
+	<arg name="gcs_url" default="" />
         
         <include file="$(find mavros)/launch/px4.launch">
             <arg name="fcu_url" value="$(arg fcu_url)" />
+            <arg name="gcs_url" value="$(arg gcs_url)" />		
         </include>
 
         <node pkg="cvision" type="videoBridge.py"  name="videoBridge" required="true" >
@@ -24,5 +26,14 @@
         <!--node pkg="cvision" type="getColorBlob.py"  name="getBlueBlob"  required="true">
         <remap from="local_color" to="/getColors/blue" />
         </node-->
+
+	<node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frameBGR 5.0 cvision/frameBGR_reduced" required="true" >
+        </node>
+
+        <!--node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/Data.bag /frameBGR_reduced /getLaunchpad/launchpad/xyMeters" required="true" >
+        </node-->
+
+	<!--node pkg="autopilots" type="upAndDown.py" name="upAndDown" required="true" >
+	</node-->
 
 </launch>
