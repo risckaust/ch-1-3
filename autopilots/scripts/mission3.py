@@ -976,13 +976,16 @@ class StateMachineC( object ):
 		###################TODO modified and need to be checked #########################################
 		if (len(xy_list)>0):
 			xy_list_sorted=[]
-			for i in range(0,len(xy_list))
+			for i in range(0,len(xy_list)):
 				xy_list_sorted.append([xy_list[i][0],xy_list[i][1],r_list[i]])
 			xy_list_sorted=sorted(xy_list, key=self.getThirdElemt)
-			for i in range(0,len(xy_list_sorted))
-				dx_enu = xy_list_sorted[i][0] - self.bodK.x 
-				dy_enu = xy_list_sorted[i][1] - self.bodK.y 
-				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
+			for i in range(0,len(xy_list_sorted)):
+				bodyRot = self.bodK.yaw - pi/2.0
+				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot) 
+				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
+				dx_enu = x_enu
+				dy_enu = y_enu
+				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) ##x and y switched because thid function operates in END frame
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True		
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
@@ -1193,7 +1196,7 @@ class StateMachineC( object ):
 	############### End of LLA_local_deltaxy function ##################
 	########function for getting the third element of a list ###########
 	def getThirdElemt(item):
-		return item[3]
+		return item[2]
 	####################################################################
 	######## function for converting local delta xy(NED) to LLA points :########################
 	def local_deltaxy_LLA(self,lat_0, lon_0,  delta_x,  delta_y):
