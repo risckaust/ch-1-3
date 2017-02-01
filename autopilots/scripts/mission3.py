@@ -121,7 +121,7 @@ class StateMachineC( object ):
 		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
 		self.areaBoundaries     = field_map			# The list of the different field refence points (to be provided)
 		self.cameraView		=6				#Parameter that caracterize the camera precision and field of view
-		self.way_points_tracker=path_tracker( )			# object that is used for the tracking of points to be visited
+		self.way_points_tracker=path_tracker(self.areaBoundaries)# object that is used for the tracking of points to be visited
 		self.way_points_tracker.way_points_list=self.path()
 		self.quad_op_area =quad_zone(ns,field_map)
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
@@ -354,7 +354,7 @@ class StateMachineC( object ):
 				self.home.x = self.bodK.x + dx_enu
 				self.home.y = self.bodK.y + dy_enu
 			elif(self.way_points_tracker.index < len(self.way_points_tracker.way_points_list)):
-								self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
+				self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
 				self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
 				if((self.way_points_tracker.state == "still") and (sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
 					self.way_points_tracker.start = rospy.get_time()
@@ -804,7 +804,7 @@ class StateMachineC( object ):
 	# State: Hover
 	def execute_hover(self):
 		self.current_state='Hover'
-		self.current_sginal='Running'
+		self.current_signal='Running'
 
 		self.debug()
 
@@ -934,7 +934,7 @@ class StateMachineC( object ):
 
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
-	#                                               (helper functions)                                                                       #
+#                                               (helper functions)                                                                       #
 
 	# check if a colored object is found
 	# returns a tuple: (bool objectFound, xy_coord of closest object)
@@ -1209,14 +1209,14 @@ class StateMachineC( object ):
 	############### End of local_deltaxy_LLA function ##################
 
     ################ test gripper actuation ##########################
-    def test_gripper(self, cmd):
-        # activate/deactivate gripper
-        self.gripper_action.data = cmd
-        self.gripper_pub.publish(self.gripper_action)
-        # print gripper status
-        print '#---------------------------------#'
-        print 'Gripper status: ', self.gripperIsPicked
-        print '#---------------------------------#'
+	def test_gripper(self, cmd):
+		# activate/deactivate gripper
+		self.gripper_action.data = cmd
+		self.gripper_pub.publish(self.gripper_action)
+		# print gripper status
+		print '#---------------------------------#'
+		print 'Gripper status: ', self.gripperIsPicked
+		print '#---------------------------------#'
     ############### End of test_gripper #############################
 
 	#                                           (End of helper functions)                                                                    #
@@ -1272,12 +1272,12 @@ def mission():
 	ns = ns[0:len(ns)-1]
 
 	field_map=[]
-    # read field_map from a YAML config file as a ros parameter
-    # check if the field_map parameter is set
-    if rospy.has_param(ns+'/field_map'):
-        field_map = rospy.get_param(ns+'/field_map')
+	# read field_map from a YAML config file as a ros parameter
+	# check if the field_map parameter is set
+	if rospy.has_param(ns+'/field_map'):
+		field_map = rospy.get_param(ns+'/field_map')
 
-    print 'Length of field map= ', len(field_map)
+	print 'Length of field map= ', len(field_map)
 
 	if len(field_map) < 14:
 		print 'Field map is not set properly. Exiting.....'
