@@ -103,18 +103,18 @@ class path_tracker():
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
-# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land, Hover}
+# States: {Start, Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Drop, GoHome, Land, Hover}
 # Possible Signals for each state:
-#	Start:		{'Waiting', 'Ready'}
-#	Takeoff:	{'Done', 'Running'}
-#	ObjectSearch:	{'Done', 'Running'}
-#	Picking:	{'Done', 'Running', 'Failed'}
-#	GoToDrop:	{'Done', 'Running'}
-#   WaitToDrop: {'Done', 'Running'}
-#	Dropping:	{'Done', 'Running'}
-#	GoHome:		{'Done', 'Running'}
-#	Land:		{'Done', 'Running'}
-#	Hover:		{'Done', 'Running'}
+#	Start:        {'Waiting', 'Ready'}
+#	Takeoff:      {'Done', 'Running', 'Interrupted'}
+#	ObjectSearch: {'Done', 'Running', 'Interrupted'}
+#	Picking:      {'Done', 'Running', 'Failed', 'Interrupted'}
+#	GoToDrop:     {'Done', 'Running', 'Interrupted'}
+#   WaitToDrop:   {'Done', 'Running', 'Interrupted'}
+#	Dropping:     {'Done', 'Running', 'Interrupted'}
+#	GoHome:       {'Done', 'Running', 'Interrupted'}
+#	Land:         {'Done', 'Running', 'Interrupted'}
+#	Hover:        {'Done', 'Running'}   # All state should go to Hover when Interrupted
 class StateMachineC( object ):
 	def __init__(self, ns, field_map):
 		autopilotParams.setParams(ns)
@@ -126,6 +126,7 @@ class StateMachineC( object ):
 		self.quad_op_area =quad_zone(ns,field_map)
 		self.current_state	= 'Idle'			# Initially/finally, do nothing.
 		self.current_signal	= None				# used to decide on transitions to other states
+        self.resume_state   = 'Hover'           # last state to resume after external interruption
 		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
 		self.error_str		= 'No error'			# Error description (for debug)
 		self.DEBUG		= False				# Turn debug mode on/off
@@ -211,6 +212,14 @@ class StateMachineC( object ):
 		self.gripper_action	= Bool()              # .data=True: activate magnets, .data=False: deactivate
 		self.gripper_pub	= rospy.Publisher(ns+'/gripper_command', Bool, queue_size=10)
 
+        # set state Interruption as ROS paramter
+        # if >0 : interrupt state
+        rospy.set_param(ns+'/state_machine/interruption', 0.0)
+
+        # set Resume signal as ROS parameter
+        # >0: resume
+        rospy.set_param(ns+'/state_machine/resume', 0.0)
+
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 	#                                                   (States implementation)                                                              #
@@ -276,9 +285,16 @@ class StateMachineC( object ):
 
 			print 'State/Set/Alt/Gnd:', self.current_state, self.altK.zSp, self.altK.z, self.ZGROUND
 
+            # check for interruption
+            if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
+                self.current_signal='Interrupted'
+                # clear the interruption
+                rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
+                break
 
 		# Done with takoeff, send signal
-		self.current_signal = 'Done'
+        if self.current_signal != 'Interrupted':
+		          self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -389,8 +405,16 @@ class StateMachineC( object ):
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
-		# Done with searchobject state, send signal
-		self.current_signal = 'Done'
+            # check for interruption
+            if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
+                self.current_signal='Interrupted'
+                # clear the interruption
+                rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
+                break
+
+		# Done with ObjectSearch, send signal
+        if self.current_signal != 'Interrupted':
+		          self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -474,10 +498,16 @@ class StateMachineC( object ):
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
+            # check for interruption
+            if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
+                self.current_signal='Interrupted'
+                # clear the interruption
+                rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
+                break
 
 		# Done with Picking state, send signal
-		# Make sure the signal is not 'Failed', before declaring 'Done' signal
-		if (self.current_signal != 'Failed'):
+		# Make sure the signal is not 'Failed' and not interrupted, before declaring 'Done' signal
+		if (self.current_signal != 'Failed' and self.current_signal != 'Interrupted'):
 			self.current_signal = 'Done'
 		#save the picked object position
 		self.way_points_tracker.object_position=[self.current_lat,self.current_lon]
@@ -502,7 +532,7 @@ class StateMachineC( object ):
 
 	# State: GoToDrop
 	def execute_gotodrop(self):
-		self.current_state = 'Picking'
+		self.current_state = 'GoToDrop'
 		self.current_signal = 'Running'
 
 		self.debug()
@@ -548,8 +578,16 @@ class StateMachineC( object ):
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
-		# Done with GoToDrop state, send signal
-		self.current_signal = 'Done'
+            # check for interruption
+            if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
+                self.current_signal='Interrupted'
+                # clear the interruption
+                rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
+                break
+
+		# Done with GoToDrop, send signal
+        if self.current_signal != 'Interrupted':
+		          self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -626,8 +664,16 @@ class StateMachineC( object ):
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
-		# end of while loop
+            # check for interruption
+            if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
+                self.current_signal='Interrupted'
+                # clear the interruption
+                rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
+                break
 
+		# Done with WaitToDrop, send signal
+        if self.current_signal != 'Interrupted':
+		          self.current_signal = 'Done'
 		# update setpoint topic
 		self.setp.velocity.z = self.altK.controller()
 		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
@@ -646,7 +692,7 @@ class StateMachineC( object ):
 
 	# State: Drop
 	def execute_drop(self):
-		self.current_state='Dropping'
+		self.current_state='Drop'
 		self.current_sginal='Running'
 
 		self.debug()
@@ -692,10 +738,17 @@ class StateMachineC( object ):
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
-		# end of while loop
 
-		# Done with Drop state, send signal
-		self.current_signal = 'Done'
+            # check for interruption
+            if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
+                self.current_signal='Interrupted'
+                # clear the interruption
+                rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
+                break
+
+		# Done with Drop, send signal
+        if self.current_signal != 'Interrupted':
+		          self.current_signal = 'Done'
 		# publish state topic
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
@@ -778,6 +831,12 @@ class StateMachineC( object ):
             self.setp.header.stamp = rospy.Time.now()
     		self.command.publish(self.setp)
 
+            # check for resume command
+            if rospy.get_param(self.namespace+'/state_machine/resume') > 0.0:
+                # clear resume parameter
+                rospy.set_param(self.namespace+'/state_machine/resume', 0.0)
+                break
+
         # Done with Hover state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
@@ -797,39 +856,85 @@ class StateMachineC( object ):
 
 		# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
 		# Possible Signals for each state:
-		#	Takeoff:	{'Done', 'Running'}
-		#	ObjectSearch:	{'Done', 'Running'}
-		#	Picking:	{'Done', 'Running', 'Failed'}
-		#	GoToDrop:	{'Done', 'Running'}
-        #	WaitToDrop:	{'Done', 'Running'}
-		#	Dropping:	{'Done', 'Running'}
-		#	GoHome:		{'Done', 'Running'}
-		#	Land:		{'Done', 'Running'}
-        #	Hover:	{'Done', 'Running'}
+		#	Takeoff:	{'Done', 'Running', 'Interrupted'}
+		#	ObjectSearch:	{'Done', 'Running', 'Interrupted'}
+		#	Picking:	{'Done', 'Running', 'Failed', 'Interrupted'}
+		#	GoToDrop:	{'Done', 'Running', 'Interrupted'}
+        #	WaitToDrop:	{'Done', 'Running', 'Interrupted'}
+		#	Dropping:	{'Done', 'Running', 'Interrupted'}
+		#	GoHome:		{'Done', 'Running', 'Interrupted'}
+		#	Land:		{'Done', 'Running', 'Interrupted'}
+        #	Hover:	{'Done', 'Running'}    # state should go to Hover when interrupted
 
 		# manage the transition between states
 		state = self.current_state
 		signal = self.current_signal
+
 		if (state == 'Start' and signal != 'Ready' and self.START_SIGNAL):	# initial signal
 			self.execute_start()
-		elif (state == 'Start' and signal == 'Ready'):	# Done: start -> go to: Takeoff state
+		elif (state == 'Start' and signal == 'Ready'):
 			self.execute_takeoff()
-		elif (state == 'Takeoff' and signal == 'Done'):	# Done: Takeoff -> go to: ObjectSearch state
-			self.execute_objectSearch()
-		elif (state == 'ObjectSearch' and signal == 'Done'): # Done: ObjectSearch -> go to: Picking state
-			self.execute_picking()
-		elif (state == 'Picking'):			# Two cases:
-			if (signal == 'Failed'):			# Failed -> go to: ObjectSearch state
-				self.execute_objectSearch()
-			if (signal == 'Done'):				# Done: Picking -> go to: GoToDrop state
-				self.execute_gotodrop()
-		elif (state == 'GoToDrop' and signal == 'Done'):	# Done: GoToDrop -> go to: WiatToDrop state
-			self.execute_wiattodrop()
-		elif (state == 'WaitToDrop' and signal == 'Done'):# Done: WaitToDrop -> go to: Drop state
-			self.execute_drop()
-		elif (state == 'Drop' and signal == 'Done'):	# Done: Drop -> go back to: ObjectSearch state
-			self.execute_objectSearch()
 
+		elif (state == 'Takeoff'):
+            if signal == 'Done':
+                self.execute_objectSearch()
+            elif signal == 'Interrupted':
+                self.resume_state='Takeoff'
+                self.execute_hover()
+            elif signal == 'Resume':
+                self.execute_takeoff()
+
+		elif (state == 'ObjectSearch'):
+            if signal == 'Done':
+                self.execute_picking()
+            elif signal == 'Interrupted':
+                self.resume_state='ObjectSearch'
+                self.execute_hover()
+            elif signal == 'Resume':
+                self.execute_objectSearch()
+
+		elif (state == 'Picking'):
+            if signal == 'Interrupted':
+                self.resume_state='Picking'
+                self.execute_hover()
+			elif (signal == 'Failed'):
+				self.execute_objectSearch()
+			elif (signal == 'Done'):
+				self.execute_gotodrop()
+            elif signal == 'Resume':
+                self.execute_picking()
+
+		elif (state == 'GoToDrop'):
+            if signal == 'Interrupted':
+                self.resume_state = 'GoToDrop'
+                self.execute_hover()
+            elif signal == 'Done':
+                self.execute_wiattodrop()
+            elif signal == 'Resume':
+                self.execute_gotodrop()
+
+		elif (state == 'WaitToDrop'):
+            if signal == 'Interrupted':
+                self.resume_state = 'WiatToDrop'
+                self.execute_hover()
+            elif signal == 'Done':
+                self.execute_drop()
+            elif signal == 'Resume':
+                self.execute_wiattodrop()
+
+		elif (state == 'Drop'):
+            if signal == 'Interrupted':
+                self.resume_state = 'Drop'
+                self.execute_hover()
+            elif signal == 'Done':
+                self.execute_objectSearch()
+            elif signal == 'Resume':
+                self.execute_drop()
+
+        elif (state == 'Hover'):
+            if signal == 'Done':
+                self.current_state = self.resume_state
+                self.current_signal = 'Resume'
 	#                                          (End of transition function)                                                                  #
 	#----------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -1200,7 +1305,7 @@ def mission():
 	sm.DEBUG=True
 	sm.current_state='Start'
 	sm.START_SIGNAL=True
-	sm.cameraView=1;
+	sm.cameraView=1
 
 	while not rospy.is_shutdown():
 		sm.update_state()
