@@ -43,9 +43,9 @@ def videoBridge():
     # start video stream and set parameters
     cap = cv2.VideoCapture(0)
     if OLDCV:
-        cap.set(cv.CAP_PROP_FPS, rospy.get_param('/cvision/loopRate'))
-        cap.set(cv.CAP_CV_CAP_PROP_FRAME_WIDTH, rospy.get_param('/cvision/LX'))
-        cap.set(cv.CAP_CV_CAP_PROP_FRAME_HEIGHT, rospy.get_param('/cvision/LY'))
+        cap.set(cv.CV_CAP_PROP_FPS, rospy.get_param('/cvision/loopRate'))
+        cap.set(cv.CV_CAP_PROP_FRAME_WIDTH, rospy.get_param('/cvision/LX'))
+        cap.set(cv.CV_CAP_PROP_FRAME_HEIGHT, rospy.get_param('/cvision/LY'))
     else:
         cap.set(cv2.CAP_PROP_FPS, rospy.get_param('/cvision/loopRate'))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, rospy.get_param('/cvision/LX'))
