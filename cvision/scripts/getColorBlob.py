@@ -90,22 +90,22 @@ def getColor():
     	# find the color in the image. red is a special cases
     	
     	if color == 'blue':
-            lower = np.array([100,0,127],np.uint8)
+            lower = np.array([100,100,100],np.uint8)
             upper = np.array([120,255,255],np.uint8)
         elif color == 'green':
-            lower = np.array([80,0,127],np.uint8)
+            lower = np.array([80,100,100],np.uint8)
             upper = np.array([100,255,255],np.uint8) 
         elif color == 'yellow':
-            lower = np.array([20,0,200],np.uint8)
+            lower = np.array([20,100,100],np.uint8)
             upper = np.array([40,255,255],np.uint8)      
         elif color == 'red':
             # find the red in the image with low "H"
-            lower = np.array([0,0,200],np.uint8)
+            lower = np.array([0,100,100],np.uint8)
             upper = np.array([10,255,255],np.uint8)
             maskLow = cv2.inRange(hsv, lower, upper)
         
             # find the red in the image with high "H"
-            lower = np.array([170,0,200],np.uint8)
+            lower = np.array([170,100,100],np.uint8)
             upper = np.array([180,255,255],np.uint8)
             maskHigh = cv2.inRange(hsv, lower, upper)
             
@@ -152,24 +152,31 @@ def getColor():
 
             # keep largest contour
             c = max(cnts, key=cv2.contourArea)
-                  
-            # compute centroid of max contour
-            M = cv2.moments(c)
             
-            if M["m00"]>rospy.get_param('/getColors/minMass'):
+            # construct & draw bounding circle
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
+            # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
             
-                # flag positive detection
-                Detect = True
+            # compute centroid of max contour vs center of circle
+            
+            if rospy.get_param('/getColors/useMass'):
                 
-	    	    # compute center of contour
-                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-	    	    
-                # construct & draw bounding circle
-                ((x, y), radius) = cv2.minEnclosingCircle(c)
-                cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-                # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
-    	    	
-                # use centroid (not circle center) as detected target
+                M = cv2.moments(c)
+                
+                if M["m00"]>rospy.get_param('/getColors/minMass'):
+                
+                    # flag positive detection
+                    Detect = True
+                    
+	        	    # compute center of contour
+                    center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+            else:
+                if radius > rospy.get_param('/getColors/minRadius'):
+                    Detect = True
+                    center = x, y
+    	   
+    	    if Detect:
                 msgPixels.x=center[0]
                 msgPixels.y=center[1]
                 msgPixels.z = radius # report radius of enclosing circle
@@ -178,7 +185,7 @@ def getColor():
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
         if Detect and DetectHold and rospy.get_param('/getColors/proximityOn'): # create a proximity mask of radius multiple
-                cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getColors/pxRadius')),(255,255,255),-1)
+                cv2.circle(pxMask,(int(center[0]),int(center[1])),np.uint8(radius*rospy.get_param('/getColors/pxRadius')),(255,255,255),-1)
                 MaskItNow = True
         else:
             MaskItNow = False
@@ -204,7 +211,7 @@ def getColor():
         # show processed images to screen
         if rospy.get_param('/getColors/imgShow'):
             cv2.imshow(color,frame)
-            #cv2.imshow('pxMask',pxMask)
+            cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image

@@ -43,15 +43,17 @@ def setParams():
     rospy.set_param('/getColors/green','green')
     rospy.set_param('/getColors/yellow','yellow')
     
+    rospy.set_param('/getColors/useMass', False)                 # use mass for color blob (otherwise, only circle)
     rospy.set_param('/getColors/minMass',50.0)                   # minimum mass to detect a color blob
+    rospy.set_param('/getColors/minRadius',10.0)                 # minimum cirlce radius to detect a color blob
     rospy.set_param('/getColors/erodeOn',False)                  # use erode/dilate vs blurring 
     rospy.set_param('/getColors/proximityOn',True)               # use proximity filter on most recent detection
-    rospy.set_param('/getColors/pxRadius', 5.0)                  # radius multiplier for proximity mask
+    rospy.set_param('/getColors/pxRadius', 2.0)                  # radius multiplier for proximity mask
     
     rospy.set_param('/getColors/testFileOn',False)               # binary for testing on file
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param('/getColors/imgShow', False)                  # show processed images to screen
+    rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen
     rospy.set_param('/getColors/imgStream', True)                # stream reduced processed images
     rospy.set_param('/getColors/imgStreamRate', 3)               # streaming rate
     
