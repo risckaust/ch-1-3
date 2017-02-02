@@ -2,6 +2,8 @@
 
         <arg name="fcu_url" default="/dev/ttySAC0:921600" />
 	<arg name="gcs_url" default="" />
+	<arg name="record_imgs" default="false" />
+        <arg name="record_states" default="false" />
         
         <include file="$(find mavros)/launch/px4.launch">
             <arg name="fcu_url" value="$(arg fcu_url)" />
@@ -27,11 +29,14 @@
         <remap from="local_color" to="/getColors/blue" />
         </node-->
 
-	<node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frameBGR 5.0 cvision/frameBGR_reduced" required="true" >
+	<!--node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frameBGR 5.0 cvision/frameBGR_reduced" required="true" >
+        </node-->
+
+        <node pkg="rosbag" type="record" name="record_imgs" args="-o /home/odroid/ros_bags/Img_Data.bag /cvision/frameBGR /getLaunchpad/corners/processedImage /getLaunchpad/corners/xyPixels /getLaunchpad/launchpad/processedImage /getLaunchpad/launchpad/xyMeters /getLaunchpad/launchpad/xyPixels" required="true" if="$(arg record_imgs)" >
         </node>
 
-        <!--node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/Data.bag /frameBGR_reduced /getLaunchpad/launchpad/xyMeters" required="true" >
-        </node-->
+	<node pkg="rosbag" type="record" name="record_states" args="-o /home/odroid/ros_bags/State_Data.bag /mavros/local_position/pose" required="true" if="$(arg record_states)" > 
+        </node>
 
 	<!--node pkg="autopilots" type="upAndDown.py" name="upAndDown" required="true" >
 	</node-->
