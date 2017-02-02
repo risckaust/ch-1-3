@@ -22,7 +22,11 @@ def setParams():
     rospy.set_param('/cvision/feCamera', False)                   # use fisheye mask and meter conversions
     rospy.set_param('/cvision/gripperOffset', 0.0)               # gripper location from screen center in NED x-axis 
                                                                  # measured in pixels when landed at full size screen
-    
+                                                                 
+    rospy.set_param('/cv_camera/rate',rospy.get_param('/cvision/loopRate'))
+    rospy.set_param('/cv_camera/image_width',rospy.get_param('/cvision/LX'))
+    rospy.set_param('/cv_camers/image_height',rospy.get_param('/cvision/LY'))
+        
     # ROS parameters getLaunchpad
     rospy.set_param('/getLaunchpad/minMass',50.0)                # minimum mass to detect a white blob
     rospy.set_param('/getLaunchpad/erodeOn',False)               # use erode/dilate vs blurring in white detection 
@@ -48,12 +52,12 @@ def setParams():
     rospy.set_param('/getColors/minRadius',10.0)                 # minimum cirlce radius to detect a color blob
     rospy.set_param('/getColors/erodeOn',False)                  # use erode/dilate vs blurring 
     rospy.set_param('/getColors/proximityOn',True)               # use proximity filter on most recent detection
-    rospy.set_param('/getColors/pxRadius', 2.0)                  # radius multiplier for proximity mask
+    rospy.set_param('/getColors/pxRadius', 1.2)                  # radius multiplier for proximity mask
     
     rospy.set_param('/getColors/testFileOn',False)               # binary for testing on file
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param('/getColors/imgShow', False)                  # show processed images to screen
+    rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen
     rospy.set_param('/getColors/imgStream', False)                # stream reduced processed images
     rospy.set_param('/getColors/imgStreamRate', 3)               # streaming rate
     

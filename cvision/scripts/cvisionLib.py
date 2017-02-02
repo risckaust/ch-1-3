@@ -1,8 +1,20 @@
 import rospy
 import numpy as np
+import cv2
+
 from math import *
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+
+# Check version of OpenCV
+
+if cv2.__version__.startswith('2'):
+    OLDCV = True
+else:
+    OLDCV = False
+    
+if OLDCV:
+    import cv2.cv as cv
 
 ###################################
 #
@@ -98,16 +110,12 @@ class getFrame():
         self.LY = rospy.get_param('/cvision/LY')
         self.BGR = np.zeros((self.LY,self.LX,3), np.uint8)
         self.Gry = np.zeros((self.LY,self.LX,1), np.uint8)
-        self.subBGR = rospy.Subscriber('/cvision/frameBGR', Image, self.cbBGR)
-        self.subGry = rospy.Subscriber('/cvision/frameGry', Image, self.cbGry)
-    
-    def cbBGR(self,msg):
+        self.subFrame = rospy.Subscriber('/cvision/frame', Image, self.cbFrame)
+
+    def cbFrame(self,msg):
         if not msg == None:
             self.BGR = self.bridge.imgmsg_to_cv2(msg, "passthrough")
-    
-    def cbGry(self,msg):
-        if not msg == None:
-            self.Gry = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+            self.Gry = cv2.cvtColor(self.BGR, cv2.COLOR_BGR2GRAY)
             
 ###################################
 #

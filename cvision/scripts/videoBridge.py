@@ -34,17 +34,23 @@ def videoBridge():
     
     # Create publishers
 
-    frameBGR  = rospy.Publisher('/cvision/frameBGR', Image, queue_size=10)
-    msgBGR = CvBridge()
-    frameGry =  rospy.Publisher('/cvision/frameGry', Image, queue_size=10)
-    msgGry = CvBridge()
+    frame = rospy.Publisher('/cvision/frame', Image, queue_size=10)
+    msg = CvBridge()
 
     # set publication rate
     rate = rospy.Rate(rospy.get_param('/cvision/loopRate'))
-
-    # start video stream
-    cap = cv2.VideoCapture(0)
     
+    # start video stream and set parameters
+    cap = cv2.VideoCapture(0)
+    if OLDCV:
+        cap.set(cv.CAP_PROP_FPS, rospy.get_param('/cvision/loopRate'))
+        cap.set(cv.CAP_CV_CAP_PROP_FRAME_WIDTH, rospy.get_param('/cvision/LX'))
+        cap.set(cv.CAP_CV_CAP_PROP_FRAME_HEIGHT, rospy.get_param('/cvision/LY'))
+    else:
+        cap.set(cv2.CAP_PROP_FPS, rospy.get_param('/cvision/loopRate'))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, rospy.get_param('/cvision/LX'))
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, rospy.get_param('/cvision/LY'))
+     
     # wait a second
     time.sleep(1.0)
     
@@ -59,17 +65,16 @@ def videoBridge():
         _, bgr = cap.read()
         
         # resize if needed
-        if rospy.get_param('/cvision/reduce'):
-            bgr = cv2.resize(bgr,(rospy.get_param('/cvision/LX'),rospy.get_param('/cvision/LY')))
+        # if rospy.get_param('/cvision/reduce'):
+        #     bgr = cv2.resize(bgr,(rospy.get_param('/cvision/LX'),rospy.get_param('/cvision/LY')))
         
         # convert to grayscale
         
-        gry = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        # gry = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
         # publish images
         rate.sleep()
-        frameBGR.publish(msgBGR.cv2_to_imgmsg(bgr, encoding="bgr8"))
-        frameGry.publish(msgGry.cv2_to_imgmsg(gry, encoding="passthrough"))
+        frame.publish(msg.cv2_to_imgmsg(bgr, encoding="bgr8"))
 
 if __name__ == '__main__':
     try:

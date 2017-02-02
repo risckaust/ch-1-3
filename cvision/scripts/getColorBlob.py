@@ -72,6 +72,8 @@ def getColor():
     #   cap = cv2.VideoCapture(0) or cap = cv2.VideoCapture('file.mp4')
     #   _, frame = cap.read()
     quadCam = cvisionLib.getFrame()
+    #quadCam = cvisionLib.getCvFrame()
+    
     
     # Code for testing from video file
     if rospy.get_param('/getColors/testFileOn'):
