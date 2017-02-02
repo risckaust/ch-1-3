@@ -313,7 +313,6 @@ class StateMachineC( object ):
 
 	# State: ObjectSearch
 	def execute_objectSearch(self):
-		print("I am in object search...")
 		self.current_state = 'ObjectSearch'
 		self.current_signal= 'Running'
 
@@ -1304,8 +1303,7 @@ def mission():
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
 	sm.current_state='ObjectSearch'
-	sm.execute_objectSearch()
-	#sm.START_SIGNAL=True
+	sm.START_SIGNAL=True
 	sm.cameraView=1
 
 	while not rospy.is_shutdown():

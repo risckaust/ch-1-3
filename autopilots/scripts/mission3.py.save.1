@@ -313,7 +313,7 @@ class StateMachineC( object ):
 
 	# State: ObjectSearch
 	def execute_objectSearch(self):
-		print("I am in object search...")
+		print5("5454544544545454545454545454545454545454545454545454545454545454545454")
 		self.current_state = 'ObjectSearch'
 		self.current_signal= 'Running'
 
@@ -1303,9 +1303,8 @@ def mission():
 
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
-	sm.current_state='ObjectSearch'
-	sm.execute_objectSearch()
-	#sm.START_SIGNAL=True
+	sm.current_state='Takeoff'
+	sm.START_SIGNAL=True
 	sm.cameraView=1
 
 	while not rospy.is_shutdown():
@@ -1318,3 +1317,4 @@ if __name__ == '__main__':
         mission()
     except rospy.ROSInterruptException:
         pass
+Obj
