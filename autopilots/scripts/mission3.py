@@ -388,8 +388,8 @@ class StateMachineC( object ):
 
 			# check for objects
 			objectFound, _ = self.monitorObjects()
-		
-	
+
+
 			# publish control commands
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			self.setp.velocity.z = self.altK.controller()
@@ -906,7 +906,7 @@ class StateMachineC( object ):
 				self.resume_state = 'GoToDrop'
 				self.execute_hover()
 			elif signal == 'Done':
-				self.execute_wiattodrop()
+				self.execute_waittodrop()
 			elif signal == 'Resume':
 				self.execute_gotodrop()
 
@@ -978,13 +978,13 @@ class StateMachineC( object ):
 			xy_list_sorted=sorted(xy_list, key=self.getThirdElemt)
 			for i in range(0,len(xy_list_sorted)):
 				bodyRot = self.bodK.yaw - pi/2.0
-				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot) 
+				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot)
 				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
 				dx_enu = x_enu
 				dy_enu = y_enu
 				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) ##x and y switched because thid function operates in END frame
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
-					objectFound=True		
+					objectFound=True
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
 				else:
 					print("Object seen but neglected")
