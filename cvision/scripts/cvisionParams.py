@@ -9,7 +9,7 @@ import rospy
 def setParams():
 
     # ROS parameters for general vision tasks
-    rospy.set_param('/cvision/loopRate', 20.0)                   # loop rate for vision algorithms
+    rospy.set_param('/cvision/loopRate', 30.0)                   # loop rate for vision algorithms
     rospy.set_param('/cvision/reduce', False)                     # reduce frame size
     if rospy.get_param('/cvision/reduce'):
         rospy.set_param('/cvision/LX', 320)                          # half size screen width
@@ -51,7 +51,7 @@ def setParams():
     rospy.set_param('/getColors/testFileOn',False)               # binary for testing on file
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen
+    rospy.set_param('/getColors/imgShow', False)                  # show processed images to screen
     rospy.set_param('/getColors/imgStream', True)                # stream reduced processed images
     rospy.set_param('/getColors/imgStreamRate', 3)               # streaming rate
     
@@ -60,17 +60,17 @@ def setParams():
     rospy.set_param('/pix2m/altCal',1.2)                         # calibration altitude (used in main loop)
     
     # ROS parameters getLaunchPadx3 ***TO BE ELIMINATED***
-    rospy.set_param('/getLaunchPad/pxMasking', False)            # use proximity masking
-    rospy.set_param('/getLaunchPad/centroidThresh', 10000.0)     # threshold for white centroid detection
-    rospy.set_param('/getLaunchPad/circleTol', 1.5)              # radius multiplier for circles
-    rospy.set_param('/getLaunchPad/erodeOn', False)              # use erode/dilate vs blur
-    rospy.set_param('/getLaunchPad/liberal', False)              # allow lone bright white detection
-    rospy.set_param('/getLaunchPad/reduction', 2)                # image dimension reduction for realtime processing speed
-    rospy.set_param('/getLaunchPad/hoverLow', False)             # corner override (temp)
+    rospy.set_param('/getLaunchPadx3/pxMasking', False)            # use proximity masking
+    rospy.set_param('/getLaunchPadx3/centroidThresh', 10000.0)     # threshold for white centroid detection
+    rospy.set_param('/getLaunchPadx3/circleTol', 1.5)              # radius multiplier for circles
+    rospy.set_param('/getLaunchPadx3/erodeOn', False)              # use erode/dilate vs blur
+    rospy.set_param('/getLaunchPadx3/liberal', False)              # allow lone bright white detection
+    rospy.set_param('/getLaunchPadx3/reduction', 2)                # image dimension reduction for realtime processing speed
+    rospy.set_param('/getLaunchPadx3/hoverLow', False)             # corner override (temp)
  
-    rospy.set_param('/getLaunchPad/imgShow', True)               # show processed images to screen
-    rospy.set_param('/getLaunchPad/imgStream', True)             # stream reduced processed images
-    rospy.set_param('/getLaunchPad/imgStreamRate', 3)            # streaming rate
+    rospy.set_param('/getLaunchPadx3/imgShow', True)               # show processed images to screen
+    rospy.set_param('/getLaunchPadx3/imgStream', True)             # stream reduced processed images
+    rospy.set_param('/getLaunchPadx3/imgStreamRate', 3)            # streaming rate
 
 
 
