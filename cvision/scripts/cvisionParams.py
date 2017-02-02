@@ -54,7 +54,7 @@ def setParams():
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
     rospy.set_param('/getColors/imgShow', False)                  # show processed images to screen
-    rospy.set_param('/getColors/imgStream', True)                # stream reduced processed images
+    rospy.set_param('/getColors/imgStream', False)                # stream reduced processed images
     rospy.set_param('/getColors/imgStreamRate', 3)               # streaming rate
     
     # ROS parameters for pix2m
