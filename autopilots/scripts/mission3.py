@@ -110,7 +110,7 @@ class path_tracker():
 #	ObjectSearch: {'Done', 'Running', 'Interrupted'}
 #	Picking:      {'Done', 'Running', 'Failed', 'Interrupted'}
 #	GoToDrop:     {'Done', 'Running', 'Interrupted'}
-#   WaitToDrop:   {'Done', 'Running', 'Interrupted'}
+#   	WaitToDrop:   {'Done', 'Running', 'Interrupted'}
 #	Dropping:     {'Done', 'Running', 'Interrupted'}
 #	GoHome:       {'Done', 'Running', 'Interrupted'}
 #	Land:         {'Done', 'Running', 'Interrupted'}
@@ -118,19 +118,30 @@ class path_tracker():
 class StateMachineC( object ):
 	def __init__(self, ns, field_map):
 		autopilotParams.setParams(ns)
-		self.namespace		= ns				# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
-		self.areaBoundaries     = field_map			# The list of the different field refence points (to be provided)
-		self.cameraView		=6				#Parameter that caracterize the camera precision and field of view
-		self.way_points_tracker=path_tracker(self.areaBoundaries)			# object that is used for the tracking of points to be visited
+		# ns: namespace [REQUIRED]. Always append it to subscribed/published topics
+		self.namespace		= ns
+		# The list of the different field refence points (to be provided)
+		self.areaBoundaries     = field_map
+		#Parameter that caracterize the camera precision and field of view
+		self.cameraView		=6
+		# object that is used for the tracking of points to be visited
+		self.way_points_tracker=path_tracker(self.areaBoundaries)
 		self.way_points_tracker.way_points_list=self.path()
 		self.quad_op_area =quad_zone(ns,field_map)
-		self.current_state	= 'Idle'			# Initially/finally, do nothing.
-		self.current_signal	= None				# used to decide on transitions to other states
-        	self.resume_state   = 'Hover'           # last state to resume after external interruption
-		self.erro_signal	= False				# to indicate error staus in state machine (for debug)
-		self.error_str		= 'No error'			# Error description (for debug)
-		self.DEBUG		= False				# Turn debug mode on/off
-		self.START_SIGNAL	= False				# a flag to start the state machine, if true
+		# Initially/finally, do nothing.
+		self.current_state	= 'Idle'
+		# used to decide on transitions to other states
+		self.current_signal	= None
+		# last state to resume after external interruption
+        	self.resume_state   = 'Hover'
+		# to indicate error staus in state machine (for debug)
+		self.erro_signal	= False
+		# Error description (for debug)
+		self.error_str		= 'No error'
+		# Turn debug mode on/off
+		self.DEBUG		= False
+		# a flag to start the state machine, if true
+		self.START_SIGNAL	= False
 		if(self.namespace=="/Quad1"):
 			self.ns_other_1="/Quad2"
 			self.ns_other_2="/Quad3"
@@ -151,20 +162,28 @@ class StateMachineC( object ):
 		self.other_2_state	= 0.0
 		self.target_lat		= 1.1
 		self.target_lon		= 1.1
-		self.TKOFFALT		= 2.0				# takeoff altitude [m] to be set by external controller
-		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])	# Lat/Lon of pre-drop location: different for each vehicle
+		# takeoff altitude [m] to be set by external controller
+		self.TKOFFALT		= 2.0
+		# Lat/Lon of pre-drop location: different for each vehicle
+		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])
 		self.DROP_COORDS	= np.array([23.3, 12.5])
 
-		self.ZGROUND		= 0.0				# Altitude at ground level
+		# Altitude at ground level
+		self.ZGROUND		= 0.0
 		self.home		= autopilotLib.xyzVar()
-		self.PICK_ALT		= 0.6				# Altitude at which we pick object [m]
-		self.CAMOFFSET		= 0.0				# [m]
-		self.ENVELOPE_XY_POS	= 0.2				# relative pos error where descend is allowed [m]
-		self.ENVELOPE_XY_V	= 0.1				# relative vel error where descend is allowed [m/s]
+		# Altitude at which we pick object [m]
+		self.PICK_ALT		= 0.6
+		# camera offset from ground [m]
+		self.CAMOFFSET		= 0.0
+		# relative pos error where descend is allowed [m]
+		self.ENVELOPE_XY_POS	= 0.2
+		# relative vel error where descend is allowed [m/s]
+		self.ENVELOPE_XY_V	= 0.1
 
 		# Instantiate a setpoint topic structure
 		self.setp		= PositionTarget()
-		self.setp.type_mask	= int('010111000111', 2)  # use velocity setpoints
+		# use velocity setpoints
+		self.setp.type_mask	= int('010111000111', 2)  	
 
 		# Instantiate altitude controller object (from autopilot library)
 		self.altK 		= autopilotLib.kAltVel(ns)
@@ -173,7 +192,8 @@ class StateMachineC( object ):
 		self.bodK 		= autopilotLib.kBodVel(ns)
 
 		# Instantiate a tracker (blue)
-		self.blue_target 		= autopilotLib.xyzVar()		# xyz location of object w.r.t quad [m]. z only used to indicate if object is tracked or not
+		# xyz location of object w.r.t quad [m]. z only used to indicate if object is tracked or not
+		self.blue_target 		= autopilotLib.xyzVar()
 		rospy.Subscriber(ns+'/getColors/blue/xyMeters', Point32, self.blue_target.cbXYZ)
 
 		# Instantiate a tracker (green)
@@ -205,11 +225,13 @@ class StateMachineC( object ):
 		self.state_pub		= rospy.Publisher(ns+'/state_machine/state', StateMachine, queue_size=10)
 
 		# Gripper feedback topic
-		self.gripperIsPicked	= False         # False: not picked, True: picked
+		# False: not picked, True: picked
+		self.gripperIsPicked	= False
 		rospy.Subscriber(ns+'/gripper_status', Bool, self.gripper_cb)
 
 		# Gripper command topic
-		self.gripper_action	= Bool()              # .data=True: activate magnets, .data=False: deactivate
+		# .data=True: activate magnets, .data=False: deactivate
+		self.gripper_action	= Bool()
 		self.gripper_pub	= rospy.Publisher(ns+'/gripper_command', Bool, queue_size=10)
 		# set state Interruption as ROS paramter
 		# if >0 : interrupt state
@@ -221,7 +243,7 @@ class StateMachineC( object ):
 
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
-	#                                                   (States implementation)                                                              #
+#                                                   (States implementation)                                                              #
 
 	# State: start
 	def execute_start(self):
@@ -457,31 +479,39 @@ class StateMachineC( object ):
 		self.gripper_pub.publish(self.gripper_action)
 
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
-			objectFound, xy = self.monitorObjects()							# monitor objects
+			# monitor objects
+			objectFound, xy = self.monitorObjects()
 
-			if objectFound:										# found an object
+			# found an object
+			if objectFound and not self.gripperIsPicked:
 				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
 				self.bodK.xSp = xy[0]*altCorrect
 				self.bodK.ySp = xy[1]*altCorrect
 				# for debug
 				print 'XY setpoints: ', self.bodK.xSp, '/', self.bodK.ySp
 				# this is a good observation, store it
-				self.home.x = self.bodK.x       						# store most recent successful target
+				# store most recent successful target
+				self.home.x = self.bodK.x
 				self.home.y = self.bodK.y
 				if self.inside_envelope(xy):
-					self.altK.zSp = max(self.altK.z - 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_ALT)	# descend if inside envelope
-			else:											# object not found
+					# descend if inside envelope
+					self.altK.zSp = max(self.altK.z - 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_ALT)
+			# object not found
+			elif not objectFound and not self.gripperIsPicked:
 				# if at max ALT (stil did not find objects), exit state with signal='Failed', to search again
 				if (self.altK.z >= self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep')):
 					self.current_signal = 'Failed'
 
-				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)	# go to last location where object was seen
-				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep'))# increase altitude gradually, until an object is seen again
+				# set last location where object was seen
+				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
+				# increase altitude gradually, until an object is seen again
+				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep'))
 
-			# TODO !!!!!!!! constrain your location inside your zone!!!!!!
-
-			# check if object is picked, fly up
+			# check if object is picked, fly up 1 meter
 			if (self.gripperIsPicked):
+				self.altK.zSp = self.ZGROUND + 1.0
+			# check if still picked up at 1 meter, then claim object is picked
+			if (self.gripperIsPicked and self.altK.z > (self.ZGROUND+1.0) ):
 				picked = True	# set True to exit the while loop
 				self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
@@ -845,11 +875,11 @@ class StateMachineC( object ):
 		self.debug()
 		return
 
-	#                                          (End of States Implementation)                                                                #
-	#----------------------------------------------------------------------------------------------------------------------------------------#
+#                                          (End of States Implementation)                                                                #
+#----------------------------------------------------------------------------------------------------------------------------------------#
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
-	#                                          (State Transition Function)	                                                                 #
+#                                          (State Transition Function)	                                                                 #
 	def update_state(self):
 
 		# States: {Idle, Takeoff, ObjectSearch, Picking, GoToDrop, WaitToDrop, Dropping, GoHome, Land}
@@ -859,10 +889,10 @@ class StateMachineC( object ):
 		#	Picking:	{'Done', 'Running', 'Failed', 'Interrupted'}
 		#	GoToDrop:	{'Done', 'Running', 'Interrupted'}
 		#	WaitToDrop:	{'Done', 'Running', 'Interrupted'}
-		#	Dropping:	{'Done', 'Running', 'Interrupted'}
+		#	Drop:		{'Done', 'Running', 'Interrupted'}
 		#	GoHome:		{'Done', 'Running', 'Interrupted'}
 		#	Land:		{'Done', 'Running', 'Interrupted'}
-		#	Hover:	{'Done', 'Running'}    # state should go to Hover when interrupted
+		#	Hover:		{'Done', 'Running'}    # state should go to Hover when interrupted
 
 		# manage the transition between states
 		state = self.current_state
@@ -932,12 +962,12 @@ class StateMachineC( object ):
 			if signal == 'Done':
 				self.current_state = self.resume_state
 				self.current_signal = 'Resume'
-	#                                          (End of transition function)                                                                  #
-	#----------------------------------------------------------------------------------------------------------------------------------------#
+#                                          (End of transition function)                                                                  #
+#----------------------------------------------------------------------------------------------------------------------------------------#
 
 
 	#----------------------------------------------------------------------------------------------------------------------------------------#
-	#                                               (helper functions)                                                                       #
+#                                               (helper functions)                                                                       #
 
 	# check if a colored object is found
 	# returns a tuple: (bool objectFound, xy_coord of closest object)
@@ -982,7 +1012,8 @@ class StateMachineC( object ):
 				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
 				dx_enu = x_enu
 				dy_enu = y_enu
-				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) ##x and y switched because thid function operates in END frame
+				##x and y switched because this function operates in NED frame
+				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) 
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
@@ -1016,6 +1047,7 @@ class StateMachineC( object ):
 			if rospy.is_shutdown():
 				print '|------ ROS IS SHUTTING DOWN------|'
 	############### End of debug function ##################
+
 	######## for intermediate points along a great circle path:########################
 
 		#The function takes two coordinate pairs and a user-specified number of segments.
@@ -1087,9 +1119,7 @@ class StateMachineC( object ):
 		# My mylat[0],mylat[0] and mylat[num_of_segments-1],mylat[num_of_segments-1] are the geodesic end point
         ############### End of intermediate function ##################
 
-
-    ######## function for defining the field boundaries :########################
-
+	######## function for defining the field boundaries :########################
 	def path(self):
 		if (self.namespace=="/Quad1"):
 
@@ -1154,8 +1184,7 @@ class StateMachineC( object ):
 
 		return(way_points_list)
 
-    ######## function for converting LLA points to local delta xy(NED) :########################
-
+	######## function for converting LLA points to local delta xy(NED) :########################
 	def LLA_local_deltaxy(self, lat_0, lon_0,  lat,  lon):
 
 		M_DEG_TO_RAD = 0.01745329251994
@@ -1195,10 +1224,12 @@ class StateMachineC( object ):
 		return (delta_x,delta_y)
 
 	############### End of LLA_local_deltaxy function ##################
+
 	########function for getting the third element of a list ###########
 	def getThirdElemt(self, item):
 		return item[2]
 	####################################################################
+
 	######## function for converting local delta xy(NED) to LLA points :########################
 	def local_deltaxy_LLA(self,lat_0, lon_0,  delta_x,  delta_y):
 
@@ -1230,7 +1261,7 @@ class StateMachineC( object ):
 		return(lat,lon)
 	############### End of local_deltaxy_LLA function ##################
 
-	    ################ test gripper actuation ##########################
+	################ test gripper actuation ##########################
      	def test_gripper(self, cmd):
         	# activate/deactivate gripper
         	self.gripper_action.data = cmd
@@ -1239,14 +1270,14 @@ class StateMachineC( object ):
         	print '#---------------------------------#'
         	print 'Gripper status: ', self.gripperIsPicked
         	print '#---------------------------------#'
-    ############### End of test_gripper #############################
+	############### End of test_gripper #############################
 
-	#                                           (End of helper functions)                                                                    #
+#                                           (End of helper functions)                                                                    #
+#----------------------------------------------------------------------------------------------------------------------------------------#
+
+
 	#----------------------------------------------------------------------------------------------------------------------------------------#
-
-
-	#----------------------------------------------------------------------------------------------------------------------------------------#
-	#                                                 (Callbacks)                                                                            #
+#                                                 (Callbacks)                                                                            #
 
 	############ Gripper callback function #####################
 	def gripper_cb(self,msg):
@@ -1282,10 +1313,11 @@ class StateMachineC( object ):
 			self.other_2_state = msg.state
 	################## End of other others states callback ##################
 
-	#                                              (End of Callbacks)                                                                        #
-	#----------------------------------------------------------------------------------------------------------------------------------------#
+#                                              (End of Callbacks)                                                                        #
+#----------------------------------------------------------------------------------------------------------------------------------------#
 
 #############################################
+#          Mission function             #
 def mission():
 	rospy.init_node('mission1', anonymous=True)
 
