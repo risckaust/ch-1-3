@@ -10,7 +10,7 @@ def setParams():
 
     # ROS parameters for general vision tasks
     rospy.set_param('/cvision/loopRate', 30.0)                   # loop rate for vision algorithms
-    rospy.set_param('/cvision/reduce', False)                     # reduce frame size
+    rospy.set_param('/cvision/reduce', True)                     # reduce frame size
     if rospy.get_param('/cvision/reduce'):
         rospy.set_param('/cvision/LX', 320)                          # half size screen width
         rospy.set_param('/cvision/LY', 240)                          # half size screen height
