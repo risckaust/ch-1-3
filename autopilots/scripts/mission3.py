@@ -807,7 +807,7 @@ class StateMachineC( object ):
 	# State: Hover
 	def execute_hover(self):
 		self.current_state='Hover'
-		self.current_sginal='Running'
+		self.current_signal='Running'
 
 		self.debug()
 
