@@ -7,6 +7,7 @@
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
+	<arg name="arduino_url" default="/dev/ttyACM0" />
 
 	
 
@@ -46,9 +47,11 @@
 
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
+	
+	<node pkg="rosserial_python" type="serial_node.py" name="gripper_node" args="$(arg arduino_url)" output="screen">
+        </node>
 
-	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">
-		
+	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 </group>
 
