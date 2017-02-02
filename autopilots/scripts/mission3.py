@@ -605,7 +605,7 @@ class StateMachineC( object ):
 	# State: WaitToDrop
 	def execute_waittodrop(self):
 		self.current_state='WaitToDrop'
-		self.current_sginal='Running'
+		self.current_signal='Running'
 
 		self.debug()
 
@@ -691,7 +691,7 @@ class StateMachineC( object ):
 	# State: Drop
 	def execute_drop(self):
 		self.current_state='Drop'
-		self.current_sginal='Running'
+		self.current_signal='Running'
 
 		self.debug()
 
@@ -912,12 +912,12 @@ class StateMachineC( object ):
 
 		elif (state == 'WaitToDrop'):
 			if signal == 'Interrupted':
-				self.resume_state = 'WiatToDrop'
+				self.resume_state = 'WaitToDrop'
 				self.execute_hover()
 			elif signal == 'Done':
 				self.execute_drop()
 			elif signal == 'Resume':
-				self.execute_wiattodrop()
+				self.execute_waittodrop()
 
 		elif (state == 'Drop'):
 			if signal == 'Interrupted':
@@ -986,6 +986,10 @@ class StateMachineC( object ):
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True		
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
+				else:
+					print("Object seen but neglected")
+					objectFound = False
+					return (objectFound, [])
 		else:
 			objectFound=False
 			return (objectFound, [])
@@ -1192,7 +1196,7 @@ class StateMachineC( object ):
 
 	############### End of LLA_local_deltaxy function ##################
 	########function for getting the third element of a list ###########
-	def getThirdElemt(item):
+	def getThirdElemt(self, item):
 		return item[2]
 	####################################################################
 	######## function for converting local delta xy(NED) to LLA points :########################
@@ -1303,8 +1307,8 @@ def mission():
 
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
-	sm.current_state='ObjectSearch'
-	sm.execute_objectSearch()
+	sm.current_state='Picking'
+	sm.current_signal='Resume'
 	#sm.START_SIGNAL=True
 	sm.cameraView=1
 
