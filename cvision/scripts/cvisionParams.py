@@ -10,7 +10,7 @@ def setParams():
 
     # ROS parameters for general vision tasks
     rospy.set_param('/cvision/loopRate', 30.0)                   # loop rate for vision algorithms
-    rospy.set_param('/cvision/reduce', True)                     # reduce frame size
+    rospy.set_param('/cvision/reduce', False)                     # reduce frame size
     if rospy.get_param('/cvision/reduce'):
         rospy.set_param('/cvision/LX', 320)                          # half size screen width
         rospy.set_param('/cvision/LY', 240)                          # half size screen height
@@ -28,16 +28,17 @@ def setParams():
     rospy.set_param('/cv_camers/image_height',rospy.get_param('/cvision/LY'))
         
     # ROS parameters getLaunchpad
-    rospy.set_param('/getLaunchpad/minMass',50.0)                # minimum mass to detect a white blob
-    rospy.set_param('/getLaunchpad/erodeOn',False)               # use erode/dilate vs blurring in white detection 
+    rospy.set_param('/getLaunchpad/useMass', False)
+    rospy.set_param('/getLaunchpad/erodeOn',True)                # use erode/dilate vs blurring in white detection 
+    rospy.set_param('/getLaunchpad/minRadius',10.0)              # minimum circle to detect a white blob
     rospy.set_param('/getLaunchpad/pxRadius', 1.2)               # radius multiplier for proximity mask (both white & circle) 
     rospy.set_param('/getLaunchpad/minPoints',4)                 # minimum number of corners for positive detection
     
-    rospy.set_param('/getLaunchpad/testFileOn',False)            # binary for testing on file
-    #rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/jeff_ws/variable.m4v')
-    rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
+    rospy.set_param('/getLaunchpad/testFileOn',True)            # binary for testing on file
+    rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/jeff_ws/variable.m4v')
+    #rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param('/getLaunchpad/imgShow', False)               # show processed images to screen
+    rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
     rospy.set_param('/getLaunchpad/imgStream', True)             # stream reduced processed images
     rospy.set_param('/getLaunchpad/imgStreamRate', 3)            # streaming rate
     
@@ -50,15 +51,15 @@ def setParams():
     rospy.set_param('/getColors/useMass', False)                 # use mass for color blob (otherwise, only circle)
     rospy.set_param('/getColors/minMass',50.0)                   # minimum mass to detect a color blob
     rospy.set_param('/getColors/minRadius',10.0)                 # minimum cirlce radius to detect a color blob
-    rospy.set_param('/getColors/erodeOn',False)                  # use erode/dilate vs blurring 
+    rospy.set_param('/getColors/erodeOn',True)                   # use erode/dilate vs blurring 
     rospy.set_param('/getColors/proximityOn',True)               # use proximity filter on most recent detection
     rospy.set_param('/getColors/pxRadius', 1.2)                  # radius multiplier for proximity mask
     
-    rospy.set_param('/getColors/testFileOn',False)               # binary for testing on file
+    rospy.set_param('/getColors/testFileOn',True)               # binary for testing on file
     rospy.set_param('/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
     rospy.set_param('/getColors/imgShow', True)                  # show processed images to screen
-    rospy.set_param('/getColors/imgStream', False)                # stream reduced processed images
+    rospy.set_param('/getColors/imgStream', True)                # stream reduced processed images
     rospy.set_param('/getColors/imgStreamRate', 3)               # streaming rate
     
     # ROS parameters for pix2m

@@ -93,13 +93,13 @@ def getColor():
     	
     	if color == 'blue':
             lower = np.array([100,100,100],np.uint8)
-            upper = np.array([120,255,255],np.uint8)
+            upper = np.array([130,255,255],np.uint8)
         elif color == 'green':
-            lower = np.array([80,100,100],np.uint8)
+            lower = np.array([70,100,100],np.uint8)
             upper = np.array([100,255,255],np.uint8) 
         elif color == 'yellow':
-            lower = np.array([20,100,100],np.uint8)
-            upper = np.array([40,255,255],np.uint8)      
+            lower = np.array([15,100,100],np.uint8)
+            upper = np.array([45,255,255],np.uint8)      
         elif color == 'red':
             # find the red in the image with low "H"
             lower = np.array([0,100,100],np.uint8)
@@ -107,7 +107,7 @@ def getColor():
             maskLow = cv2.inRange(hsv, lower, upper)
         
             # find the red in the image with high "H"
-            lower = np.array([170,100,100],np.uint8)
+            lower = np.array([160,100,100],np.uint8)
             upper = np.array([180,255,255],np.uint8)
             maskHigh = cv2.inRange(hsv, lower, upper)
             
@@ -136,18 +136,18 @@ def getColor():
             # blurring
             mask = cv2.blur(mask, (3,3))
             # clearing
-            _, mask =  cv2.threshold(mask,100,255,cv2.THRESH_BINARY)
+            _, mask =  cv2.threshold(mask,245,255,cv2.THRESH_BINARY)
             
         # find contours in the masked image
         if OLDCV:
-            cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+            cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
         else:
-            _, cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+            _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     
         # prep messages
         msgPixels.x = -1.0
         msgPixels.y = -1.0
-        msgPixels.z = -1.0
+        msgPixels.z = -1.0 # used to report circle radius
         Detect = False
         
         if len(cnts) > 0:
@@ -158,13 +158,14 @@ def getColor():
             # construct & draw bounding circle
             ((x, y), radius) = cv2.minEnclosingCircle(c)
             cv2.circle(frame, (int(x), int(y)), int(radius),(0, 255, 255), 2)
-            # cv2.circle(frame, (int(x), int(y)), 5, (0, 0, 255), -1)
+            # cv2.circle(frame, (int(x), int(y)), 3, (0, 0, 255), -1)
             
             # compute centroid of max contour vs center of circle
             
             if rospy.get_param('/getColors/useMass'):
                 
-                M = cv2.moments(c)
+                # M = cv2.moments(c)
+                M = cv2.moments(mask)  # Find moments of mask or contour?
                 
                 if M["m00"]>rospy.get_param('/getColors/minMass'):
                 
@@ -213,7 +214,7 @@ def getColor():
         # show processed images to screen
         if rospy.get_param('/getColors/imgShow'):
             cv2.imshow(color,frame)
-            cv2.imshow('pxMask',pxMask)
+            cv2.imshow('mask',mask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image
