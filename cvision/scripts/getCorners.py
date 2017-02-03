@@ -132,10 +132,10 @@ def getCorners():
                 for i,(new,old) in enumerate(zip(good_new,good_old)):
                     a,b = new.ravel()
                     c,d = old.ravel()
-                    cv2.circle(frame,(a,b),5,(255,255,255),-1)
+                    cv2.circle(frame,(a,b),3,(0,0,0),-1)
                     
                 # Now update the previous frame and previous points
-                cv2.circle(frame,(mean1[0],mean1[1]),10,(0,0,0),-1)
+                cv2.circle(frame,(mean1[0],mean1[1]),5,(0,0,0),-1)
                     
                 msgPixels.x = mean1[0]
                 msgPixels.y = mean1[1]
@@ -147,8 +147,8 @@ def getCorners():
                 
                 Restart = False
         
-        #if kc%2 == 0:
-        #    Restart = True
+        if kc%rospy.get_param('/cvision/loopRate') == 0: # Restart every second
+            Restart = True
         
         if Restart:
             if rospy.get_param('/getLaunchpad/testFileOn'):

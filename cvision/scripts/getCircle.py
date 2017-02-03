@@ -111,8 +111,8 @@ def getCircle():
         if circles is not None:
             center = circles[0,0]
             Detect = True
-            cv2.circle(frame,(center[0],center[1]),center[2],(255,255,255),3)
-            cv2.circle(frame, (int(center[0]), int(center[1])), 6, (0, 0, 0), -1)
+            cv2.circle(frame,(center[0],center[1]),center[2],(0,0,0),5)
+            cv2.circle(frame, (int(center[0]), int(center[1])), 3, (0, 0, 0), -1)
             msgPixels.x = center[0] # x
             msgPixels.y = center[1] # y
             msgPixels.z = center[2] # radius
