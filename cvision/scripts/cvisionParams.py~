@@ -29,7 +29,7 @@ def setParams():
         
     # ROS parameters getLaunchpad
     rospy.set_param('/getLaunchpad/useMass', False)
-    rospy.set_param('/getLaunchpad/minMass',50.0)                # minimum mass to detect a color blob
+    rospy.set_param('/getLaunchpad/minMass',50.0)                   # minimum mass to detect a color blob
     rospy.set_param('/getLaunchpad/minRadius',10.0)              # minimum circle to detect a white blob
     rospy.set_param('/getLaunchpad/erodeOn',True)                # use erode/dilate vs blurring in white detection 
     rospy.set_param('/getLaunchpad/pxRadius', 1.2)               # radius multiplier for proximity mask (both white & circle) 
@@ -39,7 +39,7 @@ def setParams():
     rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/jeff_ws/variable.m4v')
     #rospy.set_param('/getLaunchpad/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param('/getLaunchpad/imgShow', False)               # show processed images to screen
+    rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
     rospy.set_param('/getLaunchpad/imgStream', True)             # stream reduced processed images
     rospy.set_param('/getLaunchpad/imgStreamRate', 3)            # streaming rate
     

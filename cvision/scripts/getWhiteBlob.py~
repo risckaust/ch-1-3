@@ -156,11 +156,13 @@ def getWhite():
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
         if Detect and DetectHold and getLaunchpad.z > 0:
+            print "hello"
             cv2.circle(pxMask,(int(getLaunchpad.x),int(getLaunchpad.y)),int(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
             # Deleted code for white-based proximity
             # cv2.circle(pxMask,(center[0],center[1]),np.uint8(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
             MaskItNow = True   
         else:
+            print "goodbye"
             MaskItNow = False
                 
         DetectHold = Detect # hold for next iteration

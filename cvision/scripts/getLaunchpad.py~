@@ -68,23 +68,18 @@ def getLaunchpad():
     
     while not rospy.is_shutdown():
 
-        # store values in case of realtime changes
-        dataWhite = getWhite.x, getWhite.y, getWhite.z
-        dataCircle = getCircle.x, getCircle.y, getCircle.z
-        dataCorners = getCorners.x, getCorners.y, getCorners.z
-
         # detection acceptance logic
-        if dataWhite[2] > 0:
+        if getWhite.z > 0:
             detectWhite = True
         else:
             detectWhite = False
         
-        if dataCorners[2] > 0:
+        if getCorners.z > 0:
             detectCorners = True
         else:
             detectCorners = False
             
-        if dataCircle[2] > 0:
+        if getCircle.z > 0:
             detectCircle = True
         else:
             detectCircle = False
@@ -94,30 +89,30 @@ def getLaunchpad():
         CX = -1
         CY = -1
 
-        if detectCircle and detectWhite and not Skip: # Circle + Superwhite centroid
-            error = (dataCircle[0] - dataWhite[0])**2 + (dataCircle[1] - dataWhite[1])**2
-            if sqrt(error) < TOL*dataCircle[2]:
+        if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
+            error = (getWhite.x - getCorners.x)**2 + (getWhite.y - getCorners.y)**2
+            if sqrt(error) < TOL*getWhite.z:
                 Detect = True
-                CX = dataCircle[0]
-                CY = dataCircle[1]
-                Skip = True 
+                CX = getCorners.x
+                CY = getCorners.y
+                Skip = True
 
         if detectCircle and detectCorners and not Skip: # Circle + Corners
-            error = (dataCircle[0] - dataCorners[0])**2 + (dataCircle[1] - dataCorners[1])**2
-            if sqrt(error) < TOL*dataCircle[2]:
+            error = (getCircle.x - getCorners.x)**2 + (getCircle.y - getCorners.y)**2
+            if sqrt(error) < TOL*getCircle.z:
                 Detect = True
-                CX = dataCorners[0]
-                CY = dataCorners[1]
+                CX = getCorners.x
+                CY = getCorners.y
                 Skip = True 
-
-        if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
-            error = (dataWhite[0] - dataCorners[0])**2 + (dataWhite[1] - dataCorners[1])**2
-            if sqrt(error) < TOL*dataWhite[2]:
+                               
+        if detectCircle and detectWhite and not Skip: # Circle + Superwhite centroid
+            error = (getCircle.x - getWhite.x)**2 + (getCircle.y - getWhite.y)**2
+            if sqrt(error) < TOL*getCircle.z:
                 Detect = True
-                CX = dataCorners[0]
-                CY = dataCorners[1]
-                Skip = True
-     
+                CX = getCircle.x
+                CY = getCircle.y
+                Skip = True  
+        
         if Detect:
             msgPixels.x = CX
             msgPixels.y = CY
@@ -148,13 +143,13 @@ def getLaunchpad():
         
         frame = quadCam.BGR
 
-        if dataWhite[2] > 0:
-            print dataWhite[0], dataWhite[1], dataWhite[2]
-            cv2.circle(frame, (int(dataWhite[0]), int(dataWhite[1])), int(dataWhite[2]),(0, 0, 0), 5)
-        if dataCircle[2] > 0:
-            cv2.circle(frame, (int(dataCircle[0]), int(dataCircle[1])), int(dataCircle[2]),(255, 0, 0), 5)
-        if dataCorners[2] > 0:
-            cv2.circle(frame, (int(dataCorners[0]), int(dataCorners[1])), 5,(0, 255, 255), -1)
+        if getWhite.z > 0:
+            print getWhite.x, getWhite.y, getWhite.z
+            cv2.circle(frame, (int(getWhite.x), int(getWhite.y)), int(getWhite.z),(0, 0, 0), 5)
+        if getCircle.z > 0:
+            cv2.circle(frame, (int(getCircle.x), int(getCircle.y)), int(getCircle.z),(255, 0, 0), 5)
+        if getCorners.z > 0:
+            cv2.circle(frame, (int(getCorners.x), int(getCorners.y)), 5,(0, 255, 255), -1)
         if Detect:
             cv2.circle(frame, (int(CX), int(CY)), 10,(0, 255, 0), -1)
 
