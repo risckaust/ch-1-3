@@ -149,6 +149,7 @@ def getColor():
         maskR = cv2.bitwise_or(maskLow,maskHigh)
 
         mask = cv2.bitwise_or(maskB,maskG)
+	mask = cv2.bitwise_or(mask,maskY)
         mask = cv2.bitwise_or(mask,maskR)
 
         # apply fisheye mask
