@@ -130,13 +130,13 @@ def getColor():
         
         # Green
         lowerG = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
-        upperG = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8) 
+        upperG = np.array(rospy.get_param(ns+'/GreenHSV/high'),np.uint8) 
         maskG = cv2.inRange(hsv,lowerG,upperG)
 
 	# Yellow
         lowerY = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
-        upperY = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8) 
-        maskY = cv2.inRange(hsv,lowerG,upperG)
+        upperY = np.array(rospy.get_param(ns+'/YellowHSV/high'),np.uint8) 
+        maskY = cv2.inRange(hsv,lowerY,upperY)
         
         # Red
         lowerRlow = np.array([0,100,100],np.uint8)
