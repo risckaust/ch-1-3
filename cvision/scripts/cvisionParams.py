@@ -59,7 +59,7 @@ def setParams(ns):
     rospy.set_param(ns+'/getColors/testFileOn',False)               # binary for testing on file
     rospy.set_param(ns+'/getColors/fileName','/home/shamma/Documents/MultiObjectImages/imgset4/output.mp4')
     
-    rospy.set_param(ns+'/getColors/imgShow', True)                  # show processed images to screen
+    rospy.set_param(ns+'/getColors/imgShow', False)                  # show processed images to screen
     rospy.set_param(ns+'/getColors/imgStream', True)                # stream reduced processed images
     rospy.set_param(ns+'/getColors/imgStreamRate', 3)               # streaming rate
     
