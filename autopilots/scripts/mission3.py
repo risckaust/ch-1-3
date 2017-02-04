@@ -202,6 +202,10 @@ class StateMachineC( object ):
 
 		# other colors.......?
 
+		# subscribe to BGR object
+		self.bgr_target 		= autopilotLib.xyzVar()
+		rospy.Subscriber(ns+'/getColors/bgr/xyMeters', Point32, self.bgr_target.cbXYZ)
+
 		# Establish a rate
 		self.fbRate 		= rospy.get_param(ns+'/autopilot/fbRate')
 		self.rate 		= rospy.Rate(self.fbRate)
@@ -408,7 +412,8 @@ class StateMachineC( object ):
 				self.way_points_tracker.index=0
 
 			# check for objects
-			objectFound, _ = self.monitorObjects()
+			#objectFound, _ = self.monitorObjects()
+			objectFound, _ = self.monitorSingleObject()
 
 
 			# publish control commands
@@ -479,7 +484,8 @@ class StateMachineC( object ):
 
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
 			# monitor objects
-			objectFound, xy = self.monitorObjects()
+			#objectFound, xy = self.monitorObjects()
+			objectFound, xy = self.monitorSingleObject()
 
 			# found an object
 			if objectFound and not self.gripperIsPicked:
@@ -1024,7 +1030,59 @@ class StateMachineC( object ):
 			return (objectFound, [])
 		############################################################################
 
-	########## End of Monitoring Objects #######################
+	########## End of Monitoring Colored Objects #######################
+
+	# check if a single object is found
+	# returns a tuple: (bool objectFound, xy_coord of object with biggest contour)
+	def monitorSingleObject(self):
+		# define distance to each color object
+		d_to_object=np.inf
+
+		# radius list: of detected objects
+		r_list=[]
+		# list of x/y coords of found objects
+		xy_list=[]
+
+		# flag if object is found
+		objectFound = False
+
+		# update the distance if (blue) is found
+		if self.bgr_target.z > 0 :
+			d_to_object = np.sqrt(self.bgr_target.x**2 + self.bgr_target.y**2)
+			r_list.append(d_to_object)
+			xy_list.append([self.bgr_target.x, self.bgr_target.y,d_to_object])
+
+
+		# find the closest object that is inside the area of operation
+			# Finally return
+		###################TODO modified and need to be checked #########################################
+		if (len(xy_list)>0):
+			xy_list_sorted=[]
+			for i in range(0,len(xy_list)):
+				xy_list_sorted.append([xy_list[i][0],xy_list[i][1],r_list[i]])
+			xy_list_sorted=sorted(xy_list, key=self.getThirdElemt)
+			for i in range(0,len(xy_list_sorted)):
+				bodyRot = self.bodK.yaw - pi/2.0
+				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot)
+				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
+				dx_enu = x_enu
+				dy_enu = y_enu
+				##x and y switched because this function operates in NED frame
+				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) 
+				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
+					objectFound=True
+					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
+				else:
+					print("Object seen but neglected")
+					objectFound = False
+					return (objectFound, [])
+		else:
+			objectFound=False
+			return (objectFound, [])
+		############################################################################
+
+	########## End of Monitoring Single Object  #######################
+
 
 	# determins if an object is inside an allowable descend envelope
 	def inside_envelope(self,xy):
