@@ -1,7 +1,7 @@
+
 #!/usr/bin/env python
 
-# COMMAND LINE example: rosrun cvision getColorBlob.py local_color:='/getColors/red'
-# Colors: red, blue, green, yellow
+# Combines blue/green/red
 
 import rospy
 import numpy as np
@@ -26,15 +26,17 @@ if OLDCV:
 import cvisionLib
 import cvisionParams
 
+
 ###################################
 
-def getColor(color):
+def getColor():
 
     # Initialize node
 
     rospy.init_node('colorTracker', anonymous=True)
-
-    # get namspace
+    
+    
+    # get namespace
     ns = rospy.get_namespace()
     ns = ns[0:len(ns)-1]
 
@@ -67,8 +69,7 @@ def getColor(color):
     print '####Found all HSV parameters####'
 
     cvisionParams.setParams(ns)
-
-    # COMMAND LINE example: rosrun cvision getColorBlob.py 'red'
+    color = 'bgr'
     
     # Create publishers
     targetPixels = rospy.Publisher(ns+'/getColors/' + color + '/xyPixels', Point32, queue_size=10)
@@ -121,32 +122,35 @@ def getColor(color):
         
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) # convert to HSV
             
-    	# find the color in the image. red is a special cases
+    	# find the color in the image for blue, green, and red
     	
-    	if color == 'blue':
-            lower = np.array(rospy.get_param(ns+'/BlueHSV/low'),np.uint8)
-            upper = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
-        elif color == 'green':
-            lower = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
-            upper = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8) 
-        elif color == 'yellow':
-            lower = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
-            upper = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)      
-        elif color == 'red':
-            # find the red in the image with low "H"
-            lower = np.array([0,100,100],np.uint8)
-            upper = np.array([10,255,255],np.uint8)
-            maskLow = cv2.inRange(hsv, lower, upper)
+        # Blue
+        lowerB = np.array(rospy.get_param(ns+'/BlueHSV/low'),np.uint8)
+        upperB = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
+        maskB = cv2.inRange(hsv,lowerB,upperB)
         
-            # find the red in the image with high "H"
-            lower = np.array([160,100,100],np.uint8)
-            upper = np.array([180,255,255],np.uint8)
-            maskHigh = cv2.inRange(hsv, lower, upper)
-            
-        if  color == 'red':
-            mask = cv2.bitwise_or(maskLow,maskHigh)
-        else:
-            mask = cv2.inRange(hsv,lower,upper)
+        # Green
+        lowerG = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
+        upperG = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8) 
+        maskG = cv2.inRange(hsv,lowerG,upperG)
+
+	# Yellow
+        lowerY = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
+        upperY = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8) 
+        maskY = cv2.inRange(hsv,lowerG,upperG)
+        
+        # Red
+        lowerRlow = np.array([0,100,100],np.uint8)
+        upperRlow = np.array([10,255,255],np.uint8)
+        maskLow = cv2.inRange(hsv, lowerRlow, upperRlow)
+        
+        lowerRhigh = np.array([160,100,100],np.uint8)
+        upperRhigh = np.array([180,255,255],np.uint8)
+        maskHigh = cv2.inRange(hsv, lowerRhigh, upperRhigh)
+        maskR = cv2.bitwise_or(maskLow,maskHigh)
+
+        mask = cv2.bitwise_or(maskB,maskG)
+        mask = cv2.bitwise_or(mask,maskR)
 
         # apply fisheye mask
         if rospy.get_param(ns+'/cvision/feCamera'):
@@ -234,7 +238,7 @@ def getColor(color):
         targetPixels.publish(msgPixels)
 
         if rospy.get_param(ns+'/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
-            msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y, ns)
+            msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y,ns)
 
         if rospy.get_param(ns+'/cvision/feCamera'):                             # convert pixels to to meters
             (msgMeters.x, msgMeters.y, msgMeters.z) = spGen.targetFishEye(msgPixels)
@@ -261,11 +265,8 @@ def getColor(color):
 
 if __name__ == '__main__':
     try:
-	if len(sys.argv) < 2:
-        	print("usage: getColor.py 'red' ")
-    	else:
-        	getColor(sys.argv[1])
+        getColor()
     except rospy.ROSInterruptException:
-        cap.release()
+        #cap.release()
         cv2.destroyAllWindows()
 pass

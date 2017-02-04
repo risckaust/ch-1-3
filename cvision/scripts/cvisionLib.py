@@ -1,8 +1,20 @@
 import rospy
 import numpy as np
+import cv2
+
 from math import *
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+
+# Check version of OpenCV
+
+if cv2.__version__.startswith('2'):
+    OLDCV = True
+else:
+    OLDCV = False
+    
+if OLDCV:
+    import cv2.cv as cv
 
 ###################################
 #
@@ -27,21 +39,19 @@ from sensor_msgs.msg import Image
 
 class pix2m():
     def __init__(self, ns):
-	self.ns=ns
         self.LX = rospy.get_param(ns+'/cvision/LX')
         self.LY = rospy.get_param(ns+'/cvision/LY')
         self.m2pix = rospy.get_param(ns+'/pix2m/m2pix')
         self.gripperOffset = rospy.get_param(ns+'/cvision/gripperOffset')
-	self.scale = 1.0
-	if rospy.get_param(ns+'/cvision/reduce'):
-		self.scale = 2.0
+        if rospy.get_param(ns+'/cvision/reduce'):
+            self.scale = 2.0
         else:
-		self.scale = 1.0
+            self.scale = 1.0
         
     def target(self,center):
         xSp = 0.0
         ySp = 0.0
-        
+             
         if center.z > 0:
             xSp = self.scale*(center.x - self.LX/2) - self.gripperOffset
             ySp = self.scale*(self.LY/2 - center.y)
@@ -95,22 +105,17 @@ class pix2m():
 
 class getFrame():
     def __init__(self, ns):
-	self.ns=ns
         self.bridge = CvBridge()
         self.LX = rospy.get_param(ns+'/cvision/LX')
         self.LY = rospy.get_param(ns+'/cvision/LY')
         self.BGR = np.zeros((self.LY,self.LX,3), np.uint8)
         self.Gry = np.zeros((self.LY,self.LX,1), np.uint8)
-        self.subBGR = rospy.Subscriber(ns+'/cvision/frameBGR', Image, self.cbBGR)
-        self.subGry = rospy.Subscriber(ns+'/cvision/frameGry', Image, self.cbGry)
-    
-    def cbBGR(self,msg):
+        self.subFrame = rospy.Subscriber(ns+'/cvision/frame', Image, self.cbFrame)
+
+    def cbFrame(self,msg):
         if not msg == None:
             self.BGR = self.bridge.imgmsg_to_cv2(msg, "passthrough")
-    
-    def cbGry(self,msg):
-        if not msg == None:
-            self.Gry = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+            self.Gry = cv2.cvtColor(self.BGR, cv2.COLOR_BGR2GRAY)
             
 ###################################
 #

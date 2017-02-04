@@ -24,6 +24,7 @@ if OLDCV:
 
 import cvisionParams
 
+
 ###################################
 
 def videoBridge():
@@ -31,25 +32,33 @@ def videoBridge():
     # initialize node
     rospy.init_node('videoBridge', anonymous=True)
 
-    # get the namespace
+    # get namespace
     ns = rospy.get_namespace()
     ns = ns[0:len(ns)-1]
 
-    # import vision params
     cvisionParams.setParams(ns)
     
     # Create publishers
 
-    frameBGR  = rospy.Publisher(ns+'/cvision/frameBGR', Image, queue_size=10)
-    msgBGR = CvBridge()
-    frameGry =  rospy.Publisher(ns+'/cvision/frameGry', Image, queue_size=10)
-    msgGry = CvBridge()
+    frame = rospy.Publisher(ns+'/cvision/frame', Image, queue_size=10)
+    msg = CvBridge()
 
     # set publication rate
     rate = rospy.Rate(rospy.get_param(ns+'/cvision/loopRate'))
-
-    # start video stream
+    
+    # start video stream and set parameters
     cap = cv2.VideoCapture(0)
+    if OLDCV:
+        cap.set(cv.CV_CAP_PROP_FPS, rospy.get_param(ns+'/cvision/loopRate'))
+        cap.set(cv.CV_CAP_PROP_FRAME_WIDTH, rospy.get_param(ns+'/cvision/LX'))
+        cap.set(cv.CV_CAP_PROP_FRAME_HEIGHT, rospy.get_param(ns+'/cvision/LY'))
+    else:
+        cap.set(cv2.CAP_PROP_FPS, rospy.get_param(ns+'/cvision/loopRate'))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, rospy.get_param(ns+'/cvision/LX'))
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, rospy.get_param(ns+'/cvision/LY'))
+     
+    # wait a second
+    time.sleep(1.0)
     
     if cap.isOpened():
         print 'videoBridge initialized...'
@@ -60,27 +69,24 @@ def videoBridge():
 
         # grab a frame
         _, bgr = cap.read()
-
+        
         # resize if needed
-        if rospy.get_param(ns+'/cvision/reduce'):
-            bgr = cv2.resize(bgr,(rospy.get_param(ns+'/cvision/LX'),rospy.get_param(ns+'/cvision/LY')))
+        # if rospy.get_param('/cvision/reduce'):
+        #     bgr = cv2.resize(bgr,(rospy.get_param('/cvision/LX'),rospy.get_param('/cvision/LY')))
         
         # convert to grayscale
         
-        gry = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        # gry = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
         # publish images
         rate.sleep()
-        frameBGR.publish(msgBGR.cv2_to_imgmsg(bgr, encoding="bgr8"))
-        frameGry.publish(msgGry.cv2_to_imgmsg(gry, encoding="passthrough"))
+        frame.publish(msg.cv2_to_imgmsg(bgr, encoding="bgr8"))
 
 if __name__ == '__main__':
     try:
         videoBridge()
     except rospy.ROSInterruptException:
         # cleanup the camera and close any open windows
-        cap.release()
+        #cap.release()
         cv2.destroyAllWindows()
-        pass
-
-
+pass
