@@ -29,8 +29,11 @@
 
         <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
         </node>
+
+	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true">
+        </node>
 	
-	<node pkg="cvision" type="getColorBlob.py" name="getGreenBlob" args="'green'" respawn="true" output="screen">
+	<!--node pkg="cvision" type="getColorBlob.py" name="getGreenBlob" args="'green'" respawn="true" output="screen">
         </node>
 
 	<node pkg="cvision" type="getColorBlob.py" name="getBlueBlob" args="'blue'" respawn="true" output="screen">
@@ -40,7 +43,7 @@
         </node>
 
 	<node pkg="cvision" type="getColorBlob.py" name="getYellowBlob" args="'yellow'" respawn="true" output="screen">
-        </node>
+        </node-->
 
         <!--node pkg="topic_tools" type="throttle" name="throttle" args="messages /frameBGR 5.0 /frameBGR_reduced" required="true" >
         </node>
