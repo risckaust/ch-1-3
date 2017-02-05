@@ -7,6 +7,7 @@ import rospy
 import numpy as np
 import cv2
 import imutils
+import sys
 
 from math import sqrt
 from geometry_msgs.msg import Point32
@@ -268,4 +269,4 @@ if __name__ == '__main__':
     except rospy.ROSInterruptException:
         cap.release()
         cv2.destroyAllWindows()
-pass
+	pass
