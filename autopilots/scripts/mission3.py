@@ -1012,8 +1012,8 @@ class StateMachineC( object ):
 			xy_list_sorted=sorted(xy_list, key=self.getThirdElemt)
 			for i in range(0,len(xy_list_sorted)):
 				bodyRot = self.bodK.yaw - pi/2.0
-				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot)
-				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
+				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][1]*sin(bodyRot)
+				y_enu = xy_list_sorted[i][0]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
 				dx_enu = x_enu
 				dy_enu = y_enu
 				##x and y switched because this function operates in NED frame
@@ -1063,8 +1063,8 @@ class StateMachineC( object ):
 			xy_list_sorted=sorted(xy_list, key=self.getThirdElemt)
 			for i in range(0,len(xy_list_sorted)):
 				bodyRot = self.bodK.yaw - pi/2.0
-				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot)
-				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
+				x_enu =  xy_list_sorted[i][0]*cos(bodyRot) - xy_list_sorted[i][1]*sin(bodyRot)
+				y_enu = xy_list_sorted[i][0]*sin(bodyRot) + xy_list_sorted[i][1]*cos(bodyRot)
 				dx_enu = x_enu
 				dy_enu = y_enu
 				##x and y switched because this function operates in NED frame
