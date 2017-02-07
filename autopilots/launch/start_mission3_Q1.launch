@@ -30,7 +30,7 @@
         <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
         </node>
 
-	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true">
+	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true" output="screen">
         </node>
 	
 	<!--node pkg="cvision" type="getColorBlob.py" name="getGreenBlob" args="'green'" respawn="true" output="screen">
