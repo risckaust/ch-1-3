@@ -67,6 +67,30 @@ def getColor():
 
     print '####Found all HSV parameters####'
 
+    # which colors to mask?
+    FindBlue = True
+    FindRed = True
+    FindGreen = True
+    FindYellow = True
+
+    if rospy.has_param(ns+'/FindBLue'):
+	FindBlue = rospy.get_param(ns+'/FindBlue')
+
+    if rospy.has_param(ns+'/FindGreen'):
+	FindGreen = rospy.get_param(ns+'/FindGreen')
+	if not FindGreen:
+		print "#######Skip finding Green"
+
+    if rospy.has_param(ns+'/FindRed'):
+	FindRed = rospy.get_param(ns+'/FindRed')
+	if not FindRed:
+		print "#######Skip finding Red"
+
+    if rospy.has_param(ns+'/FindYellow'):
+	FindYellow = rospy.get_param(ns+'/FindYellow')
+	if not FindYellow:
+		print "#######Skip finding Yellow"
+
     cvisionParams.setParams(ns)
     color = 'bgr'
     
@@ -123,34 +147,38 @@ def getColor():
             
     	# find the color in the image for blue, green, and red
     	
-        # Blue
+        # Always find Blue
         lowerB = np.array(rospy.get_param(ns+'/BlueHSV/low'),np.uint8)
         upperB = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
         maskB = cv2.inRange(hsv,lowerB,upperB)
+
+	mask = maskB
         
         # Green
-        lowerG = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
-        upperG = np.array(rospy.get_param(ns+'/GreenHSV/high'),np.uint8) 
-        maskG = cv2.inRange(hsv,lowerG,upperG)
+	if FindGreen:
+		lowerG = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
+		upperG = np.array(rospy.get_param(ns+'/GreenHSV/high'),np.uint8) 
+		maskG = cv2.inRange(hsv,lowerG,upperG)
+		mask = cv2.bitwise_or(mask,maskG)
 
 	# Yellow
-        lowerY = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
-        upperY = np.array(rospy.get_param(ns+'/YellowHSV/high'),np.uint8) 
-        maskY = cv2.inRange(hsv,lowerY,upperY)
+	if FindYellow:
+		lowerY = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
+		upperY = np.array(rospy.get_param(ns+'/YellowHSV/high'),np.uint8) 
+		maskY = cv2.inRange(hsv,lowerY,upperY)
+		mask = cv2.bitwise_or(mask,maskY)
         
         # Red
-        lowerRlow = np.array([0,100,100],np.uint8)
-        upperRlow = np.array([10,255,255],np.uint8)
-        maskLow = cv2.inRange(hsv, lowerRlow, upperRlow)
-        
-        lowerRhigh = np.array([160,100,100],np.uint8)
-        upperRhigh = np.array([180,255,255],np.uint8)
-        maskHigh = cv2.inRange(hsv, lowerRhigh, upperRhigh)
-        maskR = cv2.bitwise_or(maskLow,maskHigh)
-
-        mask = cv2.bitwise_or(maskB,maskG)
-	mask = cv2.bitwise_or(mask,maskY)
-        mask = cv2.bitwise_or(mask,maskR)
+	if FindRed:
+		lowerRlow = np.array([0,100,100],np.uint8)
+		upperRlow = np.array([10,255,255],np.uint8)
+		maskLow = cv2.inRange(hsv, lowerRlow, upperRlow)
+		
+		lowerRhigh = np.array([160,100,100],np.uint8)
+		upperRhigh = np.array([180,255,255],np.uint8)
+		maskHigh = cv2.inRange(hsv, lowerRhigh, upperRhigh)
+		maskR = cv2.bitwise_or(maskLow,maskHigh)
+		mask = cv2.bitwise_or(mask,maskR)
 
         # apply fisheye mask
         if rospy.get_param(ns+'/cvision/feCamera'):
