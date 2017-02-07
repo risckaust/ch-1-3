@@ -1,4 +1,13 @@
-﻿////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+﻿
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include "ros/ros.h"
 #include "cvision/ObjectPose.h"
 #include <cv_bridge/cv_bridge.h>
@@ -112,7 +121,7 @@ int main(int argc, char** argv)
     double frame_counter = 0;
     double frame_count_max = -1; //infinite
 
-    string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    string srcpath = "/home/risc/ros_ws/src/ch-1-3/cvision/src";
 
     string configFile = srcpath + "/config.txt";
     ifstream f_config(configFile.c_str());
@@ -268,6 +277,7 @@ int main(int argc, char** argv)
                 imgOriginal = cv_img_ptr_ros->image;
             }
 
+
             frame_counter++;
 
             //Determine size of video input
@@ -275,7 +285,6 @@ int main(int argc, char** argv)
             int icols_imgOriginal = imgOriginal.cols;
 
             imgSz = Size(icols_imgOriginal,irows_imgOriginal);
-
             cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
             ///////Thresholding
@@ -600,6 +609,7 @@ if (!bCompetition) {
         }
 
         ros::spinOnce();
+	loop_rate.sleep();
     }
 
     //Save values to file
