@@ -66,23 +66,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& input)
 
 int main(int argc, char** argv)
 {
-    int frameRate =30;
-    //ROS Init
-    ros::init(argc, argv, "detector");
-
-    //Node handle
-    ros::NodeHandle n;
-
-    cvision::ObjectPose msg;
-
-    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
-
-    ros::Subscriber image_sub = n.subscribe("/cv_camera/image_raw",10,imageCallback);
-
-    //ImageConverter imgC;
-
-    ros::Rate loop_rate(frameRate);
-
     MouseParams mp;
     mp.bMouseClicked = false;
     //pause and resume code
@@ -105,12 +88,29 @@ int main(int argc, char** argv)
     int min_obj_sz = 5;
     int thres_tol = 50;
     int morph_sz = 5;
+    int frameRate = 30;
 
     int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
-    double frame_counter = 0;
-    double frame_count_max = -1; //infinite
+    int frame_counter = 0;
+    int frame_count_max = -1; //infinite
 
     string srcpath = "/home/risc/ros_ws/src/ch-1-3/cvision/src";
+
+    //ROS Init
+    ros::init(argc, argv, "detector");
+
+    //Node handle
+    ros::NodeHandle n;
+
+    cvision::ObjectPose msg;
+
+    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
+
+    ros::Subscriber image_sub = n.subscribe("/cv_camera/image_raw",10,imageCallback);
+
+    //ImageConverter imgC;
+
+    ros::Rate loop_rate(frameRate);
 
     string configFile = srcpath + "/config.txt";
     ifstream f_config(configFile.c_str());
@@ -141,6 +141,8 @@ int main(int argc, char** argv)
         else if (name == "min_obj_sz") iss >> min_obj_sz;
         else if (name == "thres_tol") iss >> thres_tol;
         else if (name == "morph_sz") iss >> morph_sz;
+        else if (name == "frameRate") iss >> frameRate;
+        else if (name == "srcpath") iss >> srcpath;
     }
 
     RNG rng(12345);
@@ -239,10 +241,10 @@ int main(int argc, char** argv)
         else if (name1 == "iHighV") iss >> iHighV;
     }
 
-cout << "I'm here" << endl;
+    cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
-cout << frame_counter << endl;
+        cout << "Frame: " << frame_counter << endl;
         Mat imgOriginal;
         Mat imgHSV;
         Mat imgThresholded;
@@ -517,10 +519,13 @@ if (!bCompetition) {
                 cout << "H:" << H << " S:" << S << " V:" << V << endl;
             }
 
-            //Check for key presses
-            switch (waitKey(30))
-            {
 
+int key = (waitKey(30) & 0xFF);
+cout << key << endl;
+            //Check for key presses
+            switch (key)
+            {
+            cout << "Reached switch statement..." << endl;
             case 27: //'esc' key has been pressed, exit program.
                 bESC = 1;
                 break;
@@ -550,8 +555,9 @@ if (!bCompetition) {
                     cout << "Code paused, press 'p' again to resume" << endl;
                     while (bPause == true)
                     {
+                        key = (waitKey(30) & 0xFF);
                         //stay in this loop until
-                        switch (waitKey())
+                        switch (key)
                         {
                         //a switch statement inside a switch statement? Mind blown.
                         case 112:
