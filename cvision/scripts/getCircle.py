@@ -63,22 +63,11 @@ def getCircle():
     #   cap = cv2.VideoCapture(0) or cap = cv2.VideoCapture('file.mp4')
     #   _, frame = cap.read()
     quadCam = cvisionLib.getFrame()
-    
-    # Code for testing from video file
-    if rospy.get_param('/getLaunchpad/testFileOn'):
-        cap = cv2.VideoCapture(rospy.get_param('/getLaunchpad/fileName'))
 
     while not rospy.is_shutdown():
 
-        # grab a frame
-        if rospy.get_param('/getLaunchpad/testFileOn'):
-            _, frame = cap.read()
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frame = cv2.resize(frame,(LX,LY))
-            mask = frame
-        else:
-            frame = quadCam.Gry
-            mask = frame
+        frame = quadCam.Gry
+        mask = frame
             
         # blur image
         mask = cv2.blur(mask, (5,5))
@@ -98,13 +87,14 @@ def getCircle():
         Detect = False
         
         # extract circles from grayscale
+        # param2: higher is harder (fewer circles)
 
         if OLDCV:
             circles = cv2.HoughCircles(mask,cv.CV_HOUGH_GRADIENT,1,LY,
-                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/2)
+                param1=50,param2=50,minRadius=LY/50,maxRadius=LY/2)
         else:
             circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,1,LY,
-                param1=50,param2=100,minRadius=LY/50,maxRadius=LY/2)
+                param1=50,param2=50,minRadius=LY/50,maxRadius=LY/2)
 
         # assess circles 
 

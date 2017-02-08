@@ -41,7 +41,11 @@ def videoBridge():
     rate = rospy.Rate(rospy.get_param('/cvision/loopRate'))
     
     # start video stream and set parameters
-    cap = cv2.VideoCapture(0)
+    if rospy.get_param('/cvision/testFileOn'):
+        cap = cv2.VideoCapture(rospy.get_param('/cvision/testFileName'))
+    else:
+        cap = cv2.VideoCapture(0)
+
     if OLDCV:
         cap.set(cv.CV_CAP_PROP_FPS, rospy.get_param('/cvision/loopRate'))
         cap.set(cv.CV_CAP_PROP_FRAME_WIDTH, rospy.get_param('/cvision/LX'))
@@ -65,8 +69,8 @@ def videoBridge():
         _, bgr = cap.read()
         
         # resize if needed
-        # if rospy.get_param('/cvision/reduce'):
-        #     bgr = cv2.resize(bgr,(rospy.get_param('/cvision/LX'),rospy.get_param('/cvision/LY')))
+        if rospy.get_param('/cvision/reduce') and rospy.get_param('/cvision/testFileOn'):
+             bgr = cv2.resize(bgr,(rospy.get_param('/cvision/LX'),rospy.get_param('/cvision/LY')))
         
         # convert to grayscale
         

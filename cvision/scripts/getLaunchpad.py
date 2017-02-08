@@ -135,7 +135,6 @@ def getLaunchpad():
         
         targetPixels.publish(msgPixels)
 
-            
         if rospy.get_param('/cvision/camRotate') and msgPixels.z > 0:        # rotate camera if needed
             msgPixels.x, msgPixels.y = cvisionLib.camRotate(msgPixels.x, msgPixels.y)
 
@@ -146,6 +145,7 @@ def getLaunchpad():
 
         targetMeters.publish(msgMeters)
         
+        # grab a frame
         frame = quadCam.BGR
 
         if dataWhite[2] > 0:
@@ -156,7 +156,7 @@ def getLaunchpad():
         if dataCorners[2] > 0:
             cv2.circle(frame, (int(dataCorners[0]), int(dataCorners[1])), 5,(0, 255, 255), -1)
         if Detect:
-            cv2.circle(frame, (int(CX), int(CY)), 10,(0, 255, 0), -1)
+            cv2.circle(frame, (int(CX), int(CY)), 10,(0, 0, 255), -1)
 
         # show processed images to screen
         if rospy.get_param('/getLaunchpad/imgShow'):

@@ -58,8 +58,9 @@ def getCorners():
     # Parameters for Shi Tomasi corner detection
     feature_params = dict( maxCorners = 10,
                        qualityLevel = 0.5,
-                       minDistance = 25,
-                       blockSize = 7 ) 
+                       minDistance = 20)
+#                       minDistance = 25,
+#                       blockSize = 7 ) 
                        
     # Parameters for lucas kanade optical flow
     lk_params = dict( winSize  = (15,15),
@@ -71,18 +72,9 @@ def getCorners():
     #   _, frame = cap.read()
     quadCam = cvisionLib.getFrame()
     
-    # Code for testing from video file
-    if rospy.get_param('/getLaunchpad/testFileOn'):
-        cap = cv2.VideoCapture(rospy.get_param('/getLaunchpad/fileName'))
         
     # Grab an initial frame & find features
-    if rospy.get_param('/getLaunchpad/testFileOn'):
-        _, frame = cap.read()
-        frame = cv2.resize(frame,(LX,LY))
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        old_frame = frame
-    else:
-        old_frame = quadCam.Gry
+    old_frame = quadCam.Gry
     
     if rospy.get_param('/cvision/feCamera'):
         p0 = cv2.goodFeaturesToTrack(old_frame, mask = feMask, **feature_params)
@@ -95,14 +87,8 @@ def getCorners():
     while not rospy.is_shutdown():
 
         # grab a frame
-        if rospy.get_param('/getLaunchpad/testFileOn'):
-            _, frame = cap.read()
-            frame = cv2.resize(frame,(LX,LY))
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            mask = frame
-        else:
-            frame = quadCam.Gry
-            mask = frame
+        frame = quadCam.Gry
+        mask = frame
     
         # prep messages
         msgPixels.x = -1.0
@@ -147,17 +133,12 @@ def getCorners():
                 
                 Restart = False
         
-        if kc%rospy.get_param('/cvision/loopRate') == 0: # Restart every second
+        N = 1
+        if kc%(N*rospy.get_param('/cvision/loopRate')) == 0: # Restart every N*rate frames
             Restart = True
         
         if Restart:
-            if rospy.get_param('/getLaunchpad/testFileOn'):
-                _, frame = cap.read()
-                frame = cv2.resize(frame,(LX,LY))
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                old_frame = frame
-            else:
-                old_frame = quadCam.Gry
+            old_frame = quadCam.Gry
             if rospy.get_param('/cvision/feCamera'):
                 p0 = cv2.goodFeaturesToTrack(old_frame, mask = feMask, **feature_params)
             else:
