@@ -1,13 +1,4 @@
-﻿
-
-
-
-
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include "ros/ros.h"
 #include "cvision/ObjectPose.h"
 #include <cv_bridge/cv_bridge.h>
@@ -82,7 +73,6 @@ int main(int argc, char** argv)
     //Node handle
     ros::NodeHandle n;
 
-
     cvision::ObjectPose msg;
 
     ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
@@ -92,7 +82,6 @@ int main(int argc, char** argv)
     //ImageConverter imgC;
 
     ros::Rate loop_rate(frameRate);
-
 
     MouseParams mp;
     mp.bMouseClicked = false;
@@ -250,16 +239,16 @@ int main(int argc, char** argv)
         else if (name1 == "iHighV") iss >> iHighV;
     }
 
+cout << "I'm here" << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
+cout << frame_counter << endl;
         Mat imgOriginal;
         Mat imgHSV;
         Mat imgThresholded;
         Mat imgContours;
 
-        if (cv_img_ptr_ros)
-        {
-
+        
             if ( (bCamera || bVideo) && !bCompetition)
             {
                 bool bSuccess = cap.read(imgOriginal); // read a new frame from video
@@ -272,7 +261,7 @@ int main(int argc, char** argv)
 
             }
 
-            else
+            else if (cv_img_ptr_ros)
             {
                 imgOriginal = cv_img_ptr_ros->image;
             }
@@ -599,17 +588,13 @@ if (!bCompetition) {
             //ROS Publisher
             object_pub.publish(msg);
 
+            if (cv_img_ptr_ros){
             //Clear pointer
             cv_img_ptr_ros.reset();
+            }
 
-        }
-        else
-        {
-            // nothing can be done here; we have to spin and wait for images to arrive
-        }
-
-        ros::spinOnce();
-	loop_rate.sleep();
+            ros::spinOnce();
+            loop_rate.sleep();
     }
 
     //Save values to file
