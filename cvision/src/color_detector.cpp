@@ -80,6 +80,7 @@ int main(int argc, char** argv)
     bool bVideo = false;
     bool bViz = false;
     bool bCompetition = false;
+    bool bSend = false;
     //Fit shapes
     bool bFitBoundingBox = true;
     bool bFitRotatedRect = true;
@@ -243,7 +244,7 @@ int main(int argc, char** argv)
     cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
-        cout << "Frame: " << frame_counter << endl;
+        //cout << "Frame: " << frame_counter << endl;
         Mat imgBGR;
         Mat imgHSV;
         Mat imgThresholded;
@@ -379,7 +380,7 @@ int main(int argc, char** argv)
                     t_SP = minRect[max_idx_r].angle;
                 }
 
-                cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
+                //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
 
                 //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
                 Scalar color = Scalar(0, 255, 255);
@@ -461,7 +462,7 @@ if (!bCompetition) {
                 iHighS = min(S+thres_tol,255);
                 iLowV = max(V-thres_tol,0);
                 iHighV = min(V+thres_tol,255);
-                cout << "H:" << H << " S:" << S << " V:" << V << endl;
+                //cout << "H:" << H << " S:" << S << " V:" << V << endl;
             }
 
             if (bDebug == true)
@@ -504,6 +505,8 @@ if (!bCompetition) {
 
                 createTrackbar("LowV", "Control", &iLowV, 255);//Value (0 - 255)
                 createTrackbar("HighV", "Control", &iHighV, 255);
+                
+                createTrackbar("Tolerance", "Control", &thres_tol, 100);
 
                 mp.img = imgHSV;
                 cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
@@ -549,6 +552,11 @@ if (!bCompetition) {
                 color = 4;
                 cout << "Color: Yellow" << endl;
                 break;
+                    
+            case 115: //'s' has been pressed.
+                bSend = 1;
+                cout << "Sending triggered." << endl;
+                break;                    
 
             case 100: //'d' has been pressed. Toggle debug
                 bDebug = !bDebug;
@@ -588,10 +596,43 @@ if (!bCompetition) {
                         }
                     }
                 }
-
-
-
             }
+    
+            switch (color)
+            {
+            case 1: //Red color selected.
+                if (bSend) {
+                //Send ROS message here
+                bSend = false;
+                cout << "Sending red thresholds complete." << endl;
+                }
+                break;
+
+            case 2: //Green color selected.
+                if (bSend) {
+                //Send ROS message here
+                bSend = false;
+                cout << "Sending green thresholds complete." << endl;
+                }
+                break;
+
+            case 3: //Blue color selected.
+                if (bSend) {
+                //Send ROS message here
+                bSend = false;
+                cout << "Sending blue thresholds complete." << endl;
+                }
+                break;
+
+            case 4: //Yellow color selected.
+                if (bSend) {
+                //Send ROS message here
+                bSend = false;
+                cout << "Sending yellow thresholds complete." << endl;
+                }
+                break;
+            }
+    
             }
 
             //ROS Topics
