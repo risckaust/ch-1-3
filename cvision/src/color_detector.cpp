@@ -42,9 +42,9 @@ void mouseHandler( int event, int x, int y, int flags, void* param)
     mp->pt = * point;
     mp->bMouseClicked = true;
 
-//int H=p->x; //hue
-//int S=p->y; //saturation
-//int V=p->z; //value
+//int H=point->x; //hue
+//int S=point->y; //saturation
+//int V=point->z; //value
 //cout << "H:" << H << " S:" << S << " V:" << V << endl;
 
 }
@@ -66,25 +66,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& input)
 
 int main(int argc, char** argv)
 {
-    int frameRate =30;
-    //ROS Init
-    ros::init(argc, argv, "detector");
-
-    //Node handle
-    ros::NodeHandle n;
-
-
-    cvision::ObjectPose msg;
-
-    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
-
-    ros::Subscriber image_sub = n.subscribe("/cv_camera/image_raw",10,imageCallback);
-
-    //ImageConverter imgC;
-
-    ros::Rate loop_rate(frameRate);
-
-
     MouseParams mp;
     mp.bMouseClicked = false;
     //pause and resume code
@@ -107,12 +88,29 @@ int main(int argc, char** argv)
     int min_obj_sz = 5;
     int thres_tol = 50;
     int morph_sz = 5;
+    int frameRate = 30;
 
     int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
-    double frame_counter = 0;
-    double frame_count_max = -1; //infinite
+    int frame_counter = 0;
+    int frame_count_max = -1; //infinite
 
-    string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    string srcpath = "/home/risc/ros_ws/src/ch-1-3/cvision/src";
+
+    //ROS Init
+    ros::init(argc, argv, "detector");
+
+    //Node handle
+    ros::NodeHandle n;
+
+    cvision::ObjectPose msg;
+
+    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
+
+    ros::Subscriber image_sub = n.subscribe("/cv_camera/image_raw",10,imageCallback);
+
+    //ImageConverter imgC;
+
+    ros::Rate loop_rate(frameRate);
 
     string configFile = srcpath + "/config.txt";
     ifstream f_config(configFile.c_str());
@@ -143,6 +141,8 @@ int main(int argc, char** argv)
         else if (name == "min_obj_sz") iss >> min_obj_sz;
         else if (name == "thres_tol") iss >> thres_tol;
         else if (name == "morph_sz") iss >> morph_sz;
+        else if (name == "frameRate") iss >> frameRate;
+        else if (name == "srcpath") iss >> srcpath;
     }
 
     RNG rng(12345);
@@ -241,19 +241,19 @@ int main(int argc, char** argv)
         else if (name1 == "iHighV") iss >> iHighV;
     }
 
+    cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
-        Mat imgOriginal;
+        cout << "Frame: " << frame_counter << endl;
+        Mat imgBGR;
         Mat imgHSV;
         Mat imgThresholded;
         Mat imgContours;
 
-        if (cv_img_ptr_ros)
-        {
-
+        
             if ( (bCamera || bVideo) && !bCompetition)
             {
-                bool bSuccess = cap.read(imgOriginal); // read a new frame from video
+                bool bSuccess = cap.read(imgBGR); // read a new frame from video
 
                 if (!bSuccess) //if not success, break loop
                 {
@@ -263,22 +263,23 @@ int main(int argc, char** argv)
 
             }
 
-            else
+            else if (cv_img_ptr_ros)
             {
-                imgOriginal = cv_img_ptr_ros->image;
+                imgBGR = cv_img_ptr_ros->image;
             }
+
 
             frame_counter++;
 
             //Determine size of video input
-            int irows_imgOriginal = imgOriginal.rows;
-            int icols_imgOriginal = imgOriginal.cols;
+            int irows_imgBGR = imgBGR.rows;
+            int icols_imgBGR = imgBGR.cols;
 
-            imgSz = Size(icols_imgOriginal,irows_imgOriginal);
-
-            cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+            imgSz = Size(icols_imgBGR,irows_imgBGR);
+            cvtColor(imgBGR, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
             ///////Thresholding
+            //inRange(imgBGR, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
             inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
 
             //Width and height for morph
@@ -323,7 +324,7 @@ int main(int argc, char** argv)
                 int max_idx_r= 0;
 
                 //center of frame
-                Point2f frameCenter(icols_imgOriginal / 2, irows_imgOriginal / 2);
+                Point2f frameCenter(icols_imgBGR / 2, irows_imgBGR / 2);
 
                 /// Approximate contours to polygons + get bounding rects and circles
                 for (int i = 0; i < cont_sz; i++)
@@ -392,7 +393,7 @@ int main(int argc, char** argv)
 //                    if (bFitBoundingBox)
 //                    {
 //                        //bounding box
-//                        rectangle(imgOriginal, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
+//                        rectangle(imgBGR, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
 //                    }
                     if (bFitRotatedRect)
                     {
@@ -400,18 +401,18 @@ int main(int argc, char** argv)
                         Point2f rect_points[4];
                         minRect[max_idx_r].points( rect_points );
                         for( int j = 0; j < 4; j++ )
-                            line(imgOriginal, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
+                            line(imgBGR, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
                         //Center
-                        circle(imgOriginal, mc[max_idx_r], 5, color, -1, 8, 0);
+                        circle(imgBGR, mc[max_idx_r], 5, color, -1, 8, 0);
                     }
                     if (bFitCircle)
                     {
                         //min circle
-                        circle(imgOriginal, cc[max_idx_c], (int)cr[max_idx_c], color3, 2, 8, 0 );
+                        circle(imgBGR, cc[max_idx_c], (int)cr[max_idx_c], color3, 2, 8, 0 );
                         //Center
-                        circle(imgOriginal, cc[max_idx_c], 5, color, -1, 8, 0);
+                        circle(imgBGR, cc[max_idx_c], 5, color, -1, 8, 0);
                     }
-                    //putText(imgOriginal, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+                    //putText(imgBGR, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
                 }
 
                 if (bDebug && !bCompetition)
@@ -447,6 +448,23 @@ int main(int argc, char** argv)
 
 
 if (!bCompetition) {
+
+            //Adjust thresholds with values selected by mouse
+            if(mp.bMouseClicked)
+            {
+                mp.bMouseClicked = false;
+                int H=mp.pt.x; //hue
+                int S=mp.pt.y; //saturation
+                int V=mp.pt.z; //value
+                iLowH = max(H-thres_tol,0);
+                iHighH = min(H+thres_tol,179);
+                iLowS = max(S-thres_tol,0);
+                iHighS = min(S+thres_tol,255);
+                iLowV = max(V-thres_tol,0);
+                iHighV = min(V+thres_tol,255);
+                cout << "H:" << H << " S:" << S << " V:" << V << endl;
+            }
+
             if (bDebug == true)
             {
                 namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
@@ -466,7 +484,7 @@ if (!bCompetition) {
             {
                 /// Show in a window
                 namedWindow( "VideoFeed", CV_WINDOW_AUTOSIZE );
-                imshow("VideoFeed", imgOriginal); //show the original image
+                imshow("VideoFeed", imgBGR); //show the original image
             }
             else
             {
@@ -500,29 +518,15 @@ if (!bCompetition) {
 
             if (bOutputVideo)
             {
-                outputVideo << imgOriginal;
+                outputVideo << imgBGR;
             }
 
-            //Adjust thresholds with values selected by mouse
-            if(mp.bMouseClicked)
-            {
-                mp.bMouseClicked = false;
-                int H=mp.pt.x; //hue
-                int S=mp.pt.y; //saturation
-                int V=mp.pt.z; //value
-                iLowH = max(H-thres_tol,0);
-                iHighH = min(H+thres_tol,179);
-                iLowS = max(S-thres_tol,0);
-                iHighS = min(S+thres_tol,255);
-                iLowV = max(V-thres_tol,0);
-                iHighV = min(V+thres_tol,255);
-                cout << "H:" << H << " S:" << S << " V:" << V << endl;
-            }
 
+            int key = (waitKey(30) & 0xFF);
             //Check for key presses
-            switch (waitKey(30))
+            switch (key)
             {
-
+            cout << "Reached switch statement..." << endl;
             case 27: //'esc' key has been pressed, exit program.
                 bESC = 1;
                 break;
@@ -552,8 +556,9 @@ if (!bCompetition) {
                     cout << "Code paused, press 'p' again to resume" << endl;
                     while (bPause == true)
                     {
+                        key = (waitKey(30) & 0xFF);
                         //stay in this loop until
-                        switch (waitKey())
+                        switch (key)
                         {
                         //a switch statement inside a switch statement? Mind blown.
                         case 112:
@@ -590,16 +595,13 @@ if (!bCompetition) {
             //ROS Publisher
             object_pub.publish(msg);
 
+            if (cv_img_ptr_ros){
             //Clear pointer
             cv_img_ptr_ros.reset();
+            }
 
-        }
-        else
-        {
-            // nothing can be done here; we have to spin and wait for images to arrive
-        }
-
-        ros::spinOnce();
+            ros::spinOnce();
+            loop_rate.sleep();
     }
 
     //Save values to file
