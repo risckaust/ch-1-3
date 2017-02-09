@@ -162,8 +162,15 @@ class StateMachineC( object ):
 		self.other_2_state	= 0.0
 		self.target_lat		= 1.1
 		self.target_lon		= 1.1
+
 		# takeoff altitude [m] to be set by external controller
 		self.TKOFFALT		= 2.0
+		# Takeoff velocity [m/s]
+		self.TAKEOFF_V		= 1.0
+
+		# Landing velocity [m/s]
+		self.LANDING_V		= 0.5
+
 		# Lat/Lon of pre-drop location: different for each vehicle
 		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])
 		self.DROP_COORDS	= np.array([23.3, 12.5])
@@ -826,7 +833,82 @@ class StateMachineC( object ):
 
 		self.debug()
 
+		# landed flag
+		landed = False
+
 		# send land command to Pixhawk, or execute landing routine using the velocity controller
+
+		# get current lateral vMax
+		current_vmax = rospy.get_param(self.namespace + '/kBodVel/vMax')
+
+		# lower lateral vMax params
+		rospy.set_param(self.namespace + '/kBodVel/vMax', 0.5)
+
+		# get current lateral position
+		# cycle to register local position
+		c=0
+		while c<2:
+			self.rate.sleep()
+			c = c + 1
+		self.altK.zSp = self.altK.z
+		self.home.x = self.bodK.x
+		self.home.y = self.bodK.y
+
+		# counter for valid landed readings
+		c_landed=0
+		# number of valid landed readings before we declared LANDED
+		VALID_LANDED_C = 10
+		# velocity accumulator for valid landed velocity
+		v_landed_hist = 0.0
+		# average of history
+		v_avg = 0.0
+		# moving average window, before reset
+		AVG_WINDOW = 20
+
+		# while loop
+		while not landed and not rospy.is_shutdown():
+			# update setpoint topic
+			self.setp.velocity.z = -0.1*self.LANDING_V # [-1 for going down]
+			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
+			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+
+			# landed conditions
+			# possible landing situation
+			current_vz = abs(altK.vz)
+			"""
+			if current_z < 0.1:
+				# increase counter
+				c_landed = c_landed + 1
+			else:
+				c_landed = 0
+
+			if c_landed > VALID_LANDED_C:
+				# landing is Done
+				landed = True
+			"""
+
+			# if inside the current average window, do averaging
+			if c_landed < AVG_WINDOW:
+				v_avg = (current_vz + c_landed*v_avg) / (c_landed+1)
+				c_landed = c_landed + 1
+			else: # otherwise, reset
+				# check if the average velocity is below landing threshold. If yes, claim landing
+				if v_avg < 0.1:
+					landed = True
+				c_landed = 0
+				v_avg = 0.0
+
+			self.rate.sleep()
+			# publish setpoints
+			self.setp.header.stamp = rospy.Time.now()
+			self.command.publish(self.setp)
+			# publish state topic
+			self.state_topic.state = self.current_state
+			self.state_topic.signal = self.current_signal
+			self.state_pub.publish(self.state_topic)
+
+		# reset original lateral vMax
+		rospy.set_param(self.namespace + '/kBodVel/vMax', current_vmax)
 
 		# Done with Land state, send signal
 		self.current_signal = 'Done'
@@ -838,6 +920,7 @@ class StateMachineC( object ):
 		self.debug()
 
 		return
+	######## End of Land state ############################
 
 	# State: Hover
 	def execute_hover(self):
@@ -848,7 +931,7 @@ class StateMachineC( object ):
 
 		# cycle to register local position
 		c=0
-		while c<10:
+		while c<2:
 			self.rate.sleep()
 			c = c + 1
 		self.altK.zSp = self.altK.z
