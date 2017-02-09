@@ -93,8 +93,10 @@ int main(int argc, char** argv)
     int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
     int frame_counter = 0;
     int frame_count_max = -1; //infinite
+    int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow
 
-    string srcpath = "/home/risc/ros_ws/src/ch-1-3/cvision/src";
+    string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    //string srcpath = "/home/risc/ros_ws/src/ch-1-3/cvision/src";
 
     //ROS Init
     ros::init(argc, argv, "detector");
@@ -146,9 +148,6 @@ int main(int argc, char** argv)
     }
 
     RNG rng(12345);
-
-    string newThres = srcpath + "/ThresholdValuesNew.txt";
-    ofstream myfile(newThres.c_str());
 
     Size imgSz;
     VideoCapture cap;
@@ -250,7 +249,7 @@ int main(int argc, char** argv)
         Mat imgThresholded;
         Mat imgContours;
 
-        
+
             if ( (bCamera || bVideo) && !bCompetition)
             {
                 bool bSuccess = cap.read(imgBGR); // read a new frame from video
@@ -526,9 +525,29 @@ if (!bCompetition) {
             //Check for key presses
             switch (key)
             {
-            cout << "Reached switch statement..." << endl;
+            //cout << "Reached switch statement..." << endl;
             case 27: //'esc' key has been pressed, exit program.
                 bESC = 1;
+                break;
+
+            case 114: //'r' has been pressed.
+                color = 1;
+                cout << "Color: Red" << endl;
+                break;
+
+            case 103: //'g' has been pressed.
+                color = 2;
+                cout << "Color: Green" << endl;
+                break;
+
+            case 98: //'b' has been pressed.
+                color = 3;
+                cout << "Color: Blue" << endl;
+                break;
+
+            case 121: //'y' has been pressed.
+                color = 4;
+                cout << "Color: Yellow" << endl;
                 break;
 
             case 100: //'d' has been pressed. Toggle debug
@@ -604,6 +623,27 @@ if (!bCompetition) {
             loop_rate.sleep();
     }
 
+    string newThres = srcpath + "/ThresholdValuesNew.txt";
+    switch (color)
+    {
+    case 1: //Red color selected.
+        newThres = srcpath + "/ThresholdValuesRed.txt";
+        break;
+
+    case 2: //Green color selected.
+        newThres = srcpath + "/ThresholdValuesGreen.txt";
+        break;
+
+    case 3: //Blue color selected.
+        newThres = srcpath + "/ThresholdValuesBlue.txt";
+        break;
+
+    case 4: //Yellow color selected.
+        newThres = srcpath + "/ThresholdValuesYellow.txt";
+        break;
+    }
+
+    ofstream myfile(newThres.c_str());
     //Save values to file
     if (myfile.is_open())
     {
@@ -614,8 +654,8 @@ if (!bCompetition) {
         myfile << "iLowV = " << iLowV << "\n";
         myfile << "iHighV = " << iHighV << "\n";
         myfile.close();
+        cout << "Finished writing" << endl;
     }
     else cout << "Unable to open file";
-    cout << "Finished writing" << endl;
     return 0;
 }
