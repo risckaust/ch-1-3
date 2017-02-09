@@ -78,7 +78,7 @@ def autopilot():
     # Track circling trajectory
     #####
     
-    V = 4.0*0.1
+    V = 4.0
     omega = 0.1
     theta = pi/2.0
     home.x = 10.0

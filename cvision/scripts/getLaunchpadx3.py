@@ -59,7 +59,7 @@ def getLaunchpad():
     morph_height=2
     Detect = False      # for detection logic
     DetectHold = False
-    TOL = 2.0           # tolerance for detection agreement
+    TOL = rospy.get_param('/getLaunchpad/agreeTol')           # tolerance for detection agreement
     MaskItNow = False
     Restart = True      # for corner tracking
     # Parameters for Shi Tomasi corner detection
@@ -98,7 +98,7 @@ def getLaunchpad():
         if MaskItNow:
             mask = cv2.bitwise_and(mask,pxMask)
         
-        maskHold = mask
+        maskHold = mask.copy()
 
         ####
         ####
@@ -147,8 +147,9 @@ def getLaunchpad():
             # construct & draw bounding circle
             ((x, y), radius) = cv2.minEnclosingCircle(c)
 
-            cv2.circle(frame, (int(x), int(y)), int(radius),(0, 0, 0), 5)
-            cv2.circle(frame, (int(x), int(y)), 3, (0, 0, 0), -1)
+            # Draw whiteBlob circles and center
+            # cv2.circle(frame, (int(x), int(y)), int(radius),(0, 0, 0), 5)
+            # cv2.circle(frame, (int(x), int(y)), 3, (0, 0, 0), -1)
 	    	
             if rospy.get_param('/getLaunchpad/useMass'):
                 
@@ -183,8 +184,9 @@ def getLaunchpad():
         getCircle.z = -1.0
         Detect = False
         
-        # blur image
+
         mask = maskHold
+        # blur image
         #### mask = cv2.blur(mask, (5,5))
 
         # extract circles from grayscale
@@ -202,8 +204,9 @@ def getLaunchpad():
         if circles is not None:
             center = circles[0,0]
             Detect = True
-            cv2.circle(frame,(center[0],center[1]),center[2],(0,0,0),5)
-            cv2.circle(frame, (int(center[0]), int(center[1])), 3, (0, 0, 0), -1)
+            # Draw hough circle and center
+            #cv2.circle(frame,(center[0],center[1]),center[2],(0,0,0),5)
+            #cv2.circle(frame, (int(center[0]), int(center[1])), 3, (0, 0, 0), -1)
             getCircle.x = center[0] # x
             getCircle.y = center[1] # y
             getCircle.z = center[2] # radius
@@ -225,58 +228,71 @@ def getLaunchpad():
         mask = maskHold
         
         if Restart:
-            # Grab an initial frame & find features
             old_frame = mask
             
             if rospy.get_param('/cvision/feCamera'):
                 p0 = cv2.goodFeaturesToTrack(old_frame, mask = feMask, **feature_params)
             else:
                 p0 = cv2.goodFeaturesToTrack(old_frame, **feature_params)
-        
-        # calculate optical flow
-        if p0 is not None:
-            p1, st, err = cv2.calcOpticalFlowPyrLK(old_frame, mask, p0, None, **lk_params)
-        else:
-            p1 = None
             
-        # Select good points
-        Restart = True
-        if (p1 is not None):
-            if (p1.shape[0] > rospy.get_param('/getLaunchpad/minPoints')):
-                mean1 = cv2.mean(p1)
-                mean0 = cv2.mean(p0)
-                
-                mean1 = np.int0(mean1)
-                
-                good_new = p1[st==1]
-                good_old = p0[st==1]
-                
-                # draw the corners
-                for i,(new,old) in enumerate(zip(good_new,good_old)):
-                    a,b = new.ravel()
-                    c,d = old.ravel()
-                    cv2.circle(frame,(a,b),3,(0,0,0),-1)
-                    
-                # Now update the previous frame and previous points
-                cv2.circle(frame,(mean1[0],mean1[1]),5,(0,0,0),-1)
-                    
-                getCorners.x = mean1[0]
-                getCorners.y = mean1[1]
-                getCorners.z = p1.shape[0] # report number or corners
+            if p0 is not None:
+                for i in p0:
+                    x,y = i.ravel()
+                    cv2.circle(frame,(x,y),5,(0,0,0),-1)
+                temp = cv2.mean(p0)
+                temp = np.int0(temp)
+                getCorners.x = temp[0]
+                getCorners.y = temp[1]
+                getCorners.z = p0.shape[0]
                 Detect = True
-
-                old_frame = mask.copy()
-                p0 = good_new.reshape(-1,1,2)
-                
                 Restart = False
+        else:
+            Restart = True
+            # calculate optical flow
+            if p0 is not None:
+                p1, st, err = cv2.calcOpticalFlowPyrLK(old_frame, mask, p0, None, **lk_params)
+            else:
+                p1 = None
+                
+            # Select good points
+
+            if (p1 is not None):
+                if (p1.shape[0] > rospy.get_param('/getLaunchpad/minPoints')):
+                    mean1 = cv2.mean(p1)
+                    mean0 = cv2.mean(p0)
+                    
+                    mean1 = np.int0(mean1)
+                    
+                    good_new = p1[st==1]
+                    good_old = p0[st==1]
+                    
+                    # draw the corners
+                    for i,(new,old) in enumerate(zip(good_new,good_old)):
+                        a,b = new.ravel()
+                        c,d = old.ravel()
+                        cv2.circle(frame,(a,b),5,(0,0,0),-1)
+                        
+                    # Now update the previous frame and previous points
+                    cv2.circle(frame,(mean1[0],mean1[1]),10,(0,0,0),-1)
+                        
+                    getCorners.x = mean1[0]
+                    getCorners.y = mean1[1]
+                    getCorners.z = p1.shape[0] # report number or corners
+                    Detect = True
+
+                    old_frame = mask.copy()
+                    p0 = good_new.reshape(-1,1,2)
+                    
+                    Restart = False          
         
-        N = 2
-        if kc%(N*rospy.get_param('/cvision/loopRate')) == 0: # Restart every N*rate frames
+        
+        N = rospy.get_param('/getLaunchpad/cornerRestart') # restart every N seconds
+        if kc%(N*rospy.get_param('/cvision/loopRate')) == 0:
             Restart = True
              
         ####
         ####
-        # transition to original getLaunchpad
+        # transition to parallel getLaunchpad
         ####
         ####
         
@@ -311,22 +327,25 @@ def getLaunchpad():
                 Detect = True
                 CX = dataCircle[0]
                 CY = dataCircle[1]
+                pxRad = max(dataCircle[2],dataWhite[2])
                 Skip = True 
 
         if detectCircle and detectCorners and not Skip: # Circle + Corners
             error = (dataCircle[0] - dataCorners[0])**2 + (dataCircle[1] - dataCorners[1])**2
             if sqrt(error) < TOL*dataCircle[2]:
                 Detect = True
-                CX = dataCorners[0]
-                CY = dataCorners[1]
+                CX = dataCircle[0]
+                CY = dataCircle[1]
+                pxRad = dataCircle[2]
                 Skip = True 
 
         if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
             error = (dataWhite[0] - dataCorners[0])**2 + (dataWhite[1] - dataCorners[1])**2
             if sqrt(error) < TOL*dataWhite[2]:
                 Detect = True
-                CX = dataCorners[0]
-                CY = dataCorners[1]
+                CX = dataWhite[0] ### Corners or White?
+                CY = dataWhite[1]
+                pxRad = dataWhite[2]
                 Skip = True
      
         if Detect:
@@ -359,11 +378,8 @@ def getLaunchpad():
         # prep proximity mask
         MaskItNow = False
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
-        if dataCircle[2] > 0:
-            radius = dataCircle[2]
-        elif dataWhite[2] > 0:
-            radius = dataWhite[2]
         if Detect and DetectHold:
+            radius = pxRad
             cv2.circle(pxMask,(int(msgPixels.x),int(msgPixels.y)),int(radius*rospy.get_param('/getLaunchpad/pxRadius')),(255,255,255),-1)
             MaskItNow = True
        

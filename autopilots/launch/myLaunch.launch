@@ -1,0 +1,19 @@
+<launch>
+
+        <arg name="fcu_url" default="/dev/ttyUSB0:921600" />
+        
+        <include file="$(find mavros)/launch/px4.launch">
+            <arg name="fcu_url" value="$(arg fcu_url)" />
+        </include>
+
+        <node pkg="cvision" type="getLaunchpadx3.py"  name="getLaunchpad" required="true" >
+        </node>
+        
+        <node pkg="cvision" type="videoBridge.py"  name="videoBridge" required="true" >
+        </node>
+        
+        <!--node pkg="cvision" type="getColorBlob.py"  name="getBlueBlob"  required="true">
+        <remap from="local_color" to="/getColors/blue" />
+        </node-->
+
+</launch>

@@ -59,7 +59,7 @@ def getLaunchpad():
     kc = 0              # iteration counter for downsample image streaming
     Detect = False      # for detection logic
     DetectHold = False
-    TOL = 2.0
+    TOL = rospy.get_param('/getLaunchpad/agreeTol')
 
     # start video stream: Replaces
     #   cap = cv2.VideoCapture(0) or cap = cv2.VideoCapture('file.mp4')
@@ -106,15 +106,15 @@ def getLaunchpad():
             error = (dataCircle[0] - dataCorners[0])**2 + (dataCircle[1] - dataCorners[1])**2
             if sqrt(error) < TOL*dataCircle[2]:
                 Detect = True
-                CX = dataCorners[0]
-                CY = dataCorners[1]
+                CX = dataCircle[0]
+                CY = dataCircle[1]
                 Skip = True 
 
         if detectWhite and detectCorners and not Skip: # Superwhite centroid + Corners
             error = (dataWhite[0] - dataCorners[0])**2 + (dataWhite[1] - dataCorners[1])**2
             if sqrt(error) < TOL*dataWhite[2]:
                 Detect = True
-                CX = dataCorners[0]
+                CX = dataCorners[0] ### or White?
                 CY = dataCorners[1]
                 Skip = True
      

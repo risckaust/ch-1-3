@@ -48,6 +48,7 @@ def getCorners():
     kc = 0              # iteration counter for downsample image streaming
     Detect = False      # for detection bookkeeping (not used)
     DetectHold = False
+    Restart = True
     
     # Create fisheye mask
     LX = rospy.get_param('/cvision/LX')
@@ -56,7 +57,7 @@ def getCorners():
     cv2.circle(feMask,(LX/2,LY/2),LX/2,(255,255,255),-1)
     
     # Parameters for Shi Tomasi corner detection
-    feature_params = dict( maxCorners = 10,
+    feature_params = dict( maxCorners = 20,
                        qualityLevel = 0.5,
                        minDistance = 20)
 #                       minDistance = 25,
@@ -96,53 +97,67 @@ def getCorners():
         msgPixels.z = -1.0
         Detect = False
         
-        # calculate optical flow
-        if p0 is not None:
-            p1, st, err = cv2.calcOpticalFlowPyrLK(old_frame, mask, p0, None, **lk_params)
-        else:
-            p1 = None
-            
-        # Select good points
-        Restart = True
-        if (p1 is not None):
-            if (p1.shape[0] > rospy.get_param('/getLaunchpad/minPoints')):
-                mean1 = cv2.mean(p1)
-                mean0 = cv2.mean(p0)
-                
-                mean1 = np.int0(mean1)
-                
-                good_new = p1[st==1]
-                good_old = p0[st==1]
-                
-                # draw the corners
-                for i,(new,old) in enumerate(zip(good_new,good_old)):
-                    a,b = new.ravel()
-                    c,d = old.ravel()
-                    cv2.circle(frame,(a,b),3,(0,0,0),-1)
-                    
-                # Now update the previous frame and previous points
-                cv2.circle(frame,(mean1[0],mean1[1]),5,(0,0,0),-1)
-                    
-                msgPixels.x = mean1[0]
-                msgPixels.y = mean1[1]
-                msgPixels.z = p1.shape[0] # report number or corners
-                Detect = True
-
-                old_frame = mask.copy()
-                p0 = good_new.reshape(-1,1,2)
-                
-                Restart = False
-        
-        N = 1
-        if kc%(N*rospy.get_param('/cvision/loopRate')) == 0: # Restart every N*rate frames
-            Restart = True
-        
         if Restart:
             old_frame = quadCam.Gry
+            
             if rospy.get_param('/cvision/feCamera'):
                 p0 = cv2.goodFeaturesToTrack(old_frame, mask = feMask, **feature_params)
             else:
                 p0 = cv2.goodFeaturesToTrack(old_frame, **feature_params)
+            
+            if p0 is not None:
+                for i in p0:
+                    x,y = i.ravel()
+                    cv2.circle(frame,(x,y),5,(0,0,0),-1)
+                temp = cv2.mean(p0)
+                temp = np.int0(temp)
+                msgPixels.x = temp[0]
+                msgPixels.y = temp[1]
+                msgPixels.z = p0.shape[0]
+                Detect = True
+                Restart = False
+        else:
+            Restart = True
+            # calculate optical flow
+            if p0 is not None:
+                p1, st, err = cv2.calcOpticalFlowPyrLK(old_frame, mask, p0, None, **lk_params)
+            else:
+                p1 = None
+                
+            # Select good points
+
+            if (p1 is not None):
+                if (p1.shape[0] > rospy.get_param('/getLaunchpad/minPoints')):
+                    mean1 = cv2.mean(p1)
+                    mean0 = cv2.mean(p0)
+                    
+                    mean1 = np.int0(mean1)
+                    
+                    good_new = p1[st==1]
+                    good_old = p0[st==1]
+                    
+                    # draw the corners
+                    for i,(new,old) in enumerate(zip(good_new,good_old)):
+                        a,b = new.ravel()
+                        c,d = old.ravel()
+                        cv2.circle(frame,(a,b),5,(0,0,0),-1)
+                        
+                    # Now update the previous frame and previous points
+                    cv2.circle(frame,(mean1[0],mean1[1]),10,(0,0,0),-1)
+                        
+                    msgPixels.x = mean1[0]
+                    msgPixels.y = mean1[1]
+                    msgPixels.z = p1.shape[0] # report number or corners
+                    Detect = True
+
+                    old_frame = mask.copy()
+                    p0 = good_new.reshape(-1,1,2)
+                    
+                    Restart = False          
+        
+        N = rospy.get_param('/getLaunchpad/cornerRestart')
+        if kc%(N*rospy.get_param('/cvision/loopRate')) == 0: # Restart every N*rate frames
+            Restart = True
                 
         DetectHold = Detect # hold for next iteration
 

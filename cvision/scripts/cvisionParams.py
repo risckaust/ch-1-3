@@ -9,7 +9,7 @@ import rospy
 def setParams():
 
     # ROS parameters for general vision tasks
-    rospy.set_param('/cvision/loopRate', 10.0)                   # loop rate for vision algorithms
+    rospy.set_param('/cvision/loopRate', 30.0)                   # loop rate for vision algorithms
     rospy.set_param('/cvision/reduce', True)                     # reduce frame size
     if rospy.get_param('/cvision/reduce'):
         rospy.set_param('/cvision/LX', 320)                          # half size screen width
@@ -18,7 +18,7 @@ def setParams():
         rospy.set_param('/cvision/LX', 640)                          # full size screen width
         rospy.set_param('/cvision/LY', 480)                          # full size screen height
         
-    rospy.set_param('/cvision/testFileOn',True)            # binary for testing on file
+    rospy.set_param('/cvision/testFileOn',False)            # binary for testing on file
     #rospy.set_param('/cvision/testFileName','/home/shamma/Documents/jeff_ws/variable.m4v')
     rospy.set_param('/cvision/testFileName','/home/shamma/Documents/MultiObjectImages/imgset12/output.mp4')
     
@@ -32,8 +32,10 @@ def setParams():
     rospy.set_param('/getLaunchpad/minMass',10000.0)             # minimum mass to detect a color blob
     rospy.set_param('/getLaunchpad/minRadius',10.0)              # minimum circle pixel radius to detect a white blob
     rospy.set_param('/getLaunchpad/erodeOn',True)                # use erode/dilate vs blurring in white detection 
-    rospy.set_param('/getLaunchpad/pxRadius', 3)               # radius multiplier for proximity mask (both white & circle) 
-    rospy.set_param('/getLaunchpad/minPoints',10)                 # minimum number of corners for positive detection
+    rospy.set_param('/getLaunchpad/pxRadius', 1.2)                 # radius multiplier for proximity mask (both white & circle) 
+    rospy.set_param('/getLaunchpad/cornerRestart', 3)           # restart corner detection every N seconds (integer)
+    rospy.set_param('/getLaunchpad/minPoints',4)                # minimum number of corners for positive detection
+    rospy.set_param('/getLaunchpad/agreeTol',2.5)                  # tolerance for ensemble agreement
     
     rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
     rospy.set_param('/getLaunchpad/imgStream', True)             # stream reduced processed images

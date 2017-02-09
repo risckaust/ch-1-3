@@ -169,7 +169,6 @@ class kBodVel:
         def __init__(self):
             self.xhat = np.matrix(np.zeros( (5,1) ))
             self.F = np.matrix(np.identity(5))
-            self.F[2,4] = 1.0
             self.H = np.matrix(np.zeros( (2,5) ))
             self.H[0,0] = 1.0
             self.H[1,1] = 1.0
@@ -227,7 +226,8 @@ class kBodVel:
         self.ekf.F[0,3] = cos(thHat)*h
         self.ekf.F[1,2] = vHat*cos(thHat)*h
         self.ekf.F[1,3] = sin(thHat)*h
-
+        self.ekf.F[2,4] = h
+            
         self.ekf.P = self.ekf.F*self.ekf.P*self.ekf.F.T + self.ekf.Q
         
         if seeIt:
