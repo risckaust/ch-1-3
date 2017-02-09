@@ -945,21 +945,22 @@ class StateMachineC( object ):
 		while not rospy.is_shutdown():
 			# update setpoint topic
 			self.setp.velocity.z = self.altK.controller()
+			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
 			# publish setpoints
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
+			# publish state topic
+			self.state_topic.state = self.current_state
+			self.state_topic.signal = self.current_signal
+			self.state_pub.publish(self.state_topic)
 
 			# check for resume command
 			if rospy.get_param(self.namespace+'/state_machine/resume') > 0.0:
 				# clear resume parameter
 				rospy.set_param(self.namespace+'/state_machine/resume', 0.0)
 				break
-			# publish state topic
-			self.state_topic.state = self.current_state
-			self.state_topic.signal = self.current_signal
-			self.state_pub.publish(self.state_topic)
 
 		# reset inturrupt state
 		rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
