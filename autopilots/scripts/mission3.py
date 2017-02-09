@@ -289,7 +289,7 @@ class StateMachineC( object ):
 		self.debug()
 		# cycle for some time to register local poisiton
 		c=0
-		while c<10:
+		while c<2:
 		    self.rate.sleep()
 		    c = c + 1
 		# get ground level
@@ -298,10 +298,14 @@ class StateMachineC( object ):
 		self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 		self.home.x = self.bodK.x
 		self.home.y = self.bodK.y
-		# takeoff
-		while self.current_state == 'Takeoff' and not abs(self.altK.zSp - self.altK.z) < 0.2 and not rospy.is_shutdown():
-			self.setp.header.stamp = rospy.Time.now()
 
+		# save current lateral vMax
+		saved_vmax = rospy.get_param(self.namespace + '/kBodVel/vMax')
+		# lower lateral vMax
+		rospy.set_param(self.namespace + '/kBodVel/vMax', 0.5)
+
+		# takeoff
+		while abs(self.altK.zSp - self.altK.z) > 0.2 and not rospy.is_shutdown():
 			self.setp.velocity.z = self.altK.controller()
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
@@ -321,6 +325,9 @@ class StateMachineC( object ):
 			    # clear the interruption
 			    rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
 			    break
+
+		# reset lateral vMax
+		rospy.set_param(self.namespace + '/kBodVel/vMax', saved_vmax)
 
 		# Done with takoeff, send signal
 		if self.current_signal != 'Interrupted':
