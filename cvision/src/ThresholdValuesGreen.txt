@@ -1,0 +1,6 @@
+iLowH = 71
+iHighH = 121
+iLowS = 133
+iHighS = 183
+iLowV = 154
+iHighV = 204
