@@ -1,0 +1,84 @@
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/highgui/highgui.hpp"
+
+#include <fstream>
+#include <sstream>
+#include <iostream> // for standard I/O
+#include <string>   // for strings
+#include <cstring>
+
+using namespace cv;
+using namespace std;
+
+/// Global variables
+
+Mat src, src_gray;
+Mat dst, detected_edges;
+
+int edgeThresh = 1;
+int lowThreshold;
+int const max_lowThreshold = 100;
+int ratio = 3;
+int kernel_size = 3;
+
+
+/**
+ * @function CannyThreshold
+ * @brief Trackbar callback - Canny thresholds input with a ratio 1:3
+ */
+void CannyThreshold(int, void*)
+{
+  /// Reduce noise with a kernel 3x3
+  blur( src_gray, detected_edges, Size(3,3) );
+
+  /// Canny detector
+  Canny( detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size );
+
+  /// Using Canny's output as a mask, we display our result
+  dst = Scalar::all(0);
+
+  src.copyTo( dst, detected_edges);
+  imshow( "Edge Map", dst );
+ }
+
+
+/** @function main */
+int main( int argc, char** argv )
+{
+//     VideoCapture cap;
+//  // open the default camera, use something different from 0 otherwise;
+//	cap.open(0);
+//
+//	if (!cap.isOpened())  // if not success, exit program
+//	{
+//		cout << "Cannot open webcam" << endl;
+//		return -1;
+//	}
+//
+//  bool bSuccess = cap.read(src); // read a new frame from video
+
+  src = imread("/home/odroid/Downloads/imgset1/frame0346.jpg");
+
+  if( !src.data )
+  { return -1; }
+
+  /// Create a matrix of the same type and size as src (for dst)
+  dst.create( src.size(), src.type() );
+
+  /// Convert the image to grayscale
+  cvtColor( src, src_gray, CV_BGR2GRAY );
+
+  /// Create a window
+  namedWindow( "Edge Map", CV_WINDOW_AUTOSIZE );
+
+  /// Create a Trackbar for user to enter threshold
+  createTrackbar( "Min Threshold:", "Edge Map", &lowThreshold, max_lowThreshold, CannyThreshold );
+
+  /// Show the image
+  CannyThreshold(0, 0);
+
+  /// Wait until user exit program by pressing a key
+  waitKey(0);
+
+  return 0;
+  }

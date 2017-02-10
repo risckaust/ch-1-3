@@ -1,0 +1,15 @@
+bDebug = 0
+bCtrl = 1
+bOutputVideo = 0
+bCamera = 0
+bVideo = 0
+bViz = 1
+bCompetition = 0
+bFitBoundingBox = 0
+bFitRotatedRect = 1
+bFitCircle = 1
+min_obj_sz = 5
+thres_tol = 25
+morph_sz = 5
+frameRate = 30
+srcpath = /home/odroid/ros_ws/src/ch-1-3/cvision/src
