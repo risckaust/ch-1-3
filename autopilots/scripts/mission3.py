@@ -540,7 +540,7 @@ class StateMachineC( object ):
 
 			# make sure to lower max lateral velocity if close to ground
 			# this is to avoid flipping at high velocity close to ground
-			if altK.z < (self.ZGROUND + 0.5) :
+			if self.altK.z < (self.ZGROUND + 0.5) :
 				# if less the 0.5 meter from ground, set vMax = 0.5 [m/s]
 				rospy.set_param(self.namespace + '/kBodVel/vMax', 0.5)
 			else:
