@@ -493,6 +493,9 @@ class StateMachineC( object ):
 		# set altitude
 		self.altK.zSp= self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
+		# get current max lateral velocity
+		saved_vmax = rospy.get_param(self.namespace + '/kBodVel/vMax')
+
 		# TODO: Activate gripper (write the ROS node for the gripper feedback/command)
 		self.gripper_action.data = True
 		self.gripper_pub.publish(self.gripper_action)
@@ -534,6 +537,14 @@ class StateMachineC( object ):
 			if (self.gripperIsPicked and self.altK.z > (self.ZGROUND+1.0) ):
 				picked = True	# set True to exit the while loop
 				self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+
+			# make sure to lower max lateral velocity if close to ground
+			# this is to avoid flipping at high velocity close to ground
+			if altK.z < (self.ZGROUND + 0.5) :
+				# if less the 0.5 meter from ground, set vMax = 0.5 [m/s]
+				rospy.set_param(self.namespace + '/kBodVel/vMax', 0.5)
+			else:
+				rospy.set_param(self.namespace + '/kBodVel/vMax', saved_vmax)
 
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
