@@ -190,7 +190,7 @@ class StateMachineC( object ):
 		# Instantiate a setpoint topic structure
 		self.setp		= PositionTarget()
 		# use velocity setpoints
-		self.setp.type_mask	= int('010111000111', 2)  	
+		self.setp.type_mask	= int('010111000111', 2)
 
 		# Instantiate altitude controller object (from autopilot library)
 		self.altK 		= autopilotLib.kAltVel(ns)
@@ -295,7 +295,8 @@ class StateMachineC( object ):
 		# get ground level
 		self.ZGROUND = self.altK.z
 		# set the controllers setpoints
-		self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+		#self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+		self.altK.zSp = self.ZGROUND + self.TKOFFALT
 		self.home.x = self.bodK.x
 		self.home.y = self.bodK.y
 
@@ -1119,7 +1120,7 @@ class StateMachineC( object ):
 				dx_enu = x_enu
 				dy_enu = y_enu
 				##x and y switched because this function operates in NED frame
-				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) 
+				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
@@ -1170,7 +1171,7 @@ class StateMachineC( object ):
 				dx_enu = x_enu
 				dy_enu = y_enu
 				##x and y switched because this function operates in NED frame
-				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu) 
+				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
@@ -1496,9 +1497,10 @@ def mission():
 
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
-	sm.current_state='Picking'
-	sm.current_signal='Resume'
-	#sm.START_SIGNAL=True
+	sm.TKOFFALT = 5.0
+	sm.current_state='Start'
+	sm.current_signal='Ready'
+	sm.START_SIGNAL=True
 	sm.cameraView=1
 
 	while not rospy.is_shutdown():
