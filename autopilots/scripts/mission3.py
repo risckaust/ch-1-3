@@ -181,7 +181,7 @@ class StateMachineC( object ):
 		# Altitude at which we pick object [m]
 		self.PICK_ALT		= 0.6
 		# camera offset from ground [m]
-		self.CAMOFFSET		= 0.0
+		self.CAMOFFSET		= 0.1
 		# relative pos error where descend is allowed [m]
 		self.ENVELOPE_XY_POS	= 0.2
 		# relative vel error where descend is allowed [m/s]
