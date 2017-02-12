@@ -546,6 +546,11 @@ class StateMachineC( object ):
 			else:
 				rospy.set_param(self.namespace + '/kBodVel/vMax', saved_vmax)
 
+			#TODO: Fix me, keep sending activation signal when at low ALT
+			if self.altK.z < (self.ZGROUND + 0.5):
+				self.gripper_action.data = True
+				self.gripper_pub.publish(self.gripper_action)
+
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
