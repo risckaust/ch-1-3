@@ -49,8 +49,8 @@ def autopilot():
     zHover = rospy.get_param('/autopilot/altStep')   # base hover altitude
     takeoff.x = sm.bodK.x
     takeoff.y = sm.bodK.y
-    base.x = takeoff.x + 3.0
-    base.y = takeoff.y + 3.0
+    base.x = takeoff.x + 1.0
+    base.y = takeoff.y + 1.0
     
     # Initializations
     camOffset = rospy.get_param('/autopilot/camOffset')
@@ -181,7 +181,7 @@ def autopilot():
             tStart = rospy.Time.now()
             dT = 0.0
             
-            while confidence > 0.5 and dT < 10.0: # TODO: parameter
+            while confidence > 0.5 and dT < 120.0: # TODO: parameter
             
                 if target.z > 0:
                     seeIt = True
@@ -215,7 +215,7 @@ def autopilot():
                 
                 dTee = rospy.Time.now() - tStart
                 dT = dTee.to_sec()
-                print "Tracking:dT/seeIt/conf: ", dT, seeIt, confidence
+                print "Tracking:dT/seeIt/conf/vHat: ", dT, seeIt, confidence, sm.bodK.ekf.xhat[3]
                 print "x/xHat/y/yHat: ", sm.bodK.x, sm.bodK.ekf.xhat[0], sm.bodK.y, sm.bodK.ekf.xhat[1]
 
             TrackUp = False

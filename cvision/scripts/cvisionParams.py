@@ -10,7 +10,7 @@ def setParams():
 
     # ROS parameters for general vision tasks
     rospy.set_param('/cvision/loopRate', 30.0)                   # loop rate for vision algorithms
-    rospy.set_param('/cvision/reduce', True)                     # reduce frame size
+    rospy.set_param('/cvision/reduce', False)                     # reduce frame size
     if rospy.get_param('/cvision/reduce'):
         rospy.set_param('/cvision/LX', 320)                          # half size screen width
         rospy.set_param('/cvision/LY', 240)                          # half size screen height
@@ -37,7 +37,7 @@ def setParams():
     rospy.set_param('/getLaunchpad/minPoints',4)                # minimum number of corners for positive detection
     rospy.set_param('/getLaunchpad/agreeTol',2.5)                  # tolerance for ensemble agreement
     
-    rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
+    rospy.set_param('/getLaunchpad/imgShow', False)               # show processed images to screen
     rospy.set_param('/getLaunchpad/imgStream', True)             # stream reduced processed images
     rospy.set_param('/getLaunchpad/imgStreamRate', 3)            # streaming rate
     
