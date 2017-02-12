@@ -23,6 +23,8 @@
 #include <QTransform>
 #include <QGraphicsEllipseItem>
 #include <QWidget>
+#include <QString>
+#include <QProcess>
 
 /*****************************************************************************
 ** Namespace
@@ -55,7 +57,9 @@ public Q_SLOTS:
 	** Auto-connections (connectSlotsByName())
 	*******************************************/
 	void on_actionAbout_triggered();
-	void on_button_connect_clicked(bool check );
+  void on_button_connect_clicked(bool check);
+  void on_interruptbutton1_clicked();
+  void on_resumebutton1_clicked();
 //  void on_checkbox_use_environment_stateChanged(int state);
 //  void on_button_test_clicked(bool check);
 //  void showButtonTestMessages();
@@ -71,6 +75,12 @@ public Q_SLOTS:
   void BatterySlot1(float,float);
   void PositionSlot1(float,float,float);
   void VelocitySlot1(float,float,float);
+  void StateMachineSlot1(string,string);
+  void on_Button_cvisionstart_clicked();
+  void on_Button_cvisionstop_clicked();
+
+Q_SIGNALS:
+  void Interruptsignal1();
 
 protected:
   virtual void wheelEvent(QWheelEvent *event);
@@ -78,12 +88,12 @@ protected:
   virtual void mouseMoveEvent(QMouseEvent *event);
   bool eventFilter(QObject *target, QEvent *event);
 
-
 private:
   Ui::MainWindowDesign ui;
   QNode qnode;
   QGraphicsScene * scene;
   QuadItem *Quad1, *Quad2, *Quad3;
+  QProcess cvisionprocess;
   int m_originX;
   int m_originY;
 };

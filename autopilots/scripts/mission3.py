@@ -854,6 +854,10 @@ class StateMachineC( object ):
 		self.altK.zSp = self.altK.z
 		self.home.x = self.bodK.x
 		self.home.y = self.bodK.y
+
+		# reset Resume parameter
+		rospy.set_param(self.namespace+'/state_machine/resume', 0.0)
+
 		# while loop
 		while not rospy.is_shutdown():
 			# update setpoint topic
@@ -869,6 +873,13 @@ class StateMachineC( object ):
 				# clear resume parameter
 				rospy.set_param(self.namespace+'/state_machine/resume', 0.0)
 				break
+			# publish state topic
+			self.state_topic.state = self.current_state
+			self.state_topic.signal = self.current_signal
+			self.state_pub.publish(self.state_topic)
+
+		# reset inturrupt state
+		rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
 
 		# Done with Hover state, send signal
 		self.current_signal = 'Done'
@@ -1409,3 +1420,4 @@ if __name__ == '__main__':
         mission()
     except rospy.ROSInterruptException:
         pass
+

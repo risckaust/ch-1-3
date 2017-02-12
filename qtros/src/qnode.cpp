@@ -53,6 +53,7 @@ bool QNode::init() {
   BatterySubscriber1=n.subscribe("mavros/battery",1000, &QNode::BatteryCallback1,this);
   PositionSubscriber1=n.subscribe("mavros/local_position/pose",1000,&QNode::PositionCallback1,this);
   VelocitySubscriber1=n.subscribe("mavros/local_position/velocity",1000,&QNode::VelocityCallback1,this);
+  StateMachineSubscriber1=n.subscribe("/Quad1/state_machine/state",1000,&QNode::StateMachineCallback1,this);
 	start();
 	return true;
 }
@@ -103,6 +104,26 @@ void QNode::PositionCallback1(const geometry_msgs::PoseStamped::ConstPtr &msg)
 void QNode::VelocityCallback1(const geometry_msgs::TwistStamped::ConstPtr &msg)
 {
   Q_EMIT VelocitySignal1(msg->twist.linear.x,msg->twist.linear.y,msg->twist.linear.z);
+}
+void QNode::StateMachineCallback1(const autopilots::StateMachine::ConstPtr &msg)
+{
+  Q_EMIT StateMachineSignal1(msg->state,msg->signal);
+}
+
+void QNode::InterruptSlot1()
+{
+  ros::NodeHandle n;
+  n.setParam("/Quad1/state_machine/interruption", 1);
+}
+
+void QNode::ResumeSlot1()
+{
+  ros::NodeHandle n;
+//  system("rosrun turtlesim turtlesim_node");
+  n.setParam("/Quad1/state_machine/resume", 1);
+//  ros::init(init_argc,init_argv,"/turtlesim");
+//  ros::start();
+//  ros::NodeHandle nh;
 }
 
 void QNode::run() {

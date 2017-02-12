@@ -28,15 +28,16 @@ MainWindow::MainWindow(int argc, char** argv, QWidget *parent)
 {
   ui.setupUi(this); // Calling this incidentally connects all ui's triggers to on_...() callbacks in this class.
   ui.view->viewport()->installEventFilter(this);
-  scene=new QGraphicsScene(this); //0,0,300,300,this);
+  scene=new QGraphicsScene(this);
   ui.view->setScene(scene);
-
+  qRegisterMetaType<string>("string");
   Quad1=new QuadItem(Qt::blue);
   Quad2=new QuadItem(Qt::red);
   Quad3=new QuadItem(Qt::black);
   scene->addItem(Quad1);
   scene->addItem(Quad2);
   scene->addItem(Quad3);
+//  QProcess cvisionprocess;
 
 
   QObject::connect(ui.actionAbout_Qt, SIGNAL(triggered(bool)), qApp, SLOT(aboutQt())); // qApp is a global variable for the application
@@ -50,6 +51,7 @@ MainWindow::MainWindow(int argc, char** argv, QWidget *parent)
   QObject::connect(&qnode,SIGNAL(BatterySignal1(float,float)),this,SLOT(BatterySlot1(float,float)));
   QObject::connect(&qnode,SIGNAL(PositionSignal1(float,float,float)),this,SLOT(PositionSlot1(float,float,float)));
   QObject::connect(&qnode,SIGNAL(VelocitySignal1(float,float,float)),this,SLOT(VelocitySlot1(float,float,float)));
+  QObject::connect(&qnode,SIGNAL(StateMachineSignal1(string,string)),this,SLOT(StateMachineSlot1(string,string)));
 
 	/*********************
 	** Logging
@@ -275,6 +277,31 @@ void MainWindow::VelocitySlot1(float vx1,float vy1,float vz1)
   ui.VelocityLabely1->setText(buffervy1);
   ui.VelocityLabelz1->setText(buffervz1);
 }
+void MainWindow::StateMachineSlot1(string state,string signal)
+{
+  QString qstate = QString::fromStdString(state);
+  QString qsignal = QString::fromStdString(signal);
+  ui.state_label1->setText(qstate);
+  ui.signal_label1->setText(qsignal);
+}
+void qtros::MainWindow::on_Button_cvisionstart_clicked()
+{
+  cvisionprocess.start("rosrun turtlesim turtlesim_node");
+}
+void qtros::MainWindow::on_Button_cvisionstop_clicked()
+{
+  cvisionprocess.close();
+//  system("rosnode kill turtlesim_node");
+}
+
+void MainWindow::on_interruptbutton1_clicked()
+{
+  qnode.InterruptSlot1();
+}
+void MainWindow::on_resumebutton1_clicked()
+{
+  qnode.ResumeSlot1();
+}
 
 void MainWindow::wheelEvent(QWheelEvent *event)
 {
@@ -388,7 +415,6 @@ QuadItem::QuadItem(QColor qc)//QGraphicsItem *parent)
   QGraphicsItem *parent =NULL;
   QPainter *painter;
   quadcolor=qc;
-
 }
 QRectF QuadItem::boundingRect() const
 {

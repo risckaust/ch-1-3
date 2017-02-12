@@ -27,8 +27,8 @@
 	
 	<rosparam command="load" file="$(find cvision)/configs/color_thresholds.yaml" />
 
-        <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
-        </node>
+        <!--node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
+        </node-->
 
 	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true">
         </node>

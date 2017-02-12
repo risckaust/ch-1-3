@@ -22,6 +22,7 @@
 #include <sensor_msgs/BatteryState.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <autopilots/StateMachine.h>
 #include <mavros_msgs/CommandBool.h>
 #include <std_msgs/String.h>
 #include <string>
@@ -32,13 +33,15 @@
 #include <iostream>
 #include <ros/network.h>
 #include <sstream>
+#include <string>
+#include <QMetaType>
 #define PI 3.141592653
 
 
 /*****************************************************************************
 ** Namespaces
 *****************************************************************************/
-
+using namespace std;
 namespace qtros
 {
 
@@ -61,6 +64,7 @@ public:
   void BatteryCallback1(const sensor_msgs::BatteryState::ConstPtr& msg);
   void PositionCallback1(const geometry_msgs::PoseStamped::ConstPtr& msg);
   void VelocityCallback1(const geometry_msgs::TwistStamped::ConstPtr& msg);
+  void StateMachineCallback1(const autopilots::StateMachine::ConstPtr& msg);
 
 	/*********************
 	** Logging
@@ -76,6 +80,10 @@ public:
 	QStringListModel* loggingModel() { return &logging_model; }
 	void log( const LogLevel &level, const std::string &msg);
 
+  void InterruptSlot1();
+  void ResumeSlot1();
+
+
 Q_SIGNALS:
 	void loggingUpdated();
   void rosShutdown();
@@ -85,6 +93,7 @@ Q_SIGNALS:
   void BatterySignal1(float,float);
   void PositionSignal1(float,float,float);
   void VelocitySignal1(float,float,float);
+  void StateMachineSignal1(string,string);
 
 private:
 	int init_argc;
@@ -96,6 +105,7 @@ private:
   ros::Subscriber BatterySubscriber1;
   ros::Subscriber PositionSubscriber1;
   ros::Subscriber VelocitySubscriber1;
+  ros::Subscriber StateMachineSubscriber1;
   QStringListModel logging_model;
 
 };
