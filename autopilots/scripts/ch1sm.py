@@ -4,6 +4,7 @@ import rospy
 import numpy as np
 import tf
 import time
+import os
 
 from math import *
 from std_msgs.msg import *
@@ -49,6 +50,7 @@ def autopilot():
     zHover = rospy.get_param('/autopilot/altStep')   # base hover altitude
     takeoff.x = sm.bodK.x
     takeoff.y = sm.bodK.y
+
     base.x = takeoff.x + 1.0
     base.y = takeoff.y + 1.0
     
@@ -75,6 +77,9 @@ def autopilot():
     
     cRate = 0.98
     
+    # os.system("rosrun mavros mavsys mode -c  \"OFFBOARD\" ")
+    # os.system("rosrun mavros mavcmd takeoffcur 0 0 2")
+        
     while not rospy.is_shutdown():
 
         #####
@@ -84,6 +89,8 @@ def autopilot():
         if Takeoff:
         
             print "Takeoff..."
+            
+            rospy.set_param('/kBodVel/feedForward', False)
         
             home.x = takeoff.x
             home.y = takeoff.y   
@@ -120,6 +127,8 @@ def autopilot():
         if GoToBase:
         
             print "Go to base while scanning..."
+            
+            rospy.set_param('/kBodVel/feedForward', False)
 
             home.x = base.x
             home.y = base.y
@@ -171,11 +180,16 @@ def autopilot():
         if TrackUp:
         
             print "Tracking..."
+            
+            rospy.set_param('/kBodVel/feedForward', False)
         
-            # Initialize EKF
+            # Re-initialize EKF
             sm.bodK.ekf.xhat[0] = sm.bodK.x
             sm.bodK.ekf.xhat[1] = sm.bodK.y
-            sm.bodK.ekf.xhat[3] = sqrt(sm.bodK.vx**2 + sm.bodK.vy**2)
+            sm.bodK.ekf.xhat[2] = sm.bodK.yaw - np.pi/2.0
+            sm.bodK.ekf.xhat[3] = 1.0 # TODO: sqrt(sm.bodK.vx**2 + sm.bodK.vy**2)
+            sm.bodK.ekf.xhat[4] = 0.0
+            sm.bodK.ekf.P = np.matrix(np.identity(5))
 
             # Start time count
             tStart = rospy.Time.now()
@@ -215,6 +229,7 @@ def autopilot():
                 
                 dTee = rospy.Time.now() - tStart
                 dT = dTee.to_sec()
+
                 print "Tracking:dT/seeIt/conf/vHat: ", dT, seeIt, confidence, sm.bodK.ekf.xhat[3]
                 print "x/xHat/y/yHat: ", sm.bodK.x, sm.bodK.ekf.xhat[0], sm.bodK.y, sm.bodK.ekf.xhat[1]
 
@@ -231,11 +246,31 @@ def autopilot():
         if TrackDown:
         
             print "Descending..."
+            
+            rospy.set_param('/kBodVel/feedForward', True)
         
             tStart = rospy.Time.now()
             dT = 0.0
             
-            while confidence > 0.5 and sm.altK.z > 0.5: # TODO: parameter
+            UseTera = False
+            
+            if UseTera:
+                theAlt = min(sm.altK.ranges)
+            else:
+                theAlt = sm.altK.z
+                
+            zSp = (theAlt - zGround)/2.0    # incremental target waypoint
+            zFix = (theAlt - zGround)       # last altitude target was seen and close
+            
+            while confidence > 0.5 and theAlt - zGround > 0.05: # TODO: parameter
+            
+                if UseTera:
+                    theAlt = min(sm.altK.ranges) # TODO: mean? 
+                else:
+                    theAlt = sm.altK.z
+                    
+                if theAlt - zGround < zSp + .05:
+                    zSp = zSp/2.0
             
                 if target.z > 0:
                     seeIt = True
@@ -247,7 +282,7 @@ def autopilot():
                 
                 if seeIt: # Track target
                     confidence = cRate*confidence + (1-cRate)*1.0
-                    altCorrect = (sm.altK.z - zGround + camOffset)/rospy.get_param('/pix2m/altCal')
+                    altCorrect = (theAlt - zGround + camOffset)/rospy.get_param('/pix2m/altCal')
                     sm.bodK.xSp = target.x*altCorrect
                     sm.bodK.ySp = target.y*altCorrect
                 else: # Track EKF
@@ -255,19 +290,28 @@ def autopilot():
                     home.x = sm.bodK.ekf.xhat[0]
                     home.y = sm.bodK.ekf.xhat[1]
                     (sm.bodK.xSp,sm.bodK.ySp) = sm.wayHome(sm.bodK,home)
-                    
-                if seeIt: # TODO: landing logic
-                    dXYZ = sqrt(sm.bodK.xSp**2 + sm.bodK.ySp**2)
-                    dV = abs(sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - sm.bodK.ekf.xhat[3])
-                    if dXYZ < 0.5*(1.0 + sm.altK.z) and dV < 0.5: # TODO: parameters
-                        sm.setp.velocity.z = -0.5
-                    else:
-                        sm.setp.velocity.z = 0.0
+                
+                Descend = False
+                dXY = -1.0
+                dV = -1.0
+                if seeIt: # TODO: landing logic. descend blind if high confidence also?
+                    dXY = sqrt(sm.bodK.xSp**2 + sm.bodK.ySp**2)
+                    dV = abs(sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(sm.bodK.ekf.xhat[3]))
+                    if dXY < 0.25*(1.0 + theAlt) and dV < 0.25: # TODO: parameters
+                        zFix = theAlt - zGround
+                        if UseTera:
+                            if sm.altK.teraAgree:
+                                sm.setp.velocity.z = -rospy.get_param('/kAltVel/gP')*(zSp + zGround - theAlt)
+                                Descend = True
+                        else:
+                            sm.altK.zSp = zSp + zGround
+                            sm.setp.velocity.z = sm.altK.controller()
+                            Descend = True
+                    if not Descend: # not descend but close then hold altitude
+                        sm.setp.velocity.z = -rospy.get_param('/kAltVel/gP')*(zFix + zGround - theAlt)
                 else:
-                    sm.altK.zSp = zGround + zHover
+                    sm.altK.zSp = zGround + zHover # increase altitude towards zHover
                     sm.setp.velocity.z = sm.altK.controller()
-                    dXYZ = -1.0
-                    dV = -1.0
                            
                 # Issue velocity commands
                 sm.setp.header.stamp = rospy.Time.now()
@@ -275,8 +319,9 @@ def autopilot():
                 sm.rate.sleep()
                 sm.command.publish(sm.setp)
                 
-                print "Descending:seeIt/dXYZ/dV/conf: ", seeIt, dXYZ, dV, confidence
-                print "vHat: ", sm.bodK.ekf.xhat[3]
+                print "Descending:seeIt/Descend/conf: ", seeIt, Descend, confidence
+                print "dXY/vHat/dV: ", dXY, np.asscalar(sm.bodK.ekf.xhat[3]), np.asscalar(dV)
+                print "zSp/zFix: ", zSp, zFix
 
             TrackDown = False
             if confidence < 0.51:
@@ -286,6 +331,7 @@ def autopilot():
                 
         if Landing:
             print "Landing..."
+            sm.modes.setDisarm()
             break
                 
         
