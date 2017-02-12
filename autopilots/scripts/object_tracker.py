@@ -85,9 +85,10 @@ class Tracker():
 				self.bodK.xSp = obj_x*altCorrect
 				self.bodK.ySp = obj_y*altCorrect
 
-				print '############ An object is seen #############'
+				print '#----------- An object is seen --------------#'
 				print 'Altitude correction (meters): ', altCorrect
 				print 'X2Object/Y2Object (meters): ', self.bodK.xSp, '/', self.bodK.ySp
+				print '      '
 			else: # object not seen
 				objectSeen = False
 				# set the last good position
@@ -95,8 +96,9 @@ class Tracker():
 				self.home.y = good_y
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 
-				print '######### Object is NOT seen ############'
-				print 'XY towards last good position (meters): ', self.bodK.xSp, '/', self.bodK.ySp 
+				print 'X-------------- Object is NOT seen ----------------X'
+				print 'XY towards last good position (meters): ', self.bodK.xSp, '/', self.bodK.ySp
+				print '   '
 				
 			# update setpoint topic
 			self.setp.velocity.z = self.altK.controller()
