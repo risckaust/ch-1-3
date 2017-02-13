@@ -1194,26 +1194,27 @@ class StateMachineC( object ):
 				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True
-					self.way_points_tracker.confidence=self.way_points_tracker.confidence+self.way_points_tracker.confidenceRate
+					self.way_points_tracker.confidence=min(self.way_points_tracker.confidence+self.way_points_tracker.confidenceRate,1)
 					self.way_points_tracker.targetFollowed=[xy_list_sorted[i][0],xy_list_sorted[i][1]]
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
 				else:
 					print("Object seen but neglected")
-					objectFound = False
-					self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
 					if (self.way_points_tracker.confidence < self.way_points_tracker.confidenceThreshold):
 						objectFound=False
+						self.way_points_tracker.confidence=0
 						return (objectFound, [])
 					else:
 						objectFound=True
+						self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
 						return (objectFound, self.way_points_tracker.targetFollowed)
 		else:
-			self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
 			if (self.way_points_tracker.confidence < self.way_points_tracker.confidenceThreshold):
 				objectFound=False
+				self.way_points_tracker.confidence=0
 				return (objectFound, [])
 			else:
 				objectFound=True
+				self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
 				return (objectFound, self.way_points_tracker.targetFollowed)
 		############################################################################
 
