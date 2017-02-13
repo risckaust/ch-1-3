@@ -94,6 +94,8 @@ def getLaunchpad():
         if rospy.get_param('/cvision/feCamera'):
             mask = cv2.bitwise_and(mask,feMask)
 
+#        print MaskItNow, mask.shape, frame.shape
+
         # apply proximity mask
         if MaskItNow:
             mask = cv2.bitwise_and(mask,pxMask)

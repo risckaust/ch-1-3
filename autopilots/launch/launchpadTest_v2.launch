@@ -1,44 +1,32 @@
 <launch>
 
-        <arg name="fcu_url" default="/dev/ttySAC0:921600" />
+        <arg name="fcu_url" default="/dev/ttyUSB0:921600" />
 	<arg name="gcs_url" default="" />
 	<arg name="record_imgs" default="false" />
         <arg name="record_states" default="false" />
+	<arg name="autopilot_en" default="false" />
         
         <include file="$(find mavros)/launch/px4.launch">
             <arg name="fcu_url" value="$(arg fcu_url)" />
             <arg name="gcs_url" value="$(arg gcs_url)" />		
         </include>
 
-        <node pkg="cvision" type="videoBridge.py"  name="videoBridge" required="true" >
+        <node pkg="cvision" type="videoBridge.py"  name="videoBridge" respawn="true" >
         </node>
         
-        <node pkg="cvision" type="getWhiteBlob.py"  name="getWhiteBlob" required="true" >
+        <node pkg="cvision" type="getLaunchpadx3.py"  name="getLaunchpadx3" required="true" >
         </node>
         
-        <node pkg="cvision" type="getCircle.py"     name="getCircle"    required="true" >
+        <node pkg="autopilots" type="ch1sm.py"  name="ch1sm" respawn="true" if="$(arg autopilot_en)" >
         </node>
-        
-        <node pkg="cvision" type="getCorners.py"    name="getCorners"   required="true" >
-        </node>
-        
-        <node pkg="cvision" type="getLaunchpad.py"  name="getLaunchpad" required="true" >
-        </node>
-        
-        <!--node pkg="cvision" type="getColorBlob.py"  name="getBlueBlob"  required="true">
-        <remap from="local_color" to="/getColors/blue" />
+
+	<!--node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frame 5.0 cvision/frame_reduced" respawn="true" >
         </node-->
 
-	<!--node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frameBGR 5.0 cvision/frameBGR_reduced" required="true" >
-        </node-->
-
-        <node pkg="rosbag" type="record" name="record_imgs" args="-o /home/odroid/ros_bags/Img_Data.bag /cvision/frameBGR /getLaunchpad/corners/processedImage /getLaunchpad/corners/xyPixels /getLaunchpad/launchpad/processedImage /getLaunchpad/launchpad/xyMeters /getLaunchpad/launchpad/xyPixels" required="true" if="$(arg record_imgs)" >
+        <node pkg="rosbag" type="record" name="record_imgs" args="-o /home/risc-nuc2/ros_bags/Img_Data.bag /cvision/frame  /getLaunchpad/corners/processedImage /getLaunchpad/corners/xyPixels /getLaunchpad/launchpad/processedImage /getLaunchpad/launchpad/xyMeters /getLaunchpad/launchpad/xyPixels" respawn="true" if="$(arg record_imgs)" >
         </node>
 
-	<node pkg="rosbag" type="record" name="record_states" args="-o /home/odroid/ros_bags/State_Data.bag /mavros/local_position/pose" required="true" if="$(arg record_states)" > 
+	<node pkg="rosbag" type="record" name="record_states" args="-o /home/risc-nuc2/ros_bags/State_Data.bag /mavros/local_position/pose" respawn="true" if="$(arg record_states)" > 
         </node>
-
-	<!--node pkg="autopilots" type="upAndDown.py" name="upAndDown" required="true" >
-	</node-->
 
 </launch>
