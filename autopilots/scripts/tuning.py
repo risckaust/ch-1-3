@@ -22,7 +22,7 @@ autopilotClass.setParams()
 # Main loop
 
 def autopilot():
-    rospy.init_node('tuning', anonymous=True)
+    rospy.init_node('autopilot', anonymous=True)
 
     ####
     # Attributes:
@@ -112,7 +112,7 @@ def autopilot():
             rospy.set_param('/kBodVel/feedForward', False)
 
             switch = -switch
-            home.x = base.x + switch*2.0
+            home.x = base.x + switch*3.0
             home.y = base.y
             home.z = zGround + zHover
 

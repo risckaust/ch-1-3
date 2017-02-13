@@ -131,7 +131,7 @@ class autopilotClass:
         def cbTera(self,msg):
             self.teraAgree = False
             if not msg == None:
-                self.teraRanges = msg.ranges[0:(rospy.get_param('/kAltVel/teraN'))]
+                self.teraRanges = msg.ranges[1:(rospy.get_param('/kAltVel/teraN')+1)]
                 var = max(self.teraRanges) - min(self.teraRanges)
                 if var < 0.5:
                     self.teraAgree = True
