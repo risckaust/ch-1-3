@@ -35,6 +35,7 @@
 #include <sstream>
 #include <string>
 #include <QMetaType>
+#include <QByteArray>
 #define PI 3.141592653
 
 
@@ -61,9 +62,17 @@ public:
   void chatterCallback(const geometry_msgs::Twist::ConstPtr& msg);
   void chatterCallback2(const geometry_msgs::Twist::ConstPtr& msg);
   void AltitudeCallback1(const mavros_msgs::Altitude::ConstPtr& msg);
+  void AltitudeCallback2(const mavros_msgs::Altitude::ConstPtr& msg);
+  void AltitudeCallback3(const mavros_msgs::Altitude::ConstPtr& msg);
   void BatteryCallback1(const sensor_msgs::BatteryState::ConstPtr& msg);
+  void BatteryCallback2(const sensor_msgs::BatteryState::ConstPtr& msg);
+  void BatteryCallback3(const sensor_msgs::BatteryState::ConstPtr& msg);
   void PositionCallback1(const geometry_msgs::PoseStamped::ConstPtr& msg);
+  void PositionCallback2(const geometry_msgs::PoseStamped::ConstPtr& msg);
+  void PositionCallback3(const geometry_msgs::PoseStamped::ConstPtr& msg);
   void VelocityCallback1(const geometry_msgs::TwistStamped::ConstPtr& msg);
+  void VelocityCallback2(const geometry_msgs::TwistStamped::ConstPtr& msg);
+  void VelocityCallback3(const geometry_msgs::TwistStamped::ConstPtr& msg);
   void StateMachineCallback1(const autopilots::StateMachine::ConstPtr& msg);
 
 	/*********************
@@ -83,16 +92,23 @@ public:
   void InterruptSlot1();
   void ResumeSlot1();
 
-
 Q_SIGNALS:
 	void loggingUpdated();
   void rosShutdown();
   void CallBackTrigger(float,float);
   void CallBackTrigger2(float,float);
   void AltitudeSignal1(float);
+  void AltitudeSignal2(float);
+  void AltitudeSignal3(float);
   void BatterySignal1(float,float);
+  void BatterySignal2(float,float);
+  void BatterySignal3(float,float);
   void PositionSignal1(float,float,float);
+  void PositionSignal2(float,float,float);
+  void PositionSignal3(float,float,float);
   void VelocitySignal1(float,float,float);
+  void VelocitySignal2(float,float,float);
+  void VelocitySignal3(float,float,float);
   void StateMachineSignal1(string,string);
 
 private:
@@ -102,9 +118,17 @@ private:
   ros::Subscriber chatter_subscriber;
   ros::Subscriber chatter_subscriber2;
   ros::Subscriber AltitudeSubscriber1;
+  ros::Subscriber AltitudeSubscriber2;
+  ros::Subscriber AltitudeSubscriber3;
   ros::Subscriber BatterySubscriber1;
+  ros::Subscriber BatterySubscriber2;
+  ros::Subscriber BatterySubscriber3;
   ros::Subscriber PositionSubscriber1;
+  ros::Subscriber PositionSubscriber2;
+  ros::Subscriber PositionSubscriber3;
   ros::Subscriber VelocitySubscriber1;
+  ros::Subscriber VelocitySubscriber2;
+  ros::Subscriber VelocitySubscriber3;
   ros::Subscriber StateMachineSubscriber1;
   QStringListModel logging_model;
 

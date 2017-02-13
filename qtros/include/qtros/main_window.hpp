@@ -72,15 +72,20 @@ public Q_SLOTS:
   void MoveObject(float,float);
   void MoveObject2(float,float);
   void AltitudeSlot1(float);
+  void AltitudeSlot2(float);
+  void AltitudeSlot3(float);
   void BatterySlot1(float,float);
+  void BatterySlot2(float,float);
+  void BatterySlot3(float,float);
   void PositionSlot1(float,float,float);
+  void PositionSlot2(float,float,float);
+  void PositionSlot3(float,float,float);
   void VelocitySlot1(float,float,float);
+  void VelocitySlot2(float,float,float);
+  void VelocitySlot3(float,float,float);
   void StateMachineSlot1(string,string);
   void on_Button_cvisionstart_clicked();
   void on_Button_cvisionstop_clicked();
-
-Q_SIGNALS:
-  void Interruptsignal1();
 
 protected:
   virtual void wheelEvent(QWheelEvent *event);
@@ -107,7 +112,6 @@ protected:
     QRectF boundingRect() const;
 private:
     QColor quadcolor;
-
 };
 
 }

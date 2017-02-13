@@ -50,9 +50,17 @@ bool QNode::init() {
   chatter_subscriber = n.subscribe("turtle1/cmd_vel", 1000, &QNode::chatterCallback,this);
   chatter_subscriber2=n.subscribe("turtle2/cmd_vel",1000, &QNode::chatterCallback2,this);
   AltitudeSubscriber1=n.subscribe("mavros/altitude",1000, &QNode::AltitudeCallback1,this);
+  AltitudeSubscriber2=n.subscribe("Quad2/mavros/altitude",1000, &QNode::AltitudeCallback2,this);
+  AltitudeSubscriber3=n.subscribe("Quad3/mavros/altitude",1000, &QNode::AltitudeCallback3,this);
   BatterySubscriber1=n.subscribe("mavros/battery",1000, &QNode::BatteryCallback1,this);
+  BatterySubscriber2=n.subscribe("Quad2/mavros/battery",1000, &QNode::BatteryCallback2,this);
+  BatterySubscriber3=n.subscribe("Quad3/mavros/battery",1000, &QNode::BatteryCallback3,this);
   PositionSubscriber1=n.subscribe("mavros/local_position/pose",1000,&QNode::PositionCallback1,this);
+  PositionSubscriber2=n.subscribe("Quad2/mavros/local_position/pose",1000,&QNode::PositionCallback2,this);
+  PositionSubscriber3=n.subscribe("Quad3/mavros/local_position/pose",1000,&QNode::PositionCallback3,this);
   VelocitySubscriber1=n.subscribe("mavros/local_position/velocity",1000,&QNode::VelocityCallback1,this);
+  VelocitySubscriber2=n.subscribe("Quad2/mavros/local_position/velocity",1000,&QNode::VelocityCallback2,this);
+  VelocitySubscriber3=n.subscribe("Quad3/mavros/local_position/velocity",1000,&QNode::VelocityCallback3,this);
   StateMachineSubscriber1=n.subscribe("/Quad1/state_machine/state",1000,&QNode::StateMachineCallback1,this);
 	start();
 	return true;
@@ -90,20 +98,49 @@ void QNode::AltitudeCallback1(const mavros_msgs::Altitude::ConstPtr& msg)
 {
   Q_EMIT AltitudeSignal1(msg->local);
 }
+void QNode::AltitudeCallback2(const mavros_msgs::Altitude::ConstPtr& msg)
+{
+  Q_EMIT AltitudeSignal2(msg->local);
+}
+void QNode::AltitudeCallback3(const mavros_msgs::Altitude::ConstPtr& msg)
+{
+  Q_EMIT AltitudeSignal3(msg->local);
+}
 void QNode::BatteryCallback1(const sensor_msgs::BatteryState::ConstPtr &msg)
 {
-//  std::string buffer;
-//  buffer=boost::lexical_cast<std::string>(msg->voltage);
-//  log(Info,std::string("I sent: ")+buffer);
   Q_EMIT BatterySignal1(msg->percentage,msg->voltage);
+}
+void QNode::BatteryCallback2(const sensor_msgs::BatteryState::ConstPtr &msg)
+{
+  Q_EMIT BatterySignal2(msg->percentage,msg->voltage);
+}
+void QNode::BatteryCallback3(const sensor_msgs::BatteryState::ConstPtr &msg)
+{
+  Q_EMIT BatterySignal3(msg->percentage,msg->voltage);
 }
 void QNode::PositionCallback1(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
   Q_EMIT PositionSignal1(msg->pose.position.x,msg->pose.position.y,msg->pose.position.z);
 }
+void QNode::PositionCallback2(const geometry_msgs::PoseStamped::ConstPtr &msg)
+{
+  Q_EMIT PositionSignal2(msg->pose.position.x,msg->pose.position.y,msg->pose.position.z);
+}
+void QNode::PositionCallback3(const geometry_msgs::PoseStamped::ConstPtr &msg)
+{
+  Q_EMIT PositionSignal3(msg->pose.position.x,msg->pose.position.y,msg->pose.position.z);
+}
 void QNode::VelocityCallback1(const geometry_msgs::TwistStamped::ConstPtr &msg)
 {
   Q_EMIT VelocitySignal1(msg->twist.linear.x,msg->twist.linear.y,msg->twist.linear.z);
+}
+void QNode::VelocityCallback2(const geometry_msgs::TwistStamped::ConstPtr &msg)
+{
+  Q_EMIT VelocitySignal2(msg->twist.linear.x,msg->twist.linear.y,msg->twist.linear.z);
+}
+void QNode::VelocityCallback3(const geometry_msgs::TwistStamped::ConstPtr &msg)
+{
+  Q_EMIT VelocitySignal3(msg->twist.linear.x,msg->twist.linear.y,msg->twist.linear.z);
 }
 void QNode::StateMachineCallback1(const autopilots::StateMachine::ConstPtr &msg)
 {
@@ -119,11 +156,7 @@ void QNode::InterruptSlot1()
 void QNode::ResumeSlot1()
 {
   ros::NodeHandle n;
-//  system("rosrun turtlesim turtlesim_node");
   n.setParam("/Quad1/state_machine/resume", 1);
-//  ros::init(init_argc,init_argv,"/turtlesim");
-//  ros::start();
-//  ros::NodeHandle nh;
 }
 
 void QNode::run() {

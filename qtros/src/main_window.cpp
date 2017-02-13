@@ -37,20 +37,25 @@ MainWindow::MainWindow(int argc, char** argv, QWidget *parent)
   scene->addItem(Quad1);
   scene->addItem(Quad2);
   scene->addItem(Quad3);
-//  QProcess cvisionprocess;
-
 
   QObject::connect(ui.actionAbout_Qt, SIGNAL(triggered(bool)), qApp, SLOT(aboutQt())); // qApp is a global variable for the application
-//  ReadSettings();
 	setWindowIcon(QIcon(":/images/icon.png"));
 	ui.tab_manager->setCurrentIndex(0); // ensure the first tab is showing - qt-designer should have this already hardwired, but often loses it (settings?).
   QObject::connect(&qnode, SIGNAL(rosShutdown()), this, SLOT(close()));
   QObject::connect(&qnode,SIGNAL(CallBackTrigger(float,float)),this,SLOT(MoveObject(float,float)));
   QObject::connect(&qnode,SIGNAL(CallBackTrigger2(float,float)),this,SLOT(MoveObject2(float,float)));
   QObject::connect(&qnode,SIGNAL(AltitudeSignal1(float)),this,SLOT(AltitudeSlot1(float)));
+  QObject::connect(&qnode,SIGNAL(AltitudeSignal2(float)),this,SLOT(AltitudeSlot2(float)));
+  QObject::connect(&qnode,SIGNAL(AltitudeSignal3(float)),this,SLOT(AltitudeSlot3(float)));
   QObject::connect(&qnode,SIGNAL(BatterySignal1(float,float)),this,SLOT(BatterySlot1(float,float)));
+  QObject::connect(&qnode,SIGNAL(BatterySignal2(float,float)),this,SLOT(BatterySlot2(float,float)));
+  QObject::connect(&qnode,SIGNAL(BatterySignal3(float,float)),this,SLOT(BatterySlot3(float,float)));
   QObject::connect(&qnode,SIGNAL(PositionSignal1(float,float,float)),this,SLOT(PositionSlot1(float,float,float)));
+  QObject::connect(&qnode,SIGNAL(PositionSignal2(float,float,float)),this,SLOT(PositionSlot2(float,float,float)));
+  QObject::connect(&qnode,SIGNAL(PositionSignal3(float,float,float)),this,SLOT(PositionSlot3(float,float,float)));
   QObject::connect(&qnode,SIGNAL(VelocitySignal1(float,float,float)),this,SLOT(VelocitySlot1(float,float,float)));
+  QObject::connect(&qnode,SIGNAL(VelocitySignal2(float,float,float)),this,SLOT(VelocitySlot2(float,float,float)));
+  QObject::connect(&qnode,SIGNAL(VelocitySignal3(float,float,float)),this,SLOT(VelocitySlot3(float,float,float)));
   QObject::connect(&qnode,SIGNAL(StateMachineSignal1(string,string)),this,SLOT(StateMachineSlot1(string,string)));
 
 	/*********************
@@ -245,6 +250,20 @@ void MainWindow::AltitudeSlot1(float alti)
   buffer.setNum(alti);
   ui.AltitudeLabel1->setText(buffer);
 }
+void MainWindow::AltitudeSlot2(float alti)
+{
+  QString buffer;
+  ui.AltitudeProgressBar2->setValue(alti);
+  buffer.setNum(alti);
+  ui.AltitudeLabel2->setText(buffer);
+}
+void MainWindow::AltitudeSlot3(float alti)
+{
+  QString buffer;
+  ui.AltitudeProgressBar3->setValue(alti);
+  buffer.setNum(alti);
+  ui.AltitudeLabel3->setText(buffer);
+}
 void MainWindow::BatterySlot1(float perc,float volt)
 {
   QString buffer;
@@ -257,6 +276,30 @@ void MainWindow::BatterySlot1(float perc,float volt)
   ui.BatteryProgressBar1->setValue(perc);
   ui.VoltageLabel1->setText(buffer);
 }
+void MainWindow::BatterySlot2(float perc,float volt)
+{
+  QString buffer;
+  buffer.setNum(volt);
+  if(perc<0)
+  {
+    perc=-perc;
+  }
+  else;
+  ui.BatteryProgressBar2->setValue(perc);
+  ui.VoltageLabel2->setText(buffer);
+}
+void MainWindow::BatterySlot3(float perc,float volt)
+{
+  QString buffer;
+  buffer.setNum(volt);
+  if(perc<0)
+  {
+    perc=-perc;
+  }
+  else;
+  ui.BatteryProgressBar3->setValue(perc);
+  ui.VoltageLabel3->setText(buffer);
+}
 void MainWindow::PositionSlot1(float x, float y, float z)
 {
   QString bufferx,buffery,bufferz;
@@ -267,15 +310,55 @@ void MainWindow::PositionSlot1(float x, float y, float z)
   ui.PositionLabely1->setText(buffery);
   ui.PositionLabelz1->setText(bufferz);
 }
-void MainWindow::VelocitySlot1(float vx1,float vy1,float vz1)
+void MainWindow::PositionSlot2(float x, float y, float z)
+{
+  QString bufferx,buffery,bufferz;
+  bufferx.setNum(x);
+  buffery.setNum(y);
+  bufferz.setNum(z);
+  ui.PositionLabelx2->setText(bufferx);
+  ui.PositionLabely2->setText(buffery);
+  ui.PositionLabelz2->setText(bufferz);
+}
+void MainWindow::PositionSlot3(float x, float y, float z)
+{
+  QString bufferx,buffery,bufferz;
+  bufferx.setNum(x);
+  buffery.setNum(y);
+  bufferz.setNum(z);
+  ui.PositionLabelx3->setText(bufferx);
+  ui.PositionLabely3->setText(buffery);
+  ui.PositionLabelz3->setText(bufferz);
+}
+void MainWindow::VelocitySlot1(float vx,float vy,float vz)
 {
   QString buffervx1,buffervy1,buffervz1;
-  buffervx1.setNum(vx1);
-  buffervy1.setNum(vy1);
-  buffervz1.setNum(vz1);
+  buffervx1.setNum(vx);
+  buffervy1.setNum(vy);
+  buffervz1.setNum(vz);
   ui.VelocityLabelx1->setText(buffervx1);
   ui.VelocityLabely1->setText(buffervy1);
   ui.VelocityLabelz1->setText(buffervz1);
+}
+void MainWindow::VelocitySlot2(float vx,float vy,float vz)
+{
+  QString buffervx2,buffervy2,buffervz2;
+  buffervx2.setNum(vx);
+  buffervy2.setNum(vy);
+  buffervz2.setNum(vz);
+  ui.VelocityLabelx2->setText(buffervx2);
+  ui.VelocityLabely2->setText(buffervy2);
+  ui.VelocityLabelz2->setText(buffervz2);
+}
+void MainWindow::VelocitySlot3(float vx,float vy,float vz)
+{
+  QString buffervx3,buffervy3,buffervz3;
+  buffervx3.setNum(vx);
+  buffervy3.setNum(vy);
+  buffervz3.setNum(vz);
+  ui.VelocityLabelx3->setText(buffervx3);
+  ui.VelocityLabely3->setText(buffervy3);
+  ui.VelocityLabelz3->setText(buffervz3);
 }
 void MainWindow::StateMachineSlot1(string state,string signal)
 {
@@ -286,12 +369,18 @@ void MainWindow::StateMachineSlot1(string state,string signal)
 }
 void qtros::MainWindow::on_Button_cvisionstart_clicked()
 {
+  QString buffer;
+  float buffer1;
   cvisionprocess.start("rosrun turtlesim turtlesim_node");
+  ros::NodeHandle nh("~");
+  nh.getParam("/background_b",buffer1);
+  buffer=buffer.setNum(buffer1);
+  ui.cvisionoutput->setText(buffer);
 }
 void qtros::MainWindow::on_Button_cvisionstop_clicked()
 {
+  ui.cvisionoutput->clear();
   cvisionprocess.close();
-//  system("rosnode kill turtlesim_node");
 }
 
 void MainWindow::on_interruptbutton1_clicked()
