@@ -197,3 +197,5 @@ target_link_libraries(cvision_detector ${catkin_LIBRARIES})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_dependencies(cvision_detector ${catkin_EXPORTED_TARGETS})
