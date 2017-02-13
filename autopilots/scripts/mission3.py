@@ -1214,7 +1214,7 @@ class StateMachineC( object ):
 				return (objectFound, [])
 			else:
 				objectFound=True
-				self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
+				self.way_points_tracker.confidence=max(self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate,0
 				return (objectFound, self.way_points_tracker.targetFollowed)
 		############################################################################
 
