@@ -112,8 +112,8 @@ def getColor():
     # initializations
     
     kc = 0              # iteration counter for downsample image streaming
-    morph_width=2       # for erode & dilate
-    morph_height=2
+    morph_width=5       # for erode & dilate
+    morph_height=5
     Detect = False      # for proximity mask
     DetectHold = False
     MaskItNow = False
