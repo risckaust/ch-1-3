@@ -19,22 +19,23 @@ def setParams():
 
     # ROS parameters for autopilot
     rospy.set_param('/autopilot/fbRate',20.0)        # feedback rate (hz)
-    rospy.set_param('/autopilot/altStep',3.0)        # initial altitude step command
+    rospy.set_param('/autopilot/altStep',2.0)        # initial altitude step command
     rospy.set_param('/autopilot/camOffset',0.3)      # camera offset from ground
 
     # ROS parameters for kAltVel
     rospy.set_param('/kAltVel/gP',1.5)
     rospy.set_param('/kAltVel/gI',0.1)
     rospy.set_param('/kAltVel/vMaxU',1.0)
+    rospy.set_param('/kAltVel/useTera',False)
     rospy.set_param('/kAltVel/vMaxD',0.5)
     rospy.set_param('/kAltVel/teraN',3)
-
+    
     # ROS parameters for kBodVel
     rospy.set_param('/kBodVel/gP',0.5)
     rospy.set_param('/kBodVel/gI',0.05)
     rospy.set_param('/kBodVel/vMax',5.0)
     rospy.set_param('/kBodVel/gPyaw',0.5)           # yaw proportional gain
-    rospy.set_param('/kBodVel/yawOff',0.25)          # error to turn off yaw control (m)
+    rospy.set_param('/kBodVel/yawOff',5.25)          # error to turn off yaw control (m)
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
     rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone (deg/s)
     rospy.set_param('/kBodVel/feedForward', False)   # use EKF to feedforward estimates
@@ -130,7 +131,7 @@ class autopilotClass:
         def cbTera(self,msg):
             self.teraAgree = False
             if not msg == None:
-                self.teraRanges = msg.ranges[0:(rospy.get_param('/kAltVel/teraN')-1)]
+                self.teraRanges = msg.ranges[0:(rospy.get_param('/kAltVel/teraN'))]
                 var = max(self.teraRanges) - min(self.teraRanges)
                 if var < 0.5:
                     self.teraAgree = True

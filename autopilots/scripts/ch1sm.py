@@ -245,27 +245,29 @@ def autopilot():
         
             print "Descending..."
             
-            rospy.set_param('/kBodVel/feedForward', True)
+            rospy.set_param('/kBodVel/feedForward', False)
         
             tStart = rospy.Time.now()
             dT = 0.0
             
-            UseTera = False
+            UseTera = rospy.get_param('/kAltVel/useTera')
             
             if UseTera:
-                theAlt = min(sm.altK.ranges)
+                theAlt = min(sm.altK.teraRanges)
             else:
                 theAlt = sm.altK.z
                 
             zSp = (theAlt - zGround)/2.0    # incremental target waypoint
             zFix = (theAlt - zGround)       # last altitude target was seen and close
             
-            while confidence > 0.5 and theAlt - zGround > 0.05: # TODO: parameter
+            while confidence > 0.5 and theAlt - zGround > 0.3: # TODO: parameter
             
                 if UseTera:
-                    theAlt = min(sm.altK.ranges) # TODO: mean? 
+                    theAlt = max(sm.altK.teraRanges) # TODO: mean?
                 else:
                     theAlt = sm.altK.z
+                    
+                print "Tera123/agree:", sm.altK.teraRanges, sm.altK.teraAgree
                     
                 if theAlt - zGround < zSp + .05:
                     zSp = zSp/2.0
@@ -294,19 +296,19 @@ def autopilot():
                 dV = -1.0
                 if seeIt: # TODO: landing logic. descend blind if high confidence also?
                     dXY = sqrt(sm.bodK.xSp**2 + sm.bodK.ySp**2)
-                    dV = abs(sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(sm.bodK.ekf.xhat[3]))
+                    dV = abs(sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(np.asscalar(sm.bodK.ekf.xhat[3])))
                     if dXY < 0.25*(1.0 + theAlt) and dV < 0.25: # TODO: parameters
                         zFix = theAlt - zGround
                         if UseTera:
                             if sm.altK.teraAgree:
-                                sm.setp.velocity.z = -rospy.get_param('/kAltVel/gP')*(zSp + zGround - theAlt)
+                                sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zSp + zGround - theAlt)
                                 Descend = True
                         else:
                             sm.altK.zSp = zSp + zGround
                             sm.setp.velocity.z = sm.altK.controller()
                             Descend = True
                     if not Descend: # not descend but close then hold altitude
-                        sm.setp.velocity.z = -rospy.get_param('/kAltVel/gP')*(zFix + zGround - theAlt)
+                        sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zFix + zGround - theAlt)
                 else:
                     sm.altK.zSp = zGround + zHover # increase altitude towards zHover
                     sm.setp.velocity.z = sm.altK.controller()
@@ -318,7 +320,7 @@ def autopilot():
                 sm.command.publish(sm.setp)
                 
                 print "Descending:seeIt/Descend/conf: ", seeIt, Descend, confidence
-                print "dXY/vHat/dV: ", dXY, np.asscalar(sm.bodK.ekf.xhat[3]), np.asscalar(dV)
+                print "dXY/vHat/dV: ", dXY, np.asscalar(sm.bodK.ekf.xhat[3]), dV
                 print "zSp/zFix: ", zSp, zFix
 
             TrackDown = False
@@ -328,10 +330,38 @@ def autopilot():
                 Landing = True
                 
         if Landing:
+            
             print "Landing..."
-            sm.modes.setDisarm()
-            break
+            rospy.set_param('/kBodVel/feedForward', False)
+            
+            dzError = 0.0
+            h = 1.0/rospy.get_param('/autopilot/fbRate')
+            
+            while dzError < 1.0: # TODO: parameter 
+            
+                # update blind EKF
+                sm.bodK.ekfUpdate(seeIt)
                 
+                # track EKF
+                home.x = sm.bodK.ekf.xhat[0]
+                home.y = sm.bodK.ekf.xhat[1]
+                (sm.bodK.xSp,sm.bodK.ySp) = sm.wayHome(sm.bodK,home)
+                (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
+                
+                # decend constant velocity
+                sm.setp.velocity.z = -0.5
+                           
+                # Issue velocity commands
+                sm.setp.header.stamp = rospy.Time.now()
+                (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
+                sm.rate.sleep()
+                sm.command.publish(sm.setp)
+                
+                dzError = dzError + h*(sm.altK.z - sm.setp.velocity.z) # commanded velocity - actual velocity
+                print "Landing:dzError", dzError
+                        
+            # sm.modes.setDisarm()
+            break   
         
 if __name__ == '__main__':
     try:
