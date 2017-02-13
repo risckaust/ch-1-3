@@ -340,7 +340,7 @@ def autopilot():
             while dzError < 1.0: # TODO: parameter 
             
                 # update blind EKF
-                sm.bodK.ekfUpdate(seeIt)
+                sm.bodK.ekfUpdate(False)
                 
                 # track EKF
                 home.x = sm.bodK.ekf.xhat[0]
