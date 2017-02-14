@@ -180,6 +180,10 @@ class StateMachineC( object ):
 		self.home		= autopilotLib.xyzVar()
 		# Altitude at which we pick object [m]
 		self.PICK_ALT		= 0.6
+		# Altitude at which PICK fails if object not seen, [m]
+		self.PICK_FAIL_ALT	= 5.0
+		# Object search Altitude, [m]
+		self.SEARCH_ALT		= 3.0
 		# camera offset from ground [m]
 		self.CAMOFFSET		= 0.1
 		# relative pos error where descend is allowed [m]
@@ -433,6 +437,7 @@ class StateMachineC( object ):
 
 			# publish control commands
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
+			self.altK.zSp = self.SEARCH_ALT
 			self.setp.velocity.z = self.altK.controller()
 			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
@@ -522,19 +527,26 @@ class StateMachineC( object ):
 			# object not found
 			elif not objectFound and not self.gripperIsPicked:
 				# if at max ALT (stil did not find objects), exit state with signal='Failed', to search again
-				if (self.altK.z >= self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep')):
+				if (self.altK.z >= self.ZGROUND+self.PICK_FAIL_ALT):
 					self.current_signal = 'Failed'
 
 				# set last location where object was seen
+				print 'Object not seen, going to last good position'
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 				# increase altitude gradually, until an object is seen again
-				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+rospy.get_param(self.namespace+'/autopilot/altStep'))
+				print 'increasing altitude gradually.... possibly to see object again'
+				print '  '
+				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_FAIL_ALT)
 
 			# check if object is picked, fly up 1 meter
 			if (self.gripperIsPicked):
+				print 'Object is picked. Flying up, 1 meter.'
+				print '   '
 				self.altK.zSp = self.ZGROUND + 1.0
 			# check if still picked up at 1 meter, then claim object is picked
 			if (self.gripperIsPicked and self.altK.z > (self.ZGROUND+1.0) ):
+				print 'Object is claimed Picked. Exiting Pick state..'
+				print ' ' 
 				picked = True	# set True to exit the while loop
 				self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
