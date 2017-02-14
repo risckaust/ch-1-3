@@ -345,7 +345,7 @@ def getLaunchpad():
             error = (dataWhite[0] - dataCorners[0])**2 + (dataWhite[1] - dataCorners[1])**2
             if sqrt(error) < TOL*dataWhite[2]:
                 Detect = True
-                CX = dataWhite[0] ### Corners or White?
+                CX = dataWhite[0] ### Corners or White? Corners tend to be arbitrary at low altitude.
                 CY = dataWhite[1]
                 pxRad = dataWhite[2]
                 Skip = True

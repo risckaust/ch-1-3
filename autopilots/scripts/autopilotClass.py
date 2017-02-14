@@ -31,8 +31,8 @@ def setParams():
     rospy.set_param('/kAltVel/teraN',3)
     
     # ROS parameters for kBodVel
-    rospy.set_param('/kBodVel/gP',0.75)
-    rospy.set_param('/kBodVel/gI',0.05)
+    rospy.set_param('/kBodVel/gP',0.75)             # 0.75 tuned
+    rospy.set_param('/kBodVel/gI',0.05)             # 005 tuned
     rospy.set_param('/kBodVel/vMax',3.0)
     rospy.set_param('/kBodVel/gPyaw',0.5)           # yaw proportional gain
     rospy.set_param('/kBodVel/yawOff',5.25)          # error to turn off yaw control (m)
@@ -234,11 +234,11 @@ class autopilotClass:
                 self.H[1,1] = 1.0
                 self.P = np.matrix(np.identity(5))
                 self.Q = np.matrix(np.zeros( (5,5) ))
-                self.Q[0,0] = 0.1
+                self.Q[0,0] = 0.1 # .1, .1, .1, .5, .5
                 self.Q[1,1] = 0.1
                 self.Q[2,2] = 0.1
                 self.Q[3,3] = 0.5
-                self.Q[4,4] = 0.5
+                self.Q[4,4] = 1.0
                 self.R = np.matrix(np.identity(2))*0.1
                 
 

@@ -46,7 +46,10 @@ def autopilot():
     while kc < 10: # cycle for subscribers to read local position
         sm.rate.sleep()
         kc = kc + 1
-    zGround = sm.altK.z                                # define ground level
+        
+    zGround = sm.altK.z    # Define ground levels
+    zGroundTera =  max(sm.altK.teraRanges)
+                               
     zHover = rospy.get_param('/autopilot/altStep')   # base hover altitude
     takeoff.x = sm.bodK.x
     takeoff.y = sm.bodK.y
@@ -60,12 +63,9 @@ def autopilot():
     # MODES
     # Takeoff: Initial takeoff
     # GoToBase: Go to base location while scanning
-    # Scanning: Looking for target in place
     # TrackUp: Track target while maintaining altitude
     # TrackDown: Track target while descending
-    # LostEKF: Lost target but track EKF
-    # LostUp: Lost target. Ascend in place.
-    # Land: Landing maneuver
+    # Landing: Landing maneuver
     #################################
     
     Takeoff = True
@@ -261,28 +261,30 @@ def autopilot():
             
             UseTera = rospy.get_param('/kAltVel/useTera')
             
-            if UseTera:
-                theAlt = max(sm.altK.teraRanges)
-            else:
-                theAlt = sm.altK.z
-                
-            zSp = (theAlt - zGround)/2.0    # incremental target waypoint
-            zFix = (theAlt - zGround)       # last altitude target was seen and close
+            # theAlt = distance about ground level measurement
             
-            while confidence > 0.5 and theAlt - zGround > 0.3: # TODO: parameter
+            if UseTera:
+                theAlt = max(sm.altK.teraRanges) - zGroundTera
+            else:
+                theAlt = sm.altK.z -zGround
+                
+            zSp = theAlt/2.0    # incremental target waypoint
+            zFix = theAlt       # last altitude target was seen and close
+            
+            while confidence > 0.5 and theAlt> 0.3: # TODO: parameter
             
                 vxHold = sm.setp.velocity.x
                 vyHold = sm.setp.velocity.y
                 yrHold = sm.setp.yaw_rate
             
                 if UseTera:
-                    theAlt = max(sm.altK.teraRanges) # TODO: mean?
+                    theAlt = max(sm.altK.teraRanges) - zGroundTera# TODO: max?
                 else:
-                    theAlt = sm.altK.z
+                    theAlt = sm.altK.z - zGround
                     
                 print "Tera123/agree:", sm.altK.teraRanges, sm.altK.teraAgree
                     
-                if theAlt - zGround < zSp + .05:
+                if theAlt < zSp + .05:
                     zSp = zSp/2.0
             
                 if target.z > 0:
@@ -295,7 +297,7 @@ def autopilot():
                 
                 if seeIt: # Track target
                     confidence = cRate*confidence + (1-cRate)*1.0
-                    altCorrect = (theAlt - zGround + camOffset)/rospy.get_param('/pix2m/altCal')
+                    altCorrect = (theAlt + camOffset)/rospy.get_param('/pix2m/altCal')
                     sm.bodK.xSp = target.x*altCorrect
                     sm.bodK.ySp = target.y*altCorrect
                     (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
@@ -318,17 +320,17 @@ def autopilot():
                     dXY = sqrt(sm.bodK.xSp**2 + sm.bodK.ySp**2)
                     dV = abs(sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(np.asscalar(sm.bodK.ekf.xhat[3])))
                     if dXY < 0.1*(1.0 + theAlt) and dV < 0.2: # TODO: parameters
-                        zFix = theAlt - zGround
+                        zFix = theAlt
                         if UseTera:
                             if sm.altK.teraAgree:
-                                sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zSp + zGround - theAlt)
+                                sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zSp - theAlt)
                                 Descend = True
                         else:
                             sm.altK.zSp = zSp + zGround
                             sm.setp.velocity.z = sm.altK.controller()
                             Descend = True
                     if not Descend: # not descend but close then hold altitude
-                        sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zFix + zGround - theAlt)
+                        sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zFix - theAlt)
                 else:
                     sm.altK.zSp = zGround + zHover # increase altitude towards zHover
                     sm.setp.velocity.z = sm.altK.controller()
