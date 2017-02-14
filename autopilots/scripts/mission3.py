@@ -100,6 +100,10 @@ class path_tracker():
 		self.state="still"
 		self.way_points_list=[]
 		self.object_position=[]
+		self.confidence=0
+		self.confidenceRate=0
+		self.confidenceThreshold=0.5
+		self.targetFollowed=[]
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
@@ -433,6 +437,8 @@ class StateMachineC( object ):
 			# check for objects
 			#objectFound, _ = self.monitorObjects()
 			objectFound, _ = self.monitorSingleObject()
+			print 'ObjectFound condifence: ', self.way_points_tracker.confidence
+			print '  '
 
 
 			# publish control commands
@@ -509,6 +515,8 @@ class StateMachineC( object ):
 			# monitor objects
 			#objectFound, xy = self.monitorObjects()
 			objectFound, xy = self.monitorSingleObject()
+			print 'ObjectFound confidence: ', self.way_points_tracker.confidence
+			print ' '
 
 			# found an object
 			if objectFound and not self.gripperIsPicked:
@@ -531,10 +539,10 @@ class StateMachineC( object ):
 					self.current_signal = 'Failed'
 
 				# set last location where object was seen
-				print 'Object not seen, going to last good position'
+				print 'Object not considered/seen, going to last good position'
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 				# increase altitude gradually, until an object is seen again
-				print 'increasing altitude gradually.... possibly to see object again'
+				print 'increasing altitude gradually.... possibly to see/consdier object again'
 				print '  '
 				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_FAIL_ALT)
 
@@ -1202,18 +1210,31 @@ class StateMachineC( object ):
 				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True
+					self.way_points_tracker.confidence=min(self.way_points_tracker.confidence+self.way_points_tracker.confidenceRate,1)
+					self.way_points_tracker.targetFollowed=[xy_list_sorted[i][0],xy_list_sorted[i][1]]
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
 				else:
 					print("Object seen but neglected")
-					objectFound = False
-					return (objectFound, [])
+					if (self.way_points_tracker.confidence < self.way_points_tracker.confidenceThreshold):
+						objectFound=False
+						self.way_points_tracker.confidence=0
+						return (objectFound, [])
+					else:
+						objectFound=True
+						self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
+						return (objectFound, self.way_points_tracker.targetFollowed)
 		else:
-			objectFound=False
-			return (objectFound, [])
+			if (self.way_points_tracker.confidence < self.way_points_tracker.confidenceThreshold):
+				objectFound=False
+				self.way_points_tracker.confidence=0
+				return (objectFound, [])
+			else:
+				objectFound=True
+				self.way_points_tracker.confidence=max(self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate,0)
+				return (objectFound, self.way_points_tracker.targetFollowed)
 		############################################################################
 
 	########## End of Monitoring Single Object  #######################
-
 
 	# determins if an object is inside an allowable descend envelope
 	def inside_envelope(self,xy):
@@ -1526,8 +1547,8 @@ def mission():
 	sm = StateMachineC(ns,field_map)
 	sm.DEBUG=True
 	sm.TKOFFALT = 5.0
-	sm.current_state='Start'
-	sm.current_signal='Ready'
+	sm.current_state='Picking'
+	sm.current_signal='Resume'
 	sm.START_SIGNAL=True
 	sm.cameraView=1
 
