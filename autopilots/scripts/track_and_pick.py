@@ -93,11 +93,22 @@ class Tracker():
 		# set altitude
 		self.altK.zSp = good_z
 
+		# gripper counter, to activate only once more after picking
+		gripper_counter = 0
+
+		# make the magnets ready
+		self.gripper_action = True
+		self.gripper_pub.publish(self.gripper_action)
+		self.rate.sleep()
+
 		while not rospy.is_shutdown():
 
 
 
 			if not self.gripperIsPicked:
+
+				# reset gripper counter
+				gripper_counter = 0
 
 				# check if onject is seen
 				if self.bgr_target.z > 0: # object is seen
@@ -134,10 +145,7 @@ class Tracker():
 			
 						print 'Object seen and Descending.....'
 						print '   '
-						# activate magnets when close to object
-						if self.altK.z < (self.ZGROUND + self.grip_trig_ALT):
-							self.gripper_action = True
-							self.gripper_pub.publish(self.gripper_action)
+
 					else:
 						self.altK.zSp = good_z
 						print 'Object seen but not inside envelope. NOT descending..'
@@ -164,10 +172,15 @@ class Tracker():
 			
 					if self.altK.z >= (self.ZGROUND + self.TRACK_ALT):
 						print 'Reached Max allowed altitude..... still not seeing an object'
-			else: # not picked
+			else: # picked
 				print 'Object is considered PICKED. Climbing up..'
 				print ' '
 				self.altK.zSp = self.ZGROUND + self.TRACK_ALT
+				# activate magnets once more to ensure gripping
+				if gripper_counter <1:
+					gripper_counter = gripper_counter+1
+					self.gripper_action = True
+					self.gripper_pub.publish(self.gripper_action)
 				
 			# update setpoint topic
 			self.setp.velocity.z = self.altK.controller()
