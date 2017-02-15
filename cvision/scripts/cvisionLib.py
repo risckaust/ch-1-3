@@ -53,8 +53,8 @@ class pix2m():
         ySp = 0.0
              
         if center.z > 0:
-            xSp = self.scale*(center.x - self.LX/2) - self.gripperOffset
-            ySp = self.scale*(self.LY/2 - center.y)
+            xSp = self.scale*(center.x - self.LX/2)
+            ySp = self.scale*(self.LY/2 - center.y) - self.gripperOffset
             xSp = xSp*self.m2pix
             ySp = ySp*self.m2pix
             hold = xSp                                  # switch for NED
@@ -68,8 +68,8 @@ class pix2m():
         ySp = 0.0
         
         if center.z > 0:
-            xSp = self.scale*(center.x - self.LX/2) - self.gripperOffset
-            ySp = self.scale*(self.LY/2 - center.y)
+            xSp = self.scale*(center.x - self.LX/2) 
+            ySp = self.scale*(self.LY/2 - center.y) - self.gripperOffset
             radius = sqrt(xSp**2 + ySp**2)
             scale = 0.0019*radius + 0.1756              # empirical data fit
             xSp = xSp*scale                             # convert to centimeters
