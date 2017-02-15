@@ -27,13 +27,14 @@ def setParams():
     rospy.set_param('/kAltVel/gI',0.1)
     rospy.set_param('/kAltVel/vMaxU',1.0)
     rospy.set_param('/kAltVel/vMaxD',0.5)
-    rospy.set_param('/kAltVel/useTera',False)
+    rospy.set_param('/kAltVel/smartLanding',True)
     rospy.set_param('/kAltVel/teraN',3)
+    rospy.set_param('/kAltVel/distanceSensorName','dsName')
     
     # ROS parameters for kBodVel
     rospy.set_param('/kBodVel/gP',0.75)             # 0.75 tuned
-    rospy.set_param('/kBodVel/gI',0.05)             # 005 tuned
-    rospy.set_param('/kBodVel/vMax',3.0)
+    rospy.set_param('/kBodVel/gI',0.05)             # 0.05 tuned
+    rospy.set_param('/kBodVel/vMax',3.0)            # max lateral velocity
     rospy.set_param('/kBodVel/gPyaw',0.5)           # yaw proportional gain
     rospy.set_param('/kBodVel/yawOff',5.25)          # error to turn off yaw control (m)
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
@@ -70,6 +71,8 @@ class autopilotClass:
     #   rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
     #   rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
     #   rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
+    #   rospy.Subscriber('/scan', LaserScan, self.cbTera)
+    #   rospy.subscriber(sensorTopic, Range, self.cbDistanceSensor)
     #
     # ROS parameters:
     #   /autopilot/fbRate = feedback sampling rate (Hz)
@@ -77,6 +80,9 @@ class autopilotClass:
     #   /kAltVel/gI = integral gain
     #   /kAltVel/vMaxU = maximum upward reference velocity (positive m/s)
     #   /kAltVel/vMaxD = maximum downward reference velocity (positive m/s)
+    #   /kAltVel/smartLanding = use distance sensors and terarangers for landing
+    #   /kAltVel/teraN = number of teraranger sensors
+    #   /kAltVel/distanceSensorName = name of auxiliary distance sensor
     #
     # Fields:
     #   callback functions & subscriptions
@@ -84,10 +90,11 @@ class autopilotClass:
     #   zSp = commanded altitude setpoint (m)
     #   z = current altitude from /mavros/local_position/pose (m)
     #   vz = current altitude velocity from /mavros/local_position/velocity (m/s)
+    #   distanceSensor = distance sensor reading
     #   teraRanges = vector of teraRanger measurements
     #   teraAgree = teraRange 0,1,2 agreement
     #   engaged = Boolean if armed and offboard
-    #   landed = Boolean if landed
+    #   airborne = Boolean if landed
     #
     #####
 
@@ -98,6 +105,7 @@ class autopilotClass:
             self.zSp = 0.0
             self.z = 0.0
             self.vz = 0.0
+            self.distanceSensor = 0.0
             self.teraRanges = [0.0]*rospy.get_param('/kAltVel/teraN')
             self.teraAgree = False
             self.engaged = False
@@ -107,6 +115,8 @@ class autopilotClass:
             self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
             self.subFCUexState = rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
             self.subTera = rospy.Subscriber('/scan', LaserScan, self.cbTera)
+            sensorTopic = '/mavros/distance_sensor/' + rospy.get_param('/kAltVel/distanceSensorName')
+            self.subDistanceSensor = rospy.Subscriber(sensorTopic, Range, self.cbDistanceSensor)
 
         def cbPos(self,msg):
             if not msg == None:
@@ -136,6 +146,10 @@ class autopilotClass:
                 var = max(self.teraRanges) - min(self.teraRanges)
                 if var < 0.5:
                     self.teraAgree = True
+
+        def cbDistanceSensor(self,msg):
+            if not msg == None:
+                self.distanceSensor = msg.range
 
         def controller(self):
         

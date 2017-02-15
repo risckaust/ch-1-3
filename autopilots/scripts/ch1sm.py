@@ -21,6 +21,8 @@ autopilotClass.setParams()
 
 # Main loop
 
+Testing = True
+
 def autopilot():
     rospy.init_node('autopilot', anonymous=True)
 
@@ -48,7 +50,9 @@ def autopilot():
         kc = kc + 1
         
     zGround = sm.altK.z    # Define ground levels
-    zGroundTera =  max(sm.altK.teraRanges)
+    zGroundDistanceSensor = sm.altK.distanceSensor
+    if Testing: #####################
+        zGroundDistanceSensor = sm.altK.z
                                
     zHover = rospy.get_param('/autopilot/altStep')   # base hover altitude
     takeoff.x = sm.bodK.x
@@ -98,10 +102,13 @@ def autopilot():
                 if phase == 0:
                     print "Phase 1..."
                     home.z = zGround + 1.0
+                    vMax = rospy.get_param('/kBodVel/vMax')
+                    rospy.set_param('/kBodVel/vMax',vMax/10.0) # reduce max lateral velocity TODO: parameter
                 else:
                     print "Phase 2..."
                     home.z = zGround + zHover
-                    
+                    rospy.set_param('/kBodVel/vMax',vMax) # restor max lateral velocity
+                
                 sm.altK.zSp = home.z
                 
                 print "z/zSp: ", sm.altK.z, sm.altK.zSp
@@ -186,7 +193,7 @@ def autopilot():
             sm.bodK.ekf.xhat[0] = sm.bodK.x
             sm.bodK.ekf.xhat[1] = sm.bodK.y
             sm.bodK.ekf.xhat[2] = sm.bodK.yaw - np.pi/2.0
-            sm.bodK.ekf.xhat[3] = 1.0 # TODO: sqrt(sm.bodK.vx**2 + sm.bodK.vy**2)
+            sm.bodK.ekf.xhat[3] = 3.0 # TODO: sqrt(sm.bodK.vx**2 + sm.bodK.vy**2)
             sm.bodK.ekf.xhat[4] = 0.0
             sm.bodK.ekf.P = np.matrix(np.identity(5))
 
@@ -259,14 +266,17 @@ def autopilot():
             tStart = rospy.Time.now()
             dT = 0.0
             
-            UseTera = rospy.get_param('/kAltVel/useTera')
+            smartLanding = rospy.get_param('/kAltVel/smartLanding')
             
             # theAlt = distance about ground level measurement
             
-            if UseTera:
-                theAlt = max(sm.altK.teraRanges) - zGroundTera
+            if smartLanding:
+                theAlt = sm.altK.distanceSensor - zGroundDistanceSensor
             else:
                 theAlt = sm.altK.z -zGround
+                
+            if Testing: #####################
+                theAlt = sm.altK.z - zGround
                 
             zSp = theAlt/2.0    # incremental target waypoint
             zFix = theAlt       # last altitude target was seen and close
@@ -277,14 +287,17 @@ def autopilot():
                 vyHold = sm.setp.velocity.y
                 yrHold = sm.setp.yaw_rate
             
-                if UseTera:
-                    theAlt = max(sm.altK.teraRanges) - zGroundTera# TODO: max?
+                if smartLanding:
+                    theAlt = sm.altK.distanceSensor - zGroundDistanceSensor # TODO: max?
                 else:
                     theAlt = sm.altK.z - zGround
+                
+                if Testing: #####################
+                    theAlt = sm.altK.z - zGround
                     
-                print "Tera123/agree:", sm.altK.teraRanges, sm.altK.teraAgree
+                print "teras/agree:", sm.altK.teraRanges, sm.altK.teraAgree
                     
-                if theAlt < zSp + .05:
+                if theAlt < zSp + .05: # TODO: parameter
                     zSp = zSp/2.0
             
                 if target.z > 0:
@@ -321,7 +334,7 @@ def autopilot():
                     dV = abs(sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(np.asscalar(sm.bodK.ekf.xhat[3])))
                     if dXY < 0.1*(1.0 + theAlt) and dV < 0.2: # TODO: parameters
                         zFix = theAlt
-                        if UseTera:
+                        if smartLanding:
                             if sm.altK.teraAgree:
                                 sm.setp.velocity.z = rospy.get_param('/kAltVel/gP')*(zSp - theAlt)
                                 Descend = True
@@ -342,7 +355,7 @@ def autopilot():
                 
                 print "Descending:seeIt/Descend/conf: ", seeIt, Descend, confidence
                 print "dXY/vHat/dV: ", dXY, np.asscalar(sm.bodK.ekf.xhat[3]), dV
-                print "zSp/zFix: ", zSp, zFix
+                print "z/zSp/zFix: ", theAlt, zSp, zFix
 
             TrackDown = False
             if confidence < 0.51:
@@ -379,7 +392,7 @@ def autopilot():
                     (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()          
                 
                 # decend constant velocity
-                sm.setp.velocity.z = -0.5
+                sm.setp.velocity.z = -0.5 # TODO: parameter
                            
                 # Issue velocity commands
                 sm.setp.header.stamp = rospy.Time.now()
