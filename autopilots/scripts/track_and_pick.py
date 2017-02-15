@@ -67,6 +67,10 @@ class Tracker():
 		# gripper trigger Altitiude, [m]
 		self.grip_trig_ALT	= 0.3
 
+		# picking counter
+		# how many tics to pass before claiming picked
+		pick_counter 		= 0
+
 		# Gripper command topic
 		# .data=True: activate magnets, .data=False: deactivate
 		self.gripper_action	= Bool()
@@ -93,6 +97,9 @@ class Tracker():
 		# set altitude
 		self.altK.zSp = good_z
 
+		# next descend altitude
+		descend_alt = good_z
+
 		# gripper counter, to activate only once more after picking
 		gripper_counter = 0
 
@@ -106,6 +113,7 @@ class Tracker():
 
 
 			if not self.gripperIsPicked:
+				pick_counter = max(pick_counter-1, 0)
 
 				# reset gripper counter
 				gripper_counter = 0
@@ -116,7 +124,7 @@ class Tracker():
 				else:
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*0.0, 1)
 				
-				# behaviour bsed on confidence
+				# behaviour based on confidence
 				if self.confidence > self.cTh:
 
 					objectSeen = True
@@ -140,14 +148,16 @@ class Tracker():
 						good_x = self.bodK.x
 						good_y = self.bodK.y
 						good_z = self.altK.z
-						# descend
-						self.altK.zSp = max(self.altK.z - 0.2*(self.altK.z), self.ZGROUND + self.PICK_ALT)
+						# update descend altitude only if the previous one was reached
+						if abs(self.altK.z - descend_alt) < 0.1
+							descend_alt = descend_alt - 0.1*descend_alt
+							self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
 			
 						print 'Object seen and Descending.....'
 						print '   '
 
 					else:
-						self.altK.zSp = good_z
+						self.altK.zSp = good_z	#TODO: or descend_alt ????
 						print 'Object seen but not inside envelope. NOT descending..'
 						print '    '
 
@@ -175,7 +185,12 @@ class Tracker():
 			else: # picked
 				print 'Object is considered PICKED. Climbing up..'
 				print ' '
-				self.altK.zSp = self.ZGROUND + self.TRACK_ALT
+
+				# make sure to stay for some time to sink
+				if pick_counter >= 20:
+					self.altK.zSp = self.ZGROUND + self.TRACK_ALT
+				pick_counter = min(pick_counter+1, 20)
+
 				# activate magnets once more to ensure gripping
 				if gripper_counter <1:
 					gripper_counter = gripper_counter+1
