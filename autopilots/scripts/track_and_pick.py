@@ -67,10 +67,6 @@ class Tracker():
 		# gripper trigger Altitude, [m]
 		self.grip_trig_ALT	= 0.3
 
-		# picking counter
-		# how many tics to pass before claiming picked
-		pick_counter 		= 0
-
 		# Gripper command topic
 		# .data=True: activate magnets, .data=False: deactivate
 		self.gripper_action	= Bool()
@@ -102,6 +98,10 @@ class Tracker():
 
 		# gripper counter, to activate only once more after picking
 		gripper_counter = 0
+
+		# picking counter
+		# how many tics to pass before claiming picked
+		pick_counter 		= 0
 
 		# make the magnets ready
 		self.gripper_action = True
