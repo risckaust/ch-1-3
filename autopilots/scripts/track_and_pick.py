@@ -64,7 +64,7 @@ class Tracker():
 		self.gripperIsPicked	= False
 		rospy.Subscriber(ns+'/gripper_status', Bool, self.gripper_cb)
 
-		# gripper trigger Altitiude, [m]
+		# gripper trigger Altitude, [m]
 		self.grip_trig_ALT	= 0.3
 
 		# picking counter
@@ -110,21 +110,21 @@ class Tracker():
 
 		while not rospy.is_shutdown():
 
-
-
+			# If object is not picked
 			if not self.gripperIsPicked:
+				# reduce pick_counter
 				pick_counter = max(pick_counter-1, 0)
 
-				# reset gripper counter
+				# reset gripper counter since it is not picked
 				gripper_counter = 0
 
-				# check if onject is seen
+				# Update confidence of object detection
 				if self.bgr_target.z > 0: # object is seen
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*1.0, 1)
 				else:
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*0.0, 1)
 				
-				# behaviour based on confidence
+				# behaviour based on detection confidence
 				if self.confidence > self.cTh:
 
 					objectSeen = True
@@ -152,17 +152,18 @@ class Tracker():
 						if abs(self.altK.z - descend_alt) < 0.1:
 							descend_alt = descend_alt - 0.1*descend_alt
 							self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
+							# TODO: should update good_z here ??
 			
 						print 'Object seen and Descending.....'
 						print '   '
 
-					else:
+					else: # not inside descend envelope; keep at last good z
 						self.altK.zSp = good_z	#TODO: or descend_alt ????
 						print 'Object seen but not inside envelope. NOT descending..'
 						print '    '
 
 
-				else: # low confidence
+				else: # low detection confidence: not seen
 					objectSeen = False
 					# set the last good position
 					self.home.x = good_x
@@ -181,13 +182,15 @@ class Tracker():
 					print '    '
 			
 					if self.altK.z >= (self.ZGROUND + self.TRACK_ALT):
-						print 'Reached Max allowed altitude..... still not seeing an object'
-			else: # picked
-				print 'Object is considered PICKED. Climbing up..'
+						print 'Reached Max allowed altitude..... object still considered not seen'
+			else: # object is picked
+				print 'Pick signal is received. Waiting for confirmation....'
 				print ' '
 
-				# make sure to stay for some time to sink
+				# make sure to stay for some time to confirm
 				if pick_counter >= 20:
+					print 'Object is considered PICKED. Climbing up..'
+					print ' '
 					self.altK.zSp = self.ZGROUND + self.TRACK_ALT
 				pick_counter = min(pick_counter+1, 20)
 
@@ -222,6 +225,7 @@ def mission():
 
 	tr = Tracker(ns)
 	tr.TRACK_ALT = 3.0
+	tr.PICK_ALT = 0.2
 
 	# run the main function
 	tr.main()
