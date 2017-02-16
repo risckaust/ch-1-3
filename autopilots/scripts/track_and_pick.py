@@ -149,7 +149,7 @@ class Tracker():
 						good_y = self.bodK.y
 						good_z = self.altK.z
 						# update descend altitude only if the previous one was reached
-						if abs(self.altK.z - descend_alt) < 0.1
+						if abs(self.altK.z - descend_alt) < 0.1:
 							descend_alt = descend_alt - 0.1*descend_alt
 							self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
 			
