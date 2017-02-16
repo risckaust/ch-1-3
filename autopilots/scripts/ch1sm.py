@@ -21,9 +21,7 @@ autopilotClass.setParams()
 
 # Main loop
 
-Testing = True
-
-def autopilot():
+def ch1sm():
     rospy.init_node('autopilot', anonymous=True)
 
     ####
@@ -33,12 +31,14 @@ def autopilot():
     ####    
     sm = autopilotClass.autopilotClass()
     
+    Testing = rospy.get_param('/kAltVel/smartLandingSim')
+    
     # Instantiate a tracker
     target = sm.xyzVar()
     rospy.Subscriber('/getLaunchpad/launchpad/xyMeters', Point32, target.cbXYZ)
     #rospy.Subscriber('/getColors/blue/xyMeters', Point32, target.cbXYZ)
     
-    # Instantiate a generic xyz positions
+    # Instantiate various generic xyz positions
     home = sm.xyzVar()
     takeoff = sm.xyzVar()
     base = sm.xyzVar()
@@ -101,7 +101,7 @@ def autopilot():
             for phase in range(0,2):
                 if phase == 0:
                     print "Phase 1..."
-                    home.z = zGround + 1.0
+                    home.z = zGround + 1.0 # TODO: parameter
                     vMax = rospy.get_param('/kBodVel/vMax')
                     rospy.set_param('/kBodVel/vMax',vMax/10.0) # reduce max lateral velocity TODO: parameter
                 else:
@@ -114,12 +114,17 @@ def autopilot():
                 print "z/zSp: ", sm.altK.z, sm.altK.zSp
                 
                 while not abs(sm.altK.zSp - sm.altK.z) < 0.2 and not rospy.is_shutdown():
+                
+                    if phase == 0:
+                        sm.setp.velocity.x, sm.setp.velocity.y, sm.setp.yaw_rate = 0.0, 0.0, 0.0 # no lateral tracking
+                    else: # phase == 1
+                        (sm.bodK.xSp,sm.bodK.ySp) = sm.wayHome(sm.bodK,home) # track takeoff x,y location
+                        (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
                     
                     # Issue velocity commands
                     sm.setp.header.stamp = rospy.Time.now()
                     sm.setp.velocity.z = sm.altK.controller()
-                    (sm.bodK.xSp,sm.bodK.ySp) = sm.wayHome(sm.bodK,home)
-                    (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
+                    
                     sm.rate.sleep()
                     sm.command.publish(sm.setp)
                 
@@ -407,7 +412,7 @@ def autopilot():
         
 if __name__ == '__main__':
     try:
-        autopilot()
+        ch1sm()
     except rospy.ROSInterruptException:
         pass
 

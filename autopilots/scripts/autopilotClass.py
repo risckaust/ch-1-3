@@ -27,9 +27,11 @@ def setParams():
     rospy.set_param('/kAltVel/gI',0.1)
     rospy.set_param('/kAltVel/vMaxU',1.0)
     rospy.set_param('/kAltVel/vMaxD',0.5)
-    rospy.set_param('/kAltVel/smartLanding',True)
-    rospy.set_param('/kAltVel/teraN',3)
-    rospy.set_param('/kAltVel/distanceSensorName','dsName')
+    rospy.set_param('/kAltVel/smartLanding', True)  # use terarangers & laser sensor to land
+    rospy.set_param('/kAltVel/distanceSensorName','dsName') # name of distance sensor for mavros subscription
+    rospy.set_param('/kAltVel/smartLandingSim', True)         # True = for HIL simulation of smartLanding
+    rospy.set_param('/kAltVel/teraN',3)             # number of tera rangers
+
     
     # ROS parameters for kBodVel
     rospy.set_param('/kBodVel/gP',0.75)             # 0.75 tuned
