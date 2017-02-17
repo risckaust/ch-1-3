@@ -30,7 +30,8 @@ class Tracker():
 		self.CAMOFFSET		= 0.1
 
 		# distance from object threshold
-		self.envelope		= 0.2
+		self.envelope_pos	= 0.2 # [m]
+		self.envelope_vel	= 0.15 # [m/s]
 
 		# ground altitude
 		self.ZGROUND		= 0.0
@@ -85,10 +86,14 @@ class Tracker():
 			self.rate.sleep()
 			c=c+1
 		self.ZGROUND = self.altK.z
-		# goodX and goodY
+		# goodX and goodY, where object was last seen inside envelope
 		good_x = self.bodK.x
 		good_y = self.bodK.y
 		good_z = self.ZGROUND + self.TRACK_ALT
+
+		# initialize target/object location
+		obj_x = good_x
+		obj_y = good_y
 
 		# set altitude
 		self.altK.zSp = good_z
@@ -121,6 +126,9 @@ class Tracker():
 				# Update confidence of object detection
 				if self.bgr_target.z > 0: # object is seen
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*1.0, 1)
+					# update location towards object
+					obj_x = self.bgr_target.x
+					obj_y = self.bgr_target.y
 				else:
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*0.0, 1)
 				
@@ -128,10 +136,6 @@ class Tracker():
 				if self.confidence > self.cTh:
 
 					objectSeen = True
-
-
-					obj_x = self.bgr_target.x
-					obj_y = self.bgr_target.y
 
 					altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
 					self.bodK.xSp = obj_x*altCorrect
@@ -144,7 +148,8 @@ class Tracker():
 					print '      '
 			
 					dxy = np.sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
-					if dxy <= self.envelope :
+					dvxy = np.sqrt(self.bodK.vx**2 + self.bodK.vy**2)
+					if dxy <= self.envelope_pos and dvxy <= self.envelope_vel:
 						good_x = self.bodK.x
 						good_y = self.bodK.y
 						good_z = self.altK.z
@@ -158,7 +163,7 @@ class Tracker():
 						print '   '
 
 					else: # not inside descend envelope; keep at last good z
-						self.altK.zSp = good_z	#TODO: or descend_alt ????
+						self.altK.zSp = descend_alt	#TODO: or descend_alt ????
 						print 'Object seen but not inside envelope. NOT descending..'
 						print '    '
 
@@ -177,21 +182,24 @@ class Tracker():
 					print '   '
 
 					# go up gradually
-					self.altK.zSp = min(self.altK.z + 0.2*(self.altK.z), self.ZGROUND + self.TRACK_ALT)
+					self.altK.zSp = min(self.altK.z + 0.1*(self.altK.z), self.ZGROUND + self.TRACK_ALT)
 					print 'object not seen, going up gradually.....'
 					print '    '
 			
 					if self.altK.z >= (self.ZGROUND + self.TRACK_ALT):
 						print 'Reached Max allowed altitude..... object still considered not seen'
 			else: # object is picked
-				print 'Pick signal is received. Waiting for confirmation....'
-				print ' '
 
 				# make sure to stay for some time to confirm
 				if pick_counter >= 20:
-					print 'Object is considered PICKED. Climbing up..'
+					print 'Object is considered PICKED.
 					print ' '
 					self.altK.zSp = self.ZGROUND + self.TRACK_ALT
+					print 'Climbing to Altitude: ', self.altK.zSp
+				else:
+					print 'Pick signal is received. Waiting for confirmation....'
+					print ' '
+
 				pick_counter = min(pick_counter+1, 20)
 
 				# activate magnets once more to ensure gripping
@@ -226,6 +234,8 @@ def mission():
 	tr = Tracker(ns)
 	tr.TRACK_ALT = 3.0
 	tr.PICK_ALT = 0.2
+	tr.envelope_pos = 0.2
+	tr.envelope_vel = 0.15
 
 	# run the main function
 	tr.main()
