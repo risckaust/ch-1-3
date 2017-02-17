@@ -62,8 +62,6 @@ public Q_SLOTS:
   void on_resumebutton1_clicked();
 void on_interruptbutton2_clicked();
   void on_resumebutton2_clicked();
-void on_interruptbutton3_clicked();
-  void on_resumebutton3_clicked();
 //  void on_checkbox_use_environment_stateChanged(int state);
 //  void on_button_test_clicked(bool check);
 //  void showButtonTestMessages();

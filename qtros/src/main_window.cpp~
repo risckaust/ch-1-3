@@ -387,7 +387,7 @@ void qtros::MainWindow::on_Button_cvisionstart_clicked()
 {
   QString buffer;
   float buffer1;
-  cvisionprocess.start("rosrun cvision cvision_detector");
+  cvisionprocess.start("rosrun turtlesim turtlesim_node");
   ros::NodeHandle nh("~");
   nh.getParam("/background_b",buffer1);
   buffer=buffer.setNum(buffer1);
