@@ -41,7 +41,7 @@ def setParams():
     rospy.set_param('/kBodVel/yawOff',5.25)          # error to turn off yaw control (m)
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
     rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone (deg/s)
-    rospy.set_param('/kBodVel/feedForward', False)   # use EKF to feedforward estimates
+    rospy.set_param('/kBodVel/feedForward', True)   # use EKF to feedforward estimates
     rospy.set_param('/kBodVel/momentum', True)       # use momentum (vs EKF) in case of vision loss
 
 
@@ -253,9 +253,9 @@ class autopilotClass:
                 self.Q[0,0] = 0.1 # .1, .1, .1, .5, .5
                 self.Q[1,1] = 0.1
                 self.Q[2,2] = 0.1
-                self.Q[3,3] = 0.5
+                self.Q[3,3] = 1.0
                 self.Q[4,4] = 1.0
-                self.R = np.matrix(np.identity(2))*0.1
+                self.R = np.matrix(np.identity(2))*10.0 # TODO: parameter
                 
 
         def cbPos(self,msg):
