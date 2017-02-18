@@ -214,7 +214,7 @@ class Tracker():
 
 				# make sure to stay for some time to confirm
 				if pick_counter >= 20:
-					print 'Object is considered PICKED.
+					print 'Object is considered PICKED.'
 					print ' '
 					self.altK.zSp = self.ZGROUND + self.TRACK_ALT
 					print 'Climbing to Altitude: ', self.altK.zSp
