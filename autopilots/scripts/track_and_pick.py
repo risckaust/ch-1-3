@@ -44,6 +44,9 @@ class Tracker():
 		# Instantiate altitude controller object (from autopilot library)
 		self.altK 		= autopilotLib.kAltVel(ns)
 
+		# how much velocity to hold if confidenc is high+ object not seen in the current frame
+		self.vHold_factor = 0.1
+
 		# Instantiate body controller object (from autopilot library)
 		self.bodK 		= autopilotLib.kBodVel(ns)
 
@@ -79,6 +82,7 @@ class Tracker():
 
 	def main(self):
 		objectSeen = False
+		vHold = False
 
 		# loop for a while to get current ground altitude
 		c=0
@@ -86,6 +90,8 @@ class Tracker():
 			self.rate.sleep()
 			c=c+1
 		self.ZGROUND = self.altK.z
+		print 'Current ground altitude = ', self.ZGROUND
+		print '    '
 		# goodX and goodY, where object was last seen inside envelope
 		good_x = self.bodK.x
 		good_y = self.bodK.y
@@ -98,7 +104,7 @@ class Tracker():
 		# set altitude
 		self.altK.zSp = good_z
 
-		# next descend altitude
+		# initialize: next descend altitude
 		descend_alt = good_z
 
 		# gripper counter, to activate only once more after picking
@@ -106,12 +112,14 @@ class Tracker():
 
 		# picking counter
 		# how many tics to pass before claiming picked
-		pick_counter 		= 0
+		pick_counter = 0
 
 		# make the magnets ready
 		self.gripper_action = True
 		self.gripper_pub.publish(self.gripper_action)
 		self.rate.sleep()
+
+		bodyVmax = rospy.get_param(self.ns + '/kBodVel/vMax')
 
 		while not rospy.is_shutdown():
 
@@ -124,70 +132,84 @@ class Tracker():
 				gripper_counter = 0
 
 				# Update confidence of object detection
-				if self.bgr_target.z > 0: # object is seen
+				if self.bgr_target.z > 0: # object is most likely seen
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*1.0, 1)
-					# update location towards object
+					objectSeen = True
+					# update direction towards object
 					obj_x = self.bgr_target.x
 					obj_y = self.bgr_target.y
-				else:
+				else: # object is most likely NOT seen
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*0.0, 1)
+					objectSeen = False
 				
-				# behaviour based on detection confidence
+				# confidence is High
 				if self.confidence > self.cTh:
 
-					objectSeen = True
+					# two possibilites: 1) see it in the frame, 2) not
+					if objectSeen: # confidence high + detection
 
-					altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
-					self.bodK.xSp = obj_x*altCorrect
-					self.bodK.ySp = obj_y*altCorrect
+						# track in xy
+						altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
+						self.bodK.xSp = obj_x*altCorrect
+						self.bodK.ySp = obj_y*altCorrect
 
-					print '#----------- An object is considered seen --------------#'
-					print 'Confidence: ', self.confidence
-					print 'Altitude correction (meters): ', altCorrect
-					print 'X2Object/Y2Object (meters): ', self.bodK.xSp, '/', self.bodK.ySp
-					print '      '
+						print '#----------- Confidence = High  && Object is in frame --------------#'
+						print 'Confidence: ', self.confidence
+						print 'Altitude correction (meters): ', altCorrect
+						print 'X2Object/Y2Object (meters): ', self.bodK.xSp, '/', self.bodK.ySp
+						print '      '
+
+						# inside envelope: track+descend
+						dxy = np.sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
+						dvxy = np.sqrt(self.bodK.vx**2 + self.bodK.vy**2)
+						if dxy <= self.envelope_pos and dvxy <= self.envelope_vel:
+							# record good position
+							good_x = self.bodK.x
+							good_y = self.bodK.y
+							good_z = self.altK.z
+							# update descend altitude only if the previous one was reached
+							if abs(self.altK.z - descend_alt) < 0.1:
+								descend_alt = descend_alt - 0.1*descend_alt
+								self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
+								# TODO: should update good_z here ??
 			
-					dxy = np.sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
-					dvxy = np.sqrt(self.bodK.vx**2 + self.bodK.vy**2)
-					if dxy <= self.envelope_pos and dvxy <= self.envelope_vel:
-						good_x = self.bodK.x
-						good_y = self.bodK.y
-						good_z = self.altK.z
-						# update descend altitude only if the previous one was reached
-						if abs(self.altK.z - descend_alt) < 0.1:
-							descend_alt = descend_alt - 0.1*descend_alt
-							self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
-							# TODO: should update good_z here ??
-			
-						print 'Object seen and Descending.....'
+							print 'Object seen and Descending.....'
+							print '   '
+
+						else: # not inside envelope; keep at last good z
+							self.altK.zSp = descend_alt	#TODO: good_z, or descend_alt ????
+							print 'Object seen but not inside envelope.'
+							print 'Keeping current altitude, tracking in xy.'
+							print '    '
+					else: # confidence high + miss-detection
+						# TODO: implement follow startegy
+						# hold last velocity
+						vHold = True
+						print 'Confidence high  +  miss-detection ==> holding last velocity'
 						print '   '
-
-					else: # not inside descend envelope; keep at last good z
-						self.altK.zSp = descend_alt	#TODO: or descend_alt ????
-						print 'Object seen but not inside envelope. NOT descending..'
-						print '    '
+			
+					
 
 
 				else: # low detection confidence: not seen
-					objectSeen = False
 					# set the last good position
 					self.home.x = good_x
 					self.home.y = good_y
 					#self.altK.zSp = good_z
 					(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 
-					print 'X-------------- Object is considered NOT seen ----------------X'
+					print 'X-------------- Confidence low => Not seen ----------------X'
 					print 'Confidence: ', self.confidence
 					print 'XY towards last good position (meters): ', self.bodK.xSp, '/', self.bodK.ySp
+					print 'Going up gradually....'
 					print '   '
-
 					# go up gradually
 					self.altK.zSp = min(self.altK.z + 0.1*(self.altK.z), self.ZGROUND + self.TRACK_ALT)
-					print 'object not seen, going up gradually.....'
-					print '    '
+
 			
 					if self.altK.z >= (self.ZGROUND + self.TRACK_ALT):
 						print 'Reached Max allowed altitude..... object still considered not seen'
+
 			else: # object is picked
 
 				# make sure to stay for some time to confirm
@@ -210,7 +232,18 @@ class Tracker():
 				
 			# update setpoint topic
 			self.setp.velocity.z = self.altK.controller()
-			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+			# save last xy velocity setpoint
+			last_vx = self.setp.velocity.x
+			last_vy = self.setp.velocity.y
+			if vHold:
+				self.setp.velocity.x = last_vx*self.vHold_factor
+				self.setp.velocity.x = last_vy*self.vHold_factor
+				self.setp.yaw_rate = 0.0
+				# reset vHold
+				vHold = False
+			else:
+				(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+
 			self.rate.sleep()
 			# publish setpoints
 			self.setp.header.stamp = rospy.Time.now()
@@ -236,6 +269,7 @@ def mission():
 	tr.PICK_ALT = 0.2
 	tr.envelope_pos = 0.2
 	tr.envelope_vel = 0.15
+	tr.vHold_factor = 0.1
 
 	# run the main function
 	tr.main()
