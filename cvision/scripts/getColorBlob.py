@@ -129,10 +129,10 @@ def getColor(color):
             upper = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
         elif color == 'green':
             lower = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8)
-            upper = np.array(rospy.get_param(ns+'/GreenHSV/low'),np.uint8) 
+            upper = np.array(rospy.get_param(ns+'/GreenHSV/high'),np.uint8) 
         elif color == 'yellow':
             lower = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)
-            upper = np.array(rospy.get_param(ns+'/YellowHSV/low'),np.uint8)      
+            upper = np.array(rospy.get_param(ns+'/YellowHSV/high'),np.uint8)      
         elif color == 'red':
             # find the red in the image with low "H"
             lower = np.array([0,100,100],np.uint8)
