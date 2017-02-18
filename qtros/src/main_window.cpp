@@ -57,8 +57,11 @@ MainWindow::MainWindow(int argc, char** argv, QWidget *parent)
   QObject::connect(&qnode,SIGNAL(VelocitySignal2(float,float,float)),this,SLOT(VelocitySlot2(float,float,float)));
   QObject::connect(&qnode,SIGNAL(VelocitySignal3(float,float,float)),this,SLOT(VelocitySlot3(float,float,float)));
   QObject::connect(&qnode,SIGNAL(StateMachineSignal1(string,string)),this,SLOT(StateMachineSlot1(string,string)));
-QObject::connect(&qnode,SIGNAL(StateMachineSignal2(string,string)),this,SLOT(StateMachineSlot2(string,string)));
-QObject::connect(&qnode,SIGNAL(StateMachineSignal3(string,string)),this,SLOT(StateMachineSlot3(string,string)));
+  QObject::connect(&qnode,SIGNAL(StateMachineSignal2(string,string)),this,SLOT(StateMachineSlot2(string,string)));
+  QObject::connect(&qnode,SIGNAL(StateMachineSignal3(string,string)),this,SLOT(StateMachineSlot3(string,string)));
+  QObject::connect(&qnode,SIGNAL(QuadStateSignal1(string)),this,SLOT(QuadStateSlot1(string)));
+  QObject::connect(&qnode,SIGNAL(QuadStateSignal2(string)),this,SLOT(QuadStateSlot2(string)));
+  QObject::connect(&qnode,SIGNAL(QuadStateSignal3(string)),this,SLOT(QuadStateSlot3(string)));
 
 	/*********************
 	** Logging
@@ -383,13 +386,28 @@ void MainWindow::StateMachineSlot3(string state,string signal)
   ui.state_label3->setText(qstate);
   ui.signal_label3->setText(qsignal);
 }
+void MainWindow::QuadStateSlot1(string mode)
+{
+  QString qmode=QString::fromStdString(mode);
+  ui.quadstatelabel1->setText(qmode);
+}
+void MainWindow::QuadStateSlot2(string mode)
+{
+  QString qmode=QString::fromStdString(mode);
+  ui.quadstatelabel2->setText(qmode);
+}
+void MainWindow::QuadStateSlot3(string mode)
+{
+  QString qmode=QString::fromStdString(mode);
+  ui.quadstatelabel3->setText(qmode);
+}
 void qtros::MainWindow::on_Button_cvisionstart_clicked()
 {
   QString buffer;
   float buffer1;
-  cvisionprocess.start("rosrun cvision cvision_detector");
-  ros::NodeHandle nh("~");
-  nh.getParam("/background_b",buffer1);
+  cvisionprocess.start("rosrun turtlesim turtlesim_node");
+  ros::NodeHandle n;
+  n.getParam("/background_b",buffer1);
   buffer=buffer.setNum(buffer1);
   ui.cvisionoutput->setText(buffer);
 }
@@ -401,29 +419,70 @@ void qtros::MainWindow::on_Button_cvisionstop_clicked()
 
 void MainWindow::on_interruptbutton1_clicked()
 {
-  qnode.InterruptSlot1();
+  ros::NodeHandle n;
+  n.setParam("/Quad1/state_machine/interruption", 1);
+//  qnode.InterruptSlot1();
 }
 void MainWindow::on_resumebutton1_clicked()
 {
-  qnode.ResumeSlot1();
+  ros::NodeHandle n;
+  n.setParam("/Quad1/state_machine/resume", 1);
+//  qnode.ResumeSlot1();
 }
 void MainWindow::on_interruptbutton2_clicked()
 {
-  qnode.InterruptSlot2();
+  ros::NodeHandle n;
+  n.setParam("/Quad2/state_machine/interruption", 1);
+//  qnode.InterruptSlot2();
 }
 void MainWindow::on_resumebutton2_clicked()
 {
-  qnode.ResumeSlot2();
+  ros::NodeHandle n;
+  n.setParam("/Quad2/state_machine/resume", 1);
+//  qnode.ResumeSlot2();
 }
 void MainWindow::on_interruptbutton3_clicked()
 {
-  qnode.InterruptSlot3();
+  ros::NodeHandle n;
+  n.setParam("/Quad3/state_machine/interruption", 1);
+//  qnode.InterruptSlot3();
 }
 void MainWindow::on_resumebutton3_clicked()
 {
-  qnode.ResumeSlot3();
+  ros::NodeHandle n;
+  n.setParam("/Quad3/state_machine/resume", 1);
+//  qnode.ResumeSlot3();
 }
-
+void qtros::MainWindow::on_launchbutton1_clicked()
+{
+  QString buffer="roslaunch autopilots start_mission3_Q1.launch fcu_url:=/dev/ttyUSB0:921600 gcs_url:=udp://@";
+  QString buffer1=ui.roslaunchtextedit1->toPlainText();
+  buffer.append(buffer1);
+  Qlaunch1.start(buffer);
+//  qnode.RoslaunchSlot1();
+}
+void qtros::MainWindow::on_launchbutton2_clicked()
+{
+  Qlaunch2.start("roslaunch autopilots start_mission3_Q2.launch fcu_url:=/dev/ttyUSB0:921600 gcs_url:=udp://@192.168.1.111");
+//  qnode.RoslaunchSlot2();
+}
+void qtros::MainWindow::on_launchbutton3_clicked()
+{
+  Qlaunch3.start("roslaunch autopilots start_mission3_Q3.launch fcu_url:=/dev/ttyUSB0:921600 gcs_url:=udp://@192.168.1.111");
+//  qnode.RoslaunchSlot3();
+}
+void qtros::MainWindow::on_launchstopbutton1_clicked()
+{
+  Qlaunch1.close();
+}
+void qtros::MainWindow::on_launchstopbutton2_clicked()
+{
+  Qlaunch2.close();
+}
+void qtros::MainWindow::on_launchstopbutton3_clicked()
+{
+  Qlaunch3.close();
+}
 void MainWindow::wheelEvent(QWheelEvent *event)
 {
   ui.view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);

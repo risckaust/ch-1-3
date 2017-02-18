@@ -26,6 +26,7 @@
 #include <autopilots/StateMachine.h>
 #include <mavros_msgs/CommandBool.h>
 #include <std_msgs/String.h>
+#include <mavros_msgs/State.h>
 #include <string>
 #include <QThread>
 #include <QStringListModel>
@@ -75,8 +76,11 @@ public:
   void VelocityCallback2(const geometry_msgs::TwistStamped::ConstPtr& msg);
   void VelocityCallback3(const geometry_msgs::TwistStamped::ConstPtr& msg);
   void StateMachineCallback1(const autopilots::StateMachine::ConstPtr& msg);
-void StateMachineCallback2(const autopilots::StateMachine::ConstPtr& msg);
-void StateMachineCallback3(const autopilots::StateMachine::ConstPtr& msg);
+  void StateMachineCallback2(const autopilots::StateMachine::ConstPtr& msg);
+  void StateMachineCallback3(const autopilots::StateMachine::ConstPtr& msg);
+  void QuadStateCallback1(const mavros_msgs::State::ConstPtr& msg);
+  void QuadStateCallback2(const mavros_msgs::State::ConstPtr& msg);
+  void QuadStateCallback3(const mavros_msgs::State::ConstPtr& msg);
 
 	/*********************
 	** Logging
@@ -92,12 +96,15 @@ void StateMachineCallback3(const autopilots::StateMachine::ConstPtr& msg);
 	QStringListModel* loggingModel() { return &logging_model; }
 	void log( const LogLevel &level, const std::string &msg);
 
-  void InterruptSlot1();
-  void ResumeSlot1();
-void InterruptSlot2();
-  void ResumeSlot2();
-void InterruptSlot3();
-  void ResumeSlot3();
+//  void InterruptSlot1();
+//  void ResumeSlot1();
+//  void InterruptSlot2();
+//  void ResumeSlot2();
+//  void InterruptSlot3();
+//  void ResumeSlot3();
+//  void RoslaunchSlot1();
+//  void RoslaunchSlot2();
+//  void RoslaunchSlot3();
 
 Q_SIGNALS:
 	void loggingUpdated();
@@ -117,8 +124,11 @@ Q_SIGNALS:
   void VelocitySignal2(float,float,float);
   void VelocitySignal3(float,float,float);
   void StateMachineSignal1(string,string);
-void StateMachineSignal2(string,string);
-void StateMachineSignal3(string,string);
+  void StateMachineSignal2(string,string);
+  void StateMachineSignal3(string,string);
+  void QuadStateSignal1(string);
+  void QuadStateSignal2(string);
+  void QuadStateSignal3(string);
 
 private:
 	int init_argc;
@@ -139,8 +149,11 @@ private:
   ros::Subscriber VelocitySubscriber2;
   ros::Subscriber VelocitySubscriber3;
   ros::Subscriber StateMachineSubscriber1;
-ros::Subscriber StateMachineSubscriber2;
-ros::Subscriber StateMachineSubscriber3;
+  ros::Subscriber StateMachineSubscriber2;
+  ros::Subscriber StateMachineSubscriber3;
+  ros::Subscriber QuadStateSubscriber1;
+  ros::Subscriber QuadStateSubscriber2;
+  ros::Subscriber QuadStateSubscriber3;
   QStringListModel logging_model;
 
 };

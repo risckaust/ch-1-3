@@ -62,8 +62,11 @@ bool QNode::init() {
   VelocitySubscriber2=n.subscribe("Quad2/mavros/local_position/velocity",1000,&QNode::VelocityCallback2,this);
   VelocitySubscriber3=n.subscribe("Quad3/mavros/local_position/velocity",1000,&QNode::VelocityCallback3,this);
   StateMachineSubscriber1=n.subscribe("/Quad1/state_machine/state",1000,&QNode::StateMachineCallback1,this);
-StateMachineSubscriber2=n.subscribe("/Quad2/state_machine/state",1000,&QNode::StateMachineCallback2,this);
-StateMachineSubscriber3=n.subscribe("/Quad3/state_machine/state",1000,&QNode::StateMachineCallback3,this);
+  StateMachineSubscriber2=n.subscribe("/Quad2/state_machine/state",1000,&QNode::StateMachineCallback2,this);
+  StateMachineSubscriber3=n.subscribe("/Quad3/state_machine/state",1000,&QNode::StateMachineCallback3,this);
+  QuadStateSubscriber1=n.subscribe("/Quad1/mavros/state",1000,&QNode::QuadStateCallback1,this);
+  QuadStateSubscriber2=n.subscribe("/Quad2/mavros/state",1000,&QNode::QuadStateCallback2,this);
+  QuadStateSubscriber3=n.subscribe("/Quad3/mavros/state",1000,&QNode::QuadStateCallback3,this);
 	start();
 	return true;
 }
@@ -156,41 +159,52 @@ void QNode::StateMachineCallback3(const autopilots::StateMachine::ConstPtr &msg)
 {
   Q_EMIT StateMachineSignal3(msg->state,msg->signal);
 }
-
-void QNode::InterruptSlot1()
+void QNode::QuadStateCallback1(const mavros_msgs::State::ConstPtr &msg)
 {
-  ros::NodeHandle n;
-  n.setParam("/Quad1/state_machine/interruption", 1);
+  Q_EMIT QuadStateSignal1(msg->mode);
+}
+void QNode::QuadStateCallback2(const mavros_msgs::State::ConstPtr &msg)
+{
+  Q_EMIT QuadStateSignal2(msg->mode);
+}
+void QNode::QuadStateCallback3(const mavros_msgs::State::ConstPtr &msg)
+{
+  Q_EMIT QuadStateSignal3(msg->mode);
 }
 
-void QNode::ResumeSlot1()
-{
-  ros::NodeHandle n;
-  n.setParam("/Quad1/state_machine/resume", 1);
-}
-void QNode::InterruptSlot2()
-{
-  ros::NodeHandle n;
-  n.setParam("/Quad2/state_machine/interruption", 1);
-}
+//void QNode::InterruptSlot1()
+//{
+//  ros::NodeHandle n;
+//  n.setParam("/Quad1/state_machine/interruption", 1);
+//}
 
-void QNode::ResumeSlot2()
-{
-  ros::NodeHandle n;
-  n.setParam("/Quad2/state_machine/resume", 1);
-}
-void QNode::InterruptSlot3()
-{
-  ros::NodeHandle n;
-  n.setParam("/Quad3/state_machine/interruption", 1);
-}
+//void QNode::ResumeSlot1()
+//{
+//  ros::NodeHandle n;
+//  n.setParam("/Quad1/state_machine/resume", 1);
+//}
+//void QNode::InterruptSlot2()
+//{
+//  ros::NodeHandle n;
+//  n.setParam("/Quad2/state_machine/interruption", 1);
+//}
 
-void QNode::ResumeSlot3()
-{
-  ros::NodeHandle n;
-  n.setParam("/Quad3/state_machine/resume", 1);
-}
+//void QNode::ResumeSlot2()
+//{
+//  ros::NodeHandle n;
+//  n.setParam("/Quad2/state_machine/resume", 1);
+//}
+//void QNode::InterruptSlot3()
+//{
+//  ros::NodeHandle n;
+//  n.setParam("/Quad3/state_machine/interruption", 1);
+//}
 
+//void QNode::ResumeSlot3()
+//{
+//  ros::NodeHandle n;
+//  n.setParam("/Quad3/state_machine/resume", 1);
+//}
 void QNode::run() {
   ros::spin();
 /*	ros::Rate loop_rate(1);

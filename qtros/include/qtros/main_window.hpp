@@ -60,9 +60,9 @@ public Q_SLOTS:
   void on_button_connect_clicked(bool check);
   void on_interruptbutton1_clicked();
   void on_resumebutton1_clicked();
-void on_interruptbutton2_clicked();
+  void on_interruptbutton2_clicked();
   void on_resumebutton2_clicked();
-void on_interruptbutton3_clicked();
+  void on_interruptbutton3_clicked();
   void on_resumebutton3_clicked();
 //  void on_checkbox_use_environment_stateChanged(int state);
 //  void on_button_test_clicked(bool check);
@@ -88,10 +88,19 @@ void on_interruptbutton3_clicked();
   void VelocitySlot2(float,float,float);
   void VelocitySlot3(float,float,float);
   void StateMachineSlot1(string,string);
-void StateMachineSlot2(string,string);
-void StateMachineSlot3(string,string);
+  void StateMachineSlot2(string,string);
+  void StateMachineSlot3(string,string);
+  void QuadStateSlot1(string);
+  void QuadStateSlot2(string);
+  void QuadStateSlot3(string);
   void on_Button_cvisionstart_clicked();
   void on_Button_cvisionstop_clicked();
+  void on_launchbutton1_clicked();
+  void on_launchbutton2_clicked();
+  void on_launchbutton3_clicked();
+  void on_launchstopbutton1_clicked();
+  void on_launchstopbutton2_clicked();
+  void on_launchstopbutton3_clicked();
 
 protected:
   virtual void wheelEvent(QWheelEvent *event);
@@ -105,6 +114,9 @@ private:
   QGraphicsScene * scene;
   QuadItem *Quad1, *Quad2, *Quad3;
   QProcess cvisionprocess;
+  QProcess Qlaunch1;
+  QProcess Qlaunch2;
+  QProcess Qlaunch3;
   int m_originX;
   int m_originY;
 };
