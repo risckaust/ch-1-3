@@ -218,7 +218,7 @@ int main(int argc, char** argv)
     if (bCamera && !bCompetition)
     {
         // open the default camera, use something different from 0 otherwise;
-        cap.open(1);
+        cap.open(0);
 
         if (!cap.isOpened())  // if not success, exit program
         {
