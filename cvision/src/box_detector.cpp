@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
 
     //ROS Init
-    ros::init(argc, argv, "color_detector");
+    ros::init(argc, argv, "box_detector");
 
     //Node handle
     ros::NodeHandle n;
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
 
     cvision::ObjectPose msg;
 
-    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("colorObj",1000);
+    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("dropBox",1000);
 
     /* Subscribe to image ROS topic*/
     ros::Subscriber image_sub = n.subscribe(img_tp,1,imageCallback);
@@ -176,7 +176,7 @@ int main(int argc, char** argv)
 
     ros::Rate loop_rate(frameRate);
 
-    string configFile = srcpath + "/config.txt";
+    string configFile = srcpath + "/box_config.txt";
     ifstream f_config(configFile.c_str());
     if (!f_config)
     {
@@ -214,7 +214,7 @@ int main(int argc, char** argv)
     VideoCapture cap;
     VideoWriter outputVideo;
 
-    if (bCamera && !bCompetition)
+    if (bCamera)
     {
         // open the default camera, use something different from 0 otherwise;
         cap.open(0);
@@ -227,7 +227,7 @@ int main(int argc, char** argv)
         imgSz = Size((int)cap.get(CV_CAP_PROP_FRAME_WIDTH),    // Acquire input size
                      (int)cap.get(CV_CAP_PROP_FRAME_HEIGHT));
     }
-    else if (bVideo && !bCompetition)
+    else if (bVideo)
     {
         string inputFile = srcpath + "/InputVideo.avi";
         cap.open(inputFile);
@@ -277,11 +277,11 @@ int main(int argc, char** argv)
     int iLowV = 0;
     int iHighV = 255;
 
-    string colorThres = srcpath + "/ThresholdValues.txt";
+    string colorThres = srcpath + "/ThresholdValuesBox.txt";
     ifstream f_colorThres(colorThres.c_str());
     if (!f_colorThres)
     {
-        cout << "error: could not load color threshold file," << endl;
+        cout << "error: could not load box threshold file," << endl;
     }
 
     string txt_line1, name1, tmp1;
@@ -311,7 +311,7 @@ int main(int argc, char** argv)
         Mat imgContours;
 
 
-            if ( (bCamera || bVideo) && !bCompetition)
+            if ( (bCamera || bVideo))
             {
                 bool bSuccess = cap.read(imgBGR); // read a new frame from video
 
@@ -446,7 +446,7 @@ int main(int argc, char** argv)
                     t_SP = minRect[max_idx_r].angle;
                 }
 
-                //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
+                cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
 
                 //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
                 Scalar color = Scalar(0, 255, 255);
@@ -770,39 +770,39 @@ if (!bCompetition) {
             loop_rate.sleep();
     }
 
-    string newThres = srcpath + "/ThresholdValuesNew.txt";
-    switch (color)
-    {
-    case 1: //Red color selected.
-        newThres = srcpath + "/ThresholdValuesRed.txt";
-        break;
-
-    case 2: //Green color selected.
-        newThres = srcpath + "/ThresholdValuesGreen.txt";
-        break;
-
-    case 3: //Blue color selected.
-        newThres = srcpath + "/ThresholdValuesBlue.txt";
-        break;
-
-    case 4: //Yellow color selected.
-        newThres = srcpath + "/ThresholdValuesYellow.txt";
-        break;
-    }
-
-    ofstream myfile(newThres.c_str());
-    //Save values to file
-    if (myfile.is_open())
-    {
-        myfile << "iLowH = " << iLowH << "\n";
-        myfile << "iHighH = " << iHighH << "\n";
-        myfile << "iLowS = " << iLowS << "\n";
-        myfile << "iHighS = " << iHighS << "\n";
-        myfile << "iLowV = " << iLowV << "\n";
-        myfile << "iHighV = " << iHighV << "\n";
-        myfile.close();
-        cout << "Finished writing" << endl;
-    }
-    else cout << "Unable to open file";
+//    string newThres = srcpath + "/ThresholdValuesBoxNew.txt";
+//    switch (color)
+//    {
+//    case 1: //Red color selected.
+//        newThres = srcpath + "/ThresholdValuesRed.txt";
+//        break;
+//
+//    case 2: //Green color selected.
+//        newThres = srcpath + "/ThresholdValuesGreen.txt";
+//        break;
+//
+//    case 3: //Blue color selected.
+//        newThres = srcpath + "/ThresholdValuesBlue.txt";
+//        break;
+//
+//    case 4: //Yellow color selected.
+//        newThres = srcpath + "/ThresholdValuesYellow.txt";
+//        break;
+//    }
+//
+//    ofstream myfile(newThres.c_str());
+//    //Save values to file
+//    if (myfile.is_open())
+//    {
+//        myfile << "iLowH = " << iLowH << "\n";
+//        myfile << "iHighH = " << iHighH << "\n";
+//        myfile << "iLowS = " << iLowS << "\n";
+//        myfile << "iHighS = " << iHighS << "\n";
+//        myfile << "iLowV = " << iLowV << "\n";
+//        myfile << "iHighV = " << iHighV << "\n";
+//        myfile.close();
+//        cout << "Finished writing" << endl;
+//    }
+//    else cout << "Unable to open file";
     return 0;
 }

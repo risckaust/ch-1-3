@@ -64,40 +64,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& input)
     }
 }
 
-
-class ImageConverter
-{
-
-
-public:
-  ros::NodeHandle nh;
-  cv_bridge::CvImagePtr cv_ptr;
-  ImageConverter()
-  {
-    // Subscrive to input video feed and publish output video feed
-    ros::Subscriber image_sub_ = nh.subscribe("/Quad1/cvision/frame", 1,
-      &ImageConverter::imageCb, this);
-  }
-
-  ~ImageConverter()
-  {
-  }
-
-  void imageCb(const sensor_msgs::ImageConstPtr& msg)
-  {
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-  }
-};
-
 int main(int argc, char** argv)
 {
     MouseParams mp;
@@ -112,10 +78,8 @@ int main(int argc, char** argv)
     bool bOutputVideo = false;
     bool bCamera = false;
     bool bVideo = false;
-    bool bROS = false;
     bool bViz = false;
     bool bCompetition = false;
-    bool bSend = false;
     //Fit shapes
     bool bFitBoundingBox = true;
     bool bFitRotatedRect = true;
@@ -131,48 +95,22 @@ int main(int argc, char** argv)
     int frame_count_max = -1; //infinite
     int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow
 
-
-    std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    //string srcpath = "/home/risc/ros_ws/src/ch-1-3/cvision/src";
 
     //ROS Init
-    ros::init(argc, argv, "color_detector");
+    ros::init(argc, argv, "detector");
 
     //Node handle
     ros::NodeHandle n;
 
-     /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
-    std::string s;
-    if (n.getParam("src_path", s))
-    {
-      ROS_INFO("Got src path: %s", s.c_str());
-      srcpath = s;
-    }
-    else
-    {
-      ROS_INFO("Failed to get param 'src_path'. Default to hardcoded srcpath.");
-    }
-
-    /* get the topic name of image feed */
-    std::string img_tp;
-    if (n.getParam("image_feed", img_tp))
-    {
-      ROS_INFO("Got param: %s", img_tp.c_str());
-    }
-    else
-    {
-      ROS_INFO("Failed to get param 'image_feed'. Default to 'Quad1/cvision/frame' ");
-      img_tp = "/Quad1/cvision/frame";
-    }
-
     cvision::ObjectPose msg;
 
-    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("colorObj",1000);
+    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("blueObj",1000);
 
-    /* Subscribe to image ROS topic*/
-    ros::Subscriber image_sub = n.subscribe(img_tp,1,imageCallback);
+    ros::Subscriber image_sub = n.subscribe("/cv_camera/image_raw",10,imageCallback);
 
-    /* list variables to be published in ROS parameters server */
-    std::vector<int> threshParam(3);
+    //ImageConverter imgC;
 
     ros::Rate loop_rate(frameRate);
 
@@ -206,6 +144,7 @@ int main(int argc, char** argv)
         else if (name == "thres_tol") iss >> thres_tol;
         else if (name == "morph_sz") iss >> morph_sz;
         else if (name == "frameRate") iss >> frameRate;
+        else if (name == "srcpath") iss >> srcpath;
     }
 
     RNG rng(12345);
@@ -304,7 +243,7 @@ int main(int argc, char** argv)
     cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
-        //cout << "Frame: " << frame_counter << endl;
+        cout << "Frame: " << frame_counter << endl;
         Mat imgBGR;
         Mat imgHSV;
         Mat imgThresholded;
@@ -326,12 +265,6 @@ int main(int argc, char** argv)
             else if (cv_img_ptr_ros)
             {
                 imgBGR = cv_img_ptr_ros->image;
-            }
-            else
-            {
-                ros::spinOnce();
-                loop_rate.sleep();
-                continue;
             }
 
 
@@ -446,7 +379,7 @@ int main(int argc, char** argv)
                     t_SP = minRect[max_idx_r].angle;
                 }
 
-                //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
+                cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
 
                 //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
                 Scalar color = Scalar(0, 255, 255);
@@ -528,7 +461,7 @@ if (!bCompetition) {
                 iHighS = min(S+thres_tol,255);
                 iLowV = max(V-thres_tol,0);
                 iHighV = min(V+thres_tol,255);
-                //cout << "H:" << H << " S:" << S << " V:" << V << endl;
+                cout << "H:" << H << " S:" << S << " V:" << V << endl;
             }
 
             if (bDebug == true)
@@ -571,8 +504,6 @@ if (!bCompetition) {
 
                 createTrackbar("LowV", "Control", &iLowV, 255);//Value (0 - 255)
                 createTrackbar("HighV", "Control", &iHighV, 255);
-
-                createTrackbar("Tolerance", "Control", &thres_tol, 100);
 
                 mp.img = imgHSV;
                 cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
@@ -619,11 +550,6 @@ if (!bCompetition) {
                 cout << "Color: Yellow" << endl;
                 break;
 
-            case 115: //'s' has been pressed.
-                bSend = 1;
-                cout << "Sending triggered." << endl;
-                break;
-
             case 100: //'d' has been pressed. Toggle debug
                 bDebug = !bDebug;
                 if (bDebug == false) cout << "Debug disabled." << endl;
@@ -662,83 +588,10 @@ if (!bCompetition) {
                         }
                     }
                 }
+
+
+
             }
-
-            switch (color)
-            {
-            case 1: //Red color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/RedHSV/low", threshParam);
-                    n.setParam("/Quad2/RedHSV/low", threshParam);
-                    n.setParam("/Quad3/RedHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/RedHSV/high", threshParam);
-                    n.setParam("/Quad2/RedHSV/high", threshParam);
-                    n.setParam("/Quad3/RedHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending red thresholds complete." << endl;
-                }
-                break;
-
-            case 2: //Green color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/GreenHSV/low", threshParam);
-                    n.setParam("/Quad2/GreenHSV/low", threshParam);
-                    n.setParam("/Quad3/GreenHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/GreenHSV/high", threshParam);
-                    n.setParam("/Quad2/GreenHSV/high", threshParam);
-                    n.setParam("/Quad3/GreenHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending green thresholds complete." << endl;
-                }
-                break;
-
-            case 3: //Blue color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/BlueHSV/low", threshParam);
-                    n.setParam("/Quad2/BlueHSV/low", threshParam);
-                    n.setParam("/Quad3/BlueHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/BlueHSV/high", threshParam);
-                    n.setParam("/Quad2/BlueHSV/high", threshParam);
-                    n.setParam("/Quad3/BlueHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending blue thresholds complete." << endl;
-                }
-                break;
-
-            case 4: //Yellow color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/YellowHSV/low", threshParam);
-                    n.setParam("/Quad2/YellowHSV/low", threshParam);
-                    n.setParam("/Quad3/YellowHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/YellowHSV/high", threshParam);
-                    n.setParam("/Quad2/YellowHSV/high", threshParam);
-                    n.setParam("/Quad3/YellowHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending yellow thresholds complete." << endl;
-                }
-                break;
-            }
-
             }
 
             //ROS Topics

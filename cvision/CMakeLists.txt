@@ -138,7 +138,8 @@ include_directories(
 
 ## Declare a C++ executable
 # add_executable(cvision_node src/cvision_node.cpp)
-add_executable(cvision_detector src/color_detector.cpp)
+add_executable(cvision_box_detector src/box_detector.cpp)
+add_executable(cvision_color_detector src/color_detector.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -147,7 +148,8 @@ add_executable(cvision_detector src/color_detector.cpp)
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(cvision_node
 #   ${catkin_LIBRARIES}
-target_link_libraries(cvision_detector ${catkin_LIBRARIES})
+target_link_libraries(cvision_box_detector ${catkin_LIBRARIES})
+target_link_libraries(cvision_color_detector ${catkin_LIBRARIES})
 # )
 
 #############
