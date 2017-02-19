@@ -574,6 +574,8 @@ if (!bCompetition) {
 
                 createTrackbar("Tolerance", "Control", &thres_tol, 100);
 
+                createTrackbar("Tolerance", "Control", &thres_tol, 100);
+
                 mp.img = imgHSV;
                 cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
 
@@ -617,6 +619,11 @@ if (!bCompetition) {
             case 121: //'y' has been pressed.
                 color = 4;
                 cout << "Color: Yellow" << endl;
+                break;
+
+            case 115: //'s' has been pressed.
+                bSend = 1;
+                cout << "Sending triggered." << endl;
                 break;
 
             case 115: //'s' has been pressed.
