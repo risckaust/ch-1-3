@@ -1,0 +1,7 @@
+<launch>
+	<group ns="Quad1">
+		<rosparam command="load" file="$(find cvision)/configs/color_thresholds.yaml" />
+		<rosparam command="load" file="$(find cvision)/configs/configs.yaml" />
+		<node pkg="cvision" name="cvision_box_detector" type="cvision_box_detector" required="True"/>
+	</group>
+</launch>
