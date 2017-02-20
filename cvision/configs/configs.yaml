@@ -1,3 +1,5 @@
 # path to source file; topic of image feed
 src_path: '/home/risc/ros_ws/src/ch-1-3/cvision/src'
 image_feed: '/Quad1/cvision/frame'
+ImagesFolderPath: /home/risc/Images/set1
+ImageSaveRate: 5
