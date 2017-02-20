@@ -30,8 +30,10 @@ class Tracker():
 		self.CAMOFFSET		= 0.1
 
 		# distance from object threshold
-		self.envelope_pos	= 0.2 # [m]
-		self.envelope_vel	= 0.15 # [m/s]
+		self.envelope_pos_max	= 0.6 # [m]
+		self.envelope_pos_min	= 0.2 # [m]
+		self.envelope_vel_min	= 0.15 # [m/s]
+		self.envelope_vel_max	= 0.5 # [m/s]
 
 		# ground altitude
 		self.ZGROUND		= 0.0
@@ -160,9 +162,16 @@ class Tracker():
 						print '      '
 
 						# inside envelope: track+descend
+						# adjust envelope size based on height
+						# current envelope is convex combination of envelope end points (defined in initialization)
+						s = 0.0
+						s = abs(self.altK.z/self.TRACK_ALT)
+						s = min(s,1.0)
+						env_pos = s*self.envelope_pos_max + (1-s)*self.envelope_pos_min
+						env_vel = s*self.envelope_vel_max + (1-s)*self.envelope_vel_min
 						dxy = np.sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
 						dvxy = np.sqrt(self.bodK.vx**2 + self.bodK.vy**2)
-						if dxy <= self.envelope_pos and dvxy <= self.envelope_vel:
+						if dxy <= env_pos and dvxy <= env_vel:
 							# record good position
 							good_x = self.bodK.x
 							good_y = self.bodK.y
@@ -267,7 +276,10 @@ def mission():
 	tr = Tracker(ns)
 	tr.TRACK_ALT = 3.0
 	tr.PICK_ALT = 0.2
-	tr.envelope_pos = 0.2
+	tr.envelope_pos_min = 0.2
+	tr.envelope_pos_max = 0.6
+	tr.envelope_vel_min = 0.15
+	tr.envelope_vel_max = 0.5
 	tr.envelope_vel = 0.15
 	tr.vHold_factor = 0.1
 
