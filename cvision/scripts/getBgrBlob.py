@@ -146,13 +146,15 @@ def getColor():
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) # convert to HSV
             
     	# find the color in the image for blue, green, and red
-    	
-        # Always find Blue
-        lowerB = np.array(rospy.get_param(ns+'/BlueHSV/low'),np.uint8)
-        upperB = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
-        maskB = cv2.inRange(hsv,lowerB,upperB)
+    	# initialize mask
+	mask = cv2.inRange(hsv,np.array([0,0,0],np.uint8),np.array([0,0,0],np.uint8))
 
-	mask = maskB
+        # Blue
+	if FindBlue:
+		lowerB = np.array(rospy.get_param(ns+'/BlueHSV/low'),np.uint8)
+		upperB = np.array(rospy.get_param(ns+'/BlueHSV/high'),np.uint8)
+		maskB = cv2.inRange(hsv,lowerB,upperB)
+		mask = cv2.bitwise_or(mask,maskB)
         
         # Green
 	if FindGreen:
