@@ -116,6 +116,7 @@ int main(int argc, char** argv)
     bool bViz = false;
     bool bCompetition = false;
     bool bSend = false;
+    bool bWrite = false;
     //Fit shapes
     bool bFitBoundingBox = true;
     bool bFitRotatedRect = true;
@@ -132,6 +133,7 @@ int main(int argc, char** argv)
     int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow
 
 
+    std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
 
     //ROS Init
@@ -141,15 +143,14 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
 
      /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
-    std::string s;
-    if (n.getParam("src_path", s))
+    if (n.getParam("pkg_path", pkgpath))
     {
-      ROS_INFO("Got src path: %s", s.c_str());
-      srcpath = s;
+      ROS_INFO("Got pkg path: %s", pkgpath.c_str());
+      srcpath = pkgpath + "/src";
     }
     else
     {
-      ROS_INFO("Failed to get param 'src_path'. Default to hardcoded srcpath.");
+      ROS_INFO("Failed to get param 'pkgpath'. Default to hardcoded paths.");
     }
 
     /* get the topic name of image feed */
@@ -621,14 +622,19 @@ if (!bCompetition) {
                 cout << "Color: Yellow" << endl;
                 break;
 
-            case 115: //'s' has been pressed.
-                bSend = 1;
-                cout << "Sending triggered." << endl;
+            case 120: //'x' has been pressed.
+                color = 5;
+                cout << "Color: Box" << endl;
                 break;
 
             case 115: //'s' has been pressed.
                 bSend = 1;
                 cout << "Sending triggered." << endl;
+                break;
+
+            case 119: //'w' has been pressed. Toggle visualization
+                bWrite = 1;
+                cout << "Writing triggered." << endl;
                 break;
 
             case 100: //'d' has been pressed. Toggle debug
@@ -689,6 +695,45 @@ if (!bCompetition) {
                 bSend = false;
                 cout << "Sending red thresholds complete." << endl;
                 }
+		if (bWrite) {
+
+		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+		    ifstream streamYaml (configYaml.c_str());
+		    if (!streamYaml)
+		    {
+			cout << "error: could not load yaml color_thresholds file," << endl;
+		    }
+
+		    int idx = 0;
+		    std::vector<std::string> text_file(10);
+		    string txt_line;
+		    while (getline(streamYaml, txt_line))
+		    {
+			text_file[idx] = txt_line;
+			idx++;
+		    }
+
+		    ofstream fileYaml(configYaml.c_str());
+		    //Save values to file
+		    if (fileYaml.is_open())
+		    {
+			for (int i=0; i<10; i++) {
+
+				if (i==color){
+				fileYaml << "RedHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+				}
+				else{
+					fileYaml << text_file[i] << "\n";
+				}
+			}
+			fileYaml.close();
+			cout << "Finished writing" << endl;
+		    }
+		    else cout << "Unable to open file";
+		
+                    bWrite = false;
+                    cout << "Writing red thresholds complete." << endl;
+		}
                 break;
 
             case 2: //Green color selected.
@@ -707,6 +752,45 @@ if (!bCompetition) {
                 bSend = false;
                 cout << "Sending green thresholds complete." << endl;
                 }
+		if (bWrite) {
+
+		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+		    ifstream streamYaml (configYaml.c_str());
+		    if (!streamYaml)
+		    {
+			cout << "error: could not load yaml color_thresholds file," << endl;
+		    }
+
+		    int idx = 0;
+		    std::vector<std::string> text_file(10);
+		    string txt_line;
+		    while (getline(streamYaml, txt_line))
+		    {
+			text_file[idx] = txt_line;
+			idx++;
+		    }
+
+		    ofstream fileYaml(configYaml.c_str());
+		    //Save values to file
+		    if (fileYaml.is_open())
+		    {
+			for (int i=0; i<10; i++) {
+
+				if (i==color){
+				fileYaml << "GreenHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+				}
+				else{
+					fileYaml << text_file[i] << "\n";
+				}
+			}
+			fileYaml.close();
+			cout << "Finished writing" << endl;
+		    }
+		    else cout << "Unable to open file";
+		
+                    bWrite = false;
+                    cout << "Writing green thresholds complete." << endl;
+		}
                 break;
 
             case 3: //Blue color selected.
@@ -725,6 +809,45 @@ if (!bCompetition) {
                 bSend = false;
                 cout << "Sending blue thresholds complete." << endl;
                 }
+		if (bWrite) {
+
+		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+		    ifstream streamYaml (configYaml.c_str());
+		    if (!streamYaml)
+		    {
+			cout << "error: could not load yaml color_thresholds file," << endl;
+		    }
+
+		    int idx = 0;
+		    std::vector<std::string> text_file(10);
+		    string txt_line;
+		    while (getline(streamYaml, txt_line))
+		    {
+			text_file[idx] = txt_line;
+			idx++;
+		    }
+
+		    ofstream fileYaml(configYaml.c_str());
+		    //Save values to file
+		    if (fileYaml.is_open())
+		    {
+			for (int i=0; i<10; i++) {
+
+				if (i==color){
+				fileYaml << "BlueHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+				}
+				else{
+					fileYaml << text_file[i] << "\n";
+				}
+			}
+			fileYaml.close();
+			cout << "Finished writing" << endl;
+		    }
+		    else cout << "Unable to open file";
+		
+                    bWrite = false;
+                    cout << "Writing blue thresholds complete." << endl;
+		}
                 break;
 
             case 4: //Yellow color selected.
@@ -743,6 +866,101 @@ if (!bCompetition) {
                 bSend = false;
                 cout << "Sending yellow thresholds complete." << endl;
                 }
+		if (bWrite) {
+
+		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+		    ifstream streamYaml (configYaml.c_str());
+		    if (!streamYaml)
+		    {
+			cout << "error: could not load yaml color_thresholds file," << endl;
+		    }
+
+		    int idx = 0;
+		    std::vector<std::string> text_file(10);
+		    string txt_line;
+		    while (getline(streamYaml, txt_line))
+		    {
+			text_file[idx] = txt_line;
+			idx++;
+		    }
+
+		    ofstream fileYaml(configYaml.c_str());
+		    //Save values to file
+		    if (fileYaml.is_open())
+		    {
+			for (int i=0; i<10; i++) {
+
+				if (i==color){
+				fileYaml << "YellowHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+				}
+				else{
+					fileYaml << text_file[i] << "\n";
+				}
+			}
+			fileYaml.close();
+			cout << "Finished writing" << endl;
+		    }
+		    else cout << "Unable to open file";
+		
+                    bWrite = false;
+                    cout << "Writing yellow thresholds complete." << endl;
+		}
+                break;
+	    case 5: // box
+		if (bSend) {
+                //Send ROS message here
+                    // send low values
+                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
+                    n.setParam("/Quad1/BoxHSV/low", threshParam);
+                    n.setParam("/Quad2/BoxHSV/low", threshParam);
+                    n.setParam("/Quad3/BoxHSV/low", threshParam);
+                    // send high values
+                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
+                    n.setParam("/Quad1/BoxHSV/high", threshParam);
+                    n.setParam("/Quad2/BoxHSV/high", threshParam);
+                    n.setParam("/Quad3/BoxHSV/high", threshParam);
+                bSend = false;
+                cout << "Sending Box thresholds complete." << endl;
+                }
+		if (bWrite) {
+
+		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+		    ifstream streamYaml (configYaml.c_str());
+		    if (!streamYaml)
+		    {
+			cout << "error: could not load yaml color_thresholds file," << endl;
+		    }
+
+		    int idx = 0;
+		    std::vector<std::string> text_file(10);
+		    string txt_line;
+		    while (getline(streamYaml, txt_line))
+		    {
+			text_file[idx] = txt_line;
+			idx++;
+		    }
+
+		    ofstream fileYaml(configYaml.c_str());
+		    //Save values to file
+		    if (fileYaml.is_open())
+		    {
+			for (int i=0; i<10; i++) {
+
+				if (i==color){
+				fileYaml << "BoxHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+				}
+				else{
+					fileYaml << text_file[i] << "\n";
+				}
+			}
+			fileYaml.close();
+			cout << "Finished writing" << endl;
+		    }
+		    else cout << "Unable to open file";
+		
+                    bWrite = false;
+                    cout << "Writing box thresholds complete." << endl;
+		}
                 break;
             }
 
@@ -794,6 +1012,10 @@ if (!bCompetition) {
 
     case 4: //Yellow color selected.
         newThres = srcpath + "/ThresholdValuesYellow.txt";
+        break;
+
+    case 5: //Box color selected.
+        newThres = srcpath + "/ThresholdValuesBox.txt";
         break;
     }
 

@@ -50,6 +50,7 @@ void mouseHandler( int event, int x, int y, int flags, void* param)
 }
 
 cv_bridge::CvImagePtr cv_img_ptr_ros;
+cv_bridge::CvImagePtr cv_img_gray_ptr_ros;
 
 void imageCallback(const sensor_msgs::ImageConstPtr& input)
 {
@@ -132,29 +133,34 @@ int main(int argc, char** argv)
     int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow
 
 
+    std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+
 
     //ROS Init
     ros::init(argc, argv, "box_detector");
 
     //Node handle
     ros::NodeHandle n;
+    image_transport::ImageTransport it(n);
+    
+
+    std::string ns = ros::this_node::getNamespace();
 
      /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
-    std::string s;
-    if (n.getParam("src_path", s))
+    if (n.getParam(ns + "/pkg_path", pkgpath))
     {
-      ROS_INFO("Got src path: %s", s.c_str());
-      srcpath = s;
+      ROS_INFO("Got pkg path: %s", pkgpath.c_str());
+      srcpath = pkgpath + "/src";
     }
     else
     {
-      ROS_INFO("Failed to get param 'src_path'. Default to hardcoded srcpath.");
+      ROS_INFO("Failed to get param 'pkgpath'. Default to hardcoded paths.");
     }
 
     /* get the topic name of image feed */
     std::string img_tp;
-    if (n.getParam("image_feed", img_tp))
+    if (n.getParam(ns + "/image_feed", img_tp))
     {
       ROS_INFO("Got param: %s", img_tp.c_str());
     }
@@ -166,15 +172,29 @@ int main(int argc, char** argv)
 
     cvision::ObjectPose msg;
 
-    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("dropBox",1000);
+    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("boxPose",1000);
+
+    image_transport::Publisher img_pub = it.advertise("boxImg", 10);
+    //ros::Publisher img_pub = n.advertise<sensor_msgs::Image>("boxImg",10);
+
+    bool bStream = false;
+    int stream_rate = 1;
+    // get gray image stream rate
+    
+    if (n.getParam(ns + "/stream_img", bStream) && n.getParam(ns + "/stream_rate", stream_rate) )
+    {
+      ROS_INFO("Got streaming info.");
+    }
+    else
+    {
+      ROS_INFO("Failed to get streaming info.");
+    }
 
     /* Subscribe to image ROS topic*/
     ros::Subscriber image_sub = n.subscribe(img_tp,1,imageCallback);
 
     /* list variables to be published in ROS parameters server */
     std::vector<int> threshParam(3);
-
-    ros::Rate loop_rate(frameRate);
 
     string configFile = srcpath + "/box_config.txt";
     ifstream f_config(configFile.c_str());
@@ -207,6 +227,8 @@ int main(int argc, char** argv)
         else if (name == "morph_sz") iss >> morph_sz;
         else if (name == "frameRate") iss >> frameRate;
     }
+
+    ros::Rate loop_rate(frameRate);
 
     RNG rng(12345);
 
@@ -277,38 +299,60 @@ int main(int argc, char** argv)
     int iLowV = 0;
     int iHighV = 255;
 
-    string colorThres = srcpath + "/ThresholdValuesBox.txt";
-    ifstream f_colorThres(colorThres.c_str());
-    if (!f_colorThres)
+
+    /* get the topic name of image feed */
+    std::vector<int> threshBox_low(3);
+    std::vector<int> threshBox_high(3);
+    if (n.getParam(ns+"BoxHSV/low", threshBox_low) && n.getParam(ns+"BoxHSV/high", threshBox_high))
     {
-        cout << "error: could not load box threshold file," << endl;
+      ROS_INFO("Got Box Thresholds.");
+	iLowH = threshBox_low[0];
+	iHighH = threshBox_high[0];
+	iLowS = threshBox_low[1];
+	iHighS = threshBox_high[1];
+	iLowV = threshBox_low[2];
+	iHighV = threshBox_high[2];
+    }
+    else
+    {
+	//Read thresholds from text file
+	    string colorThres = srcpath + "/ThresholdValuesBox.txt";
+	    ifstream f_colorThres(colorThres.c_str());
+	    if (!f_colorThres)
+	    {
+		cout << "error: could not load box threshold file," << endl;
+	    }
+
+	    string txt_line1, name1, tmp1;
+	    while (getline(f_colorThres, txt_line1))
+	    {
+		istringstream iss(txt_line1);
+		iss >> name1 >> tmp1;
+
+		// skip invalid lines and comments
+		if (iss.fail() || tmp1 != "=" || name1[0] == '#') continue;
+
+		if (name1 == "iLowH") iss >> iLowH;
+		else if (name1 == "iHighH") iss >> iHighH;
+		else if (name1 == "iLowS") iss >> iLowS;
+		else if (name1 == "iHighS") iss >> iHighS;
+		else if (name1 == "iLowV") iss >> iLowV;
+		else if (name1 == "iHighV") iss >> iHighV;
+	 }
     }
 
-    string txt_line1, name1, tmp1;
-    while (getline(f_colorThres, txt_line1))
-    {
-        istringstream iss(txt_line1);
-        iss >> name1 >> tmp1;
 
-        // skip invalid lines and comments
-        if (iss.fail() || tmp1 != "=" || name1[0] == '#') continue;
-
-        if (name1 == "iLowH") iss >> iLowH;
-        else if (name1 == "iHighH") iss >> iHighH;
-        else if (name1 == "iLowS") iss >> iLowS;
-        else if (name1 == "iHighS") iss >> iHighS;
-        else if (name1 == "iLowV") iss >> iLowV;
-        else if (name1 == "iHighV") iss >> iHighV;
-    }
 
     cout << "Ready to loop..." << endl;
+    Mat imgBGR;
+    Mat imgHSV;
+    Mat imgGray;
+    Mat imgThresholded;
+    Mat imgContours;
+
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
         //cout << "Frame: " << frame_counter << endl;
-        Mat imgBGR;
-        Mat imgHSV;
-        Mat imgThresholded;
-        Mat imgContours;
 
 
             if ( (bCamera || bVideo))
@@ -454,8 +498,12 @@ int main(int argc, char** argv)
                 Scalar color2 = Scalar(0, 255, 0);
                 Scalar color3 = Scalar(0, 0, 255);
 
-                if (bViz && !bCompetition)
+
+//////// PUT ROS CONDITION FOR IMAGE SENDING HERE
+                //if ( (bViz && !bCompetition) || (bStream && (((frame_counter*stream_rate)%frameRate)<stream_rate) ) )  //replace condition with stream param, then publish imgBGR
+                if ( (bStream && (((frame_counter*stream_rate)%frameRate)<stream_rate) ) )  //replace condition with stream param, then publish imgBGR
                 {
+cout << "I am trying to stream" << endl;
 //                    if (bFitBoundingBox)
 //                    {
 //                        //bounding box
@@ -479,6 +527,19 @@ int main(int argc, char** argv)
                         circle(imgBGR, cc[max_idx_c], 5, color, -1, 8, 0);
                     }
                     //putText(imgBGR, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+		    
+		    //Publish gray image to ROS
+		    cvtColor(imgBGR, imgGray, CV_BGR2GRAY);
+
+		//Color image
+  		    sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", imgGray).toImageMsg();
+		    img_pub.publish(img_msg);
+
+//		    cv_img_gray_ptr_ros->image = imgGray;
+//		    cv_img_gray_ptr_ros->toImageMsg()->height = imgGray.rows;
+//		    cv_img_gray_ptr_ros->toImageMsg()->width = imgGray.cols;
+//		    cv_img_gray_ptr_ros->toImageMsg()->step = imgGray.cols * 8;
+//		    img_pub.publish(cv_img_gray_ptr_ros->toImageMsg());
                 }
 
                 if (bDebug && !bCompetition)

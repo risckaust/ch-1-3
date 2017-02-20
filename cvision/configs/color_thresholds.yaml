@@ -1,0 +1,10 @@
+# stores HSV color thresholds for {blue, green, red, yellow}
+RedHSV: {low: [0, 10, 20], high: [100, 110, 120]} 
+GreenHSV: {low: [0, 10, 20], high: [100, 110, 120]} 
+BlueHSV: {low: [0, 10, 20], high: [100, 110, 120]} 
+YellowHSV: {low: [0, 10, 20], high: [100, 110, 120]} 
+BoxHSV: {low: [65, 122, 54], high: [165, 222, 154]} 
+FindBlue: True
+FindGreen: False
+FindRed: True
+FindYellow: True
