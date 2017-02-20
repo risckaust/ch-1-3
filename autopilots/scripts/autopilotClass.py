@@ -10,6 +10,17 @@ from geometry_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
 
+#########
+# Math custom functions
+#########
+
+def sat(x,Xl,Xu):
+    z = x
+    if x > Xu:
+        z = Xu
+    elif x < Xl:
+        z = Xl
+    return z
 
 #########
 # Autopilot parameters
@@ -28,22 +39,22 @@ def setParams():
     rospy.set_param('/kAltVel/vMaxU',1.0)
     rospy.set_param('/kAltVel/vMaxD',0.5)
     rospy.set_param('/kAltVel/smartLanding', True)  # use terarangers & laser sensor to land
-    rospy.set_param('/kAltVel/distanceSensorName','dsName') # name of distance sensor for mavros subscription
+    rospy.set_param('/kAltVel/distanceSensorName','hrlv_ez4_pub') # name of distance sensor for mavros subscription
     rospy.set_param('/kAltVel/smartLandingSim', True)         # True = for HIL simulation of smartLanding
     rospy.set_param('/kAltVel/teraN',3)             # number of tera rangers
+    rospy.set_param('/kAltVel/teraAgree', 0.5)       # agreement for terarangers   
 
     
     # ROS parameters for kBodVel
     rospy.set_param('/kBodVel/gP',0.75)             # 0.75 tuned
     rospy.set_param('/kBodVel/gI',0.05)             # 0.05 tuned
-    rospy.set_param('/kBodVel/vMax',3.0)            # max lateral velocity
+    rospy.set_param('/kBodVel/vMax',5.0)            # max lateral velocity
     rospy.set_param('/kBodVel/gPyaw',0.5)           # yaw proportional gain
     rospy.set_param('/kBodVel/yawOff',5.25)          # error to turn off yaw control (m)
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
     rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone (deg/s)
     rospy.set_param('/kBodVel/feedForward', True)   # use EKF to feedforward estimates
     rospy.set_param('/kBodVel/momentum', True)       # use momentum (vs EKF) in case of vision loss
-
 
 class autopilotClass:
 
@@ -94,7 +105,6 @@ class autopilotClass:
     #   vz = current altitude velocity from /mavros/local_position/velocity (m/s)
     #   distanceSensor = distance sensor reading
     #   teraRanges = vector of teraRanger measurements
-    #   teraAgree = teraRange 0,1,2 agreement
     #   engaged = Boolean if armed and offboard
     #   airborne = Boolean if landed
     #
@@ -109,7 +119,6 @@ class autopilotClass:
             self.vz = 0.0
             self.distanceSensor = 0.0
             self.teraRanges = [0.0]*rospy.get_param('/kAltVel/teraN')
-            self.teraAgree = False
             self.engaged = False
             self.airborne = False
             self.subPos = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
@@ -142,12 +151,8 @@ class autopilotClass:
                     self.airborne = False
                     
         def cbTera(self,msg):
-            self.teraAgree = False
             if not msg == None:
                 self.teraRanges = msg.ranges[1:(rospy.get_param('/kAltVel/teraN')+1)]
-                var = max(self.teraRanges) - min(self.teraRanges)
-                if var < 0.5:
-                    self.teraAgree = True
 
         def cbDistanceSensor(self,msg):
             if not msg == None:
@@ -241,6 +246,9 @@ class autopilotClass:
 
             self.ekf = self.EKF()
             
+            # publish tHat, vHat, wHat
+            self.ekfState = rospy.Publisher('/kBodVel/ekfState', Vector3, queue_size=10)
+            
         class EKF:
             def __init__(self):
                 self.xhat = np.matrix(np.zeros( (5,1) ))
@@ -254,8 +262,8 @@ class autopilotClass:
                 self.Q[1,1] = 0.1
                 self.Q[2,2] = 0.1
                 self.Q[3,3] = 1.0
-                self.Q[4,4] = 1.0
-                self.R = np.matrix(np.identity(2))*10.0 # TODO: parameter
+                self.Q[4,4] = 0.5
+                self.R = np.matrix(np.identity(2))*1.0 # TODO: parameter
                 
 
         def cbPos(self,msg):
@@ -531,4 +539,4 @@ class autopilotClass:
             except rospy.ServiceException, e:
                 print "service set_mode call failed: %s. Autoland Mode could not be set."%e
 
- 
+

@@ -29,12 +29,12 @@ def setParams():
                                                                  
     # ROS parameters getLaunchpad
     rospy.set_param('/getLaunchpad/useMass', False)
-    rospy.set_param('/getLaunchpad/minMass',10000.0)             # minimum mass to detect a color blob
-    rospy.set_param('/getLaunchpad/minRadius',10.0)              # minimum circle pixel radius to detect a white blob
+    rospy.set_param('/getLaunchpad/minMass',50.0)             # minimum mass to detect a color blob
+    rospy.set_param('/getLaunchpad/minRadius',5.0)              # minimum circle pixel radius to detect a white blob
     rospy.set_param('/getLaunchpad/erodeOn',True)                # use erode/dilate vs blurring in white detection 
     rospy.set_param('/getLaunchpad/pxRadius', 1.2)               # radius multiplier for proximity mask (both white & circle) 
     rospy.set_param('/getLaunchpad/cornerRestart', 3)            # restart corner detection every N seconds (integer)
-    rospy.set_param('/getLaunchpad/minPoints',4)                 # minimum number of corners for positive detection
+    rospy.set_param('/getLaunchpad/minPoints', 4)                 # minimum number of corners for positive detection
     rospy.set_param('/getLaunchpad/agreeTol',1.5)                # tolerance for ensemble agreement
     
     rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
@@ -60,7 +60,7 @@ def setParams():
     
     # ROS parameters for pix2m
     rospy.set_param('/pix2m/m2pix', 0.00104167)                  # 0.5m = 480pixels
-    rospy.set_param('/pix2m/altCal',1.2)                         # calibration altitude (used in main loop)
+    rospy.set_param('/pix2m/altCal',1.3)                         # calibration altitude (used in main loop)
 
 
 

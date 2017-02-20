@@ -196,10 +196,10 @@ def getLaunchpad():
 
         if OLDCV:
             circles = cv2.HoughCircles(mask,cv.CV_HOUGH_GRADIENT,1,LY,
-                param1=50,param2=50,minRadius=LY/50,maxRadius=LY/2)
+                param1=50,param2=50,minRadius=LY/100,maxRadius=LY/2)
         else:
             circles = cv2.HoughCircles(mask,cv2.HOUGH_GRADIENT,1,LY,
-                param1=50,param2=50,minRadius=LY/50,maxRadius=LY/2)
+                param1=50,param2=50,minRadius=LY/100,maxRadius=LY/2)
 
         # assess circles 
 

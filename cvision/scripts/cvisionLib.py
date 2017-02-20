@@ -70,16 +70,16 @@ class pix2m():
         if center.z > 0:
             xSp = self.scale*(center.x - self.LX/2)
             ySp = self.scale*(self.LY/2 - center.y) - self.gripperOffset # will switch x/y
-            radius = sqrt(xSp**2 + ySp**2)
-            scale = 0.0019*radius + 0.1756              # empirical data fit
-            xSp = xSp*scale                             # convert to centimeters
+            radius = sqrt(xSp**2 + ySp**2)              # eccentricity in pixels
+            scale = 1.80374e-05*radius + .0031243       # empirical data fit
+            xSp = xSp*scale                             # convert to meters
             ySp = ySp*scale
-            xSp = xSp/100.0                             # convert to meters
-            ySp = ySp/100.0
             hold = xSp                                  # switch for NED
             xSp = ySp
             ySp = hold
-
+            
+            ### OLD empirical: scale = 0.0019*radius + 0.1756 cm-per-pixel
+            
         return [xSp,ySp,center.z]                       # pass information through z-channel
         
 
