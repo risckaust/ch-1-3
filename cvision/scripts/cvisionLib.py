@@ -71,7 +71,7 @@ class pix2m():
             xSp = self.scale*(center.x - self.LX/2) 
             ySp = self.scale*(self.LY/2 - center.y) - self.gripperOffset
             radius = sqrt(xSp**2 + ySp**2)
-            scale = 0.0019*radius + 0.1756              # empirical data fit
+            scale = 0.0018037*radius + 0.3124266             # empirical data fit
             xSp = xSp*scale                             # convert to centimeters
             ySp = ySp*scale
             xSp = xSp/100.0                             # convert to meters
