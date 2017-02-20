@@ -73,7 +73,7 @@ def getColor():
     FindGreen = True
     FindYellow = True
 
-    if rospy.has_param(ns+'/FindBLue'):
+    if rospy.has_param(ns+'/FindBlue'):
 	FindBlue = rospy.get_param(ns+'/FindBlue')
 
     if rospy.has_param(ns+'/FindGreen'):
