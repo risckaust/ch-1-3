@@ -75,6 +75,8 @@ def getColor():
 
     if rospy.has_param(ns+'/FindBlue'):
 	FindBlue = rospy.get_param(ns+'/FindBlue')
+	if not FindBlue:
+		print "#######Skip finding Blue"
 
     if rospy.has_param(ns+'/FindGreen'):
 	FindGreen = rospy.get_param(ns+'/FindGreen')
