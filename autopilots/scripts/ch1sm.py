@@ -72,6 +72,8 @@ def ch1sm():
     # Grab original parameter values
     feedForward = rospy.get_param('/kBodVel/feedForward')
     vMax = rospy.get_param('/kBodVel/vMax')
+    vMaxU = rospy.get_param('/kAltVel/vMaxU')
+    vMaxD = rospy.get_param('/kAltVel/vMaxD')
 
     #################################
     # MODES
@@ -210,7 +212,7 @@ def ch1sm():
             # Re-initialize EKF
             sm.bodK.ekf.xhat[0] = sm.bodK.x
             sm.bodK.ekf.xhat[1] = sm.bodK.y
-            sm.bodK.ekf.xhat[2] = sm.bodK.yaw - np.pi/2.0
+            sm.bodK.ekf.xhat[2] = sm.bodK.yaw # current heading
             sm.bodK.ekf.xhat[3] = 0.0 # TODO: sqrt(sm.bodK.vx**2 + sm.bodK.vy**2)
             sm.bodK.ekf.xhat[4] = 0.0
             sm.bodK.ekf.P = np.matrix(np.identity(5))*1.0
@@ -283,6 +285,9 @@ def ch1sm():
         if TrackDown:
         
             print "Descending..."
+            
+            rospy.set_param('/kAltVel/vMaxU',vMaxU/4.0)
+            rospy.set_param('/kAltVel/vMaxD',vMaxD/1.0)
         
             tStart = rospy.Time.now()
             dT = 0.0
@@ -425,6 +430,11 @@ def ch1sm():
                 print "Descend/z/zSp/zFix: ", Descend, theAlt, zSp, zFix
 
             TrackDown = False
+            
+            # Cleanup
+            rospy.set_param('/kAltVel/vMaxU',vMaxU)
+            rospy.set_param('/kAltVel/vMaxD',vMaxD)
+            
             if confidence < 0.51:
                 GoToBase = True
             else:

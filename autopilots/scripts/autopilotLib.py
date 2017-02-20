@@ -174,12 +174,12 @@ class kBodVel:
             self.H[1,1] = 1.0
             self.P = np.matrix(np.identity(5))
             self.Q = np.matrix(np.zeros( (5,5) ))
-            self.Q[0,0] = 0.01
-            self.Q[1,1] = 0.01
-            self.Q[2,2] = 0.01
-            self.Q[3,3] = 0.05
-            self.Q[4,4] = 0.05
-            self.R = np.matrix(np.identity(2))*0.1
+            self.Q[0,0] = 0.1
+            self.Q[1,1] = 0.1
+            self.Q[2,2] = 0.1
+            self.Q[3,3] = 1.0
+            self.Q[4,4] = 0.5
+            self.R = np.matrix(np.identity(2))*1.0
             
 
     def cbPos(self,msg):
@@ -281,8 +281,8 @@ class kBodVel:
             vHat =  self.ekf.xhat[3]
             wHat = self.ekf.xhat[4]
             
-            VX = vHat*cos(thHat)      # ENU coordinates                  
-            VY = vHat*sin(thHat)
+            VX = vHat*cos(thHat)*0.9      # ENU coordinates                  
+            VY = vHat*sin(thHat)*0.9
             
             #### vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
             #### vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)

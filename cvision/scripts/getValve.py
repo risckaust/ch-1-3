@@ -47,68 +47,120 @@ def getValve():
     while not rospy.is_shutdown():
 
         # grab a frame
-        frame = quadCam.Gry
-        mask = frame
-
-        mask = cv2.adaptiveThreshold(mask,205,cv2.ADAPTIVE_THRESH_MEAN_C,\
-           cv2.THRESH_BINARY,21,3)
-
-        edges = cv2.Canny(mask,0,20,apertureSize = 5)    
-        mask = cv2.bitwise_not(mask)
+        gray = quadCam.Gry
+        mask = quadCam.Gry
         
-        mask = cv2.erode(mask, kernel, iterations=2)
+        ### SAMPLES ####
+        # cv2.blur(mask,(5,5))
+        # cv2.GaussianBlur(mask,(5,5),0)
+        # cv2.medianBlur(mask,5)
+        # cv2.bilateralFilter(mask,9,75,75)
+        # cv2.adaptiveThreshold(mask,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,5)
+        # cv2.adaptiveThreshold(mask,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,5)
+        # cv2.Canny(mask,0,20,apertureSize = 3)
+        # cv2.erode(mask, kernel, iterations=2)
+        # cv2.bitwise_not(mask)
+        # cv2.HoughLines(mask,1,np.pi/180,50)
+        # cv2.goodFeaturesToTrack(mask,50,0.5,50)
+        # cv2.drawContours(mask, cnts, -1, (0,0,0), 4)
+        # if OLDCV:
+        #     cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+        # else:
+        #     _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+        #############
+        
+        
+        # Find center of valve
 
-        pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
-        cv2.rectangle(pxMask, pt1 = (225,300), pt2 = (400,100), color = (255, 255, 255), thickness = -1)
-        mask = cv2.bitwise_and(mask,pxMask)
-                         
-        if True:
-            lines = cv2.HoughLines(mask,1,np.pi/180,250)
-            if lines is not None:
-                print lines.shape[0]
-                for kc in range(0,lines.shape[0]):
-                    for rho,theta in lines[kc]:
-                        a = np.cos(theta)
-                        b = np.sin(theta)
-                        x0 = a*rho
-                        y0 = b*rho
-                        x1 = int(x0 + 1000*(-b))
-                        y1 = int(y0 + 1000*(a))
-                        x2 = int(x0 - 1000*(-b))
-                        y2 = int(y0 - 1000*(a))
-
-                        cv2.line(frame,(x1,y1),(x2,y2),(0,0,255),2)
-                            
-        if False:
-            corners = cv2.goodFeaturesToTrack(mask,50,0.5,50)
-            if corners is not None:
-                corners = np.int0(corners)
-                for i in corners:
-                    x,y = i.ravel()
-                    cv2.circle(frame,(x,y),5,(0,255,255),-1)
-
-                temp = cv2.mean(corners)
-                temp = np.int0(temp)
-                cv2.circle(frame,(temp[0],temp[1]),10,(0,255,255),-1)
-                
-        # find contours in the masked image
+        _, mask = cv2.threshold(gray,205,255,cv2.THRESH_BINARY)
+        
         if OLDCV:
             cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
         else:
             _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+            
+        c0 = 320,240
+        if len(cnts) > 0:
+            # keep largest contour
+            c = max(cnts, key=cv2.contourArea)
+            # construct & draw bounding circle
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            cv2.circle(gray, (int(x), int(y)), int(radius),(0, 0, 0), 2)
+            c0 = int(x),int(y)
         
-        if False:
-            if len(cnts) > 0:
-                print len(cnts)
-                cv2.drawContours(frame, cnts, -1, (0,0,0), 4)
+        # Create proximity mask
+        
+        pxMask = np.zeros((480,640,1), np.uint8)
+        cv2.rectangle(pxMask, pt1 = (c0[0]-100,c0[1]+100), pt2 = (c0[0]+100,c0[1]-100), color = 255, thickness = -1)
+        mask = cv2.bitwise_and(mask,pxMask)
+            
+        mask = cv2.adaptiveThreshold(mask,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+           cv2.THRESH_BINARY,11,5)
+           
+        mask = cv2.bitwise_not(mask)
+        
+        pxMask = np.zeros((480,640,1), np.uint8)
+        cv2.rectangle(pxMask, pt1 = (c0[0]-90,c0[1]+90), pt2 = (c0[0]+90,c0[1]-90), color = 255, thickness = -1)
+        mask = cv2.bitwise_and(mask,pxMask) 
+        
+        mask = cv2.dilate(mask, kernel, iterations=1)
 
-        # show processed images to screen
-        if rospy.get_param('/getLaunchpad/imgShow'):
-            cv2.imshow('white',frame)
-            cv2.imshow('mask',mask)
-            cv2.imshow('edges',edges)
-            # cv2.imshow('pxMask',pxMask)
-            key = cv2.waitKey(1) & 0xFF
+        best = 0.0, 0.0, 0.0, 0.0 # score, r, q (degrees)
+        score = -np.inf
+            
+        for dx in range(-10,11,5):
+            for dy in range(-10,11,5):
+                for r in range(5,26):
+                    for q in range(0,90,5):
+                    
+                        c = c0[0]+dx, c0[1]+dy
+                        
+                        square = np.zeros((480,640,1), np.uint8)
+                        cv2.rectangle(square, pt1 = (c[0]-r,c[1]+r), pt2 = (c[0]+r,c[1]-r), color = 255, thickness = 2)
+
+                        M = cv2.getRotationMatrix2D(c,q,1.0)
+                        testMask = cv2.warpAffine(square,M,(640,480))
+                        
+                        overlap = cv2.bitwise_and(mask,testMask)
+
+                        temp = 0.0
+                        for kc in range (0,10):
+                            temp = temp + cv2.sumElems(overlap)[0]
+                        
+                        if temp > score:
+                            score = temp
+                            best = c[0], c[1], r, q
+                            # draw current champion
+                            cB = best[0],best[1]
+                            rB = best[2]
+                            qB = best[3]
+                            square = np.zeros((480,640,1), np.uint8)
+                            cv2.rectangle(square, \
+                                pt1 = (cB[0]-rB,cB[1]+rB), pt2 = (cB[0]+rB,cB[1]-rB), color = 255, thickness = 2)
+                            M = cv2.getRotationMatrix2D(cB,qB,1.0)
+                            bestMask = cv2.warpAffine(square,M,(640,480))
+                            bestMask = cv2.bitwise_not(bestMask)
+        
+                            gray2 = cv2.bitwise_and(gray,bestMask)
+                            mask2 = cv2.bitwise_and(mask,bestMask)
+                                        
+                            cv2.imshow('temp',gray2)
+                            cv2.imshow('mask',mask2)
+                            key = cv2.waitKey(1) & 0xFF
+                            
+                            
+        if False:
+            cB = best[0],best[1]
+            rB = best[2]
+            qB = best[3]
+            square = np.zeros((480,640,1), np.uint8)
+            cv2.rectangle(square, pt1 = (cB[0]-rB,cB[1]+rB), pt2 = (cB[0]+rB,cB[1]-rB), color = 255, thickness = 2)
+            M = cv2.getRotationMatrix2D(cB,qB,1.0)
+            bestMask = cv2.warpAffine(square,M,(640,480))
+            bestMask = cv2.bitwise_not(bestMask)
+            
+            gray3 = cv2.bitwise_and(gray,bestMask)
+        
 
 
 if __name__ == '__main__':

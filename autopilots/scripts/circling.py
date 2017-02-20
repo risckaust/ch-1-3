@@ -102,7 +102,7 @@ def autopilot():
         bodK.ekfUpdate(True)
         
         error = sqrt((home.x - bodK.x)**2 + (home.y - bodK.y)**2)
-        print "errors:", error, np.asscalar(bodK.ekf.xhat[3]), np.asscalar(bodK.ekf.P[3,3]), np.asscalar(bodK.ekf.P[4,4])
+        print "error/vHat/that/yaw:", error, np.asscalar(bodK.ekf.xhat[3]), np.asscalar(bodK.ekf.xhat[2])%(2.0*3.1416),bodK.yaw
 
         
 if __name__ == '__main__':
