@@ -20,6 +20,9 @@ import autopilotLib
 import myLib
 import autopilotParams
 
+# TODO: include time stamp in state publisher
+# TODO: convert 'print' statments to ROS_INFO
+
 # TODO: move the gripper msg definition from autopilots pckg toi gripper pckg
 
 #!!!!!!!!!!!!! Need to define a message type for the state machine !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -100,10 +103,6 @@ class path_tracker():
 		self.state="still"
 		self.way_points_list=[]
 		self.object_position=[]
-		self.confidence=0
-		self.confidenceRate=0
-		self.confidenceThreshold=0.5
-		self.targetFollowed=[]
 #### end of path tracker Class ####
 
 ###### State Machine Class ######
@@ -194,6 +193,26 @@ class StateMachineC( object ):
 		self.ENVELOPE_XY_POS	= 0.2
 		# relative vel error where descend is allowed [m/s]
 		self.ENVELOPE_XY_V	= 0.1
+		# envelope boundaries
+		self.ENVELOPE_XY_POS_MIN= 0.2
+		self.ENVELOPE_XY_POS_MAX= 0.5
+		self.ENVELOPE_XY_VEL_MIN= 0.2
+		self.ENVELOPE_XY_VEL_MAX= 0.4
+
+		# object monitoring confidence
+		self.confidence 	= 0.0
+		self.cTh 		= 0.5
+		self.cRate		= 0.95
+
+		# descend_rate: fraction of the previous setpoint
+		self.descend_factor_low = 0.05 #[ % ]
+		self.descend_factor_high = 0.1 #[ % ]
+		# altitude where descend rate is r
+
+		# how much velocity to hold if confidenc is high+ object not seen in the current frame
+		self.vHold_factor = 0.1
+		# altitude where descend rate is reduced, [m]
+		self.LOW_ALT		= 1.0
 
 		# Instantiate a setpoint topic structure
 		self.setp		= PositionTarget()
@@ -500,16 +519,38 @@ class StateMachineC( object ):
 		objectFound = False
 		xy=[0,0]
 		picked = False
+		# to hold last velocity if confidence is high+miss-detection
+		vHold = False
+
+		# goodX and goodY, where object was last seen inside envelope
+		good_x = self.bodK.x
+		good_y = self.bodK.y
+		good_z = self.ZGROUND + self.SEARCH_ALT
+		# initialize target/object location
+		obj_x = good_x
+		obj_y = good_y
 
 		# set altitude
-		self.altK.zSp= self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+		self.altK.zSp = good_z
+
+		# initialize: next descend altitude
+		descend_alt = good_z
+
+		# gripper counter, to activate only once more after picking
+		gripper_counter = 0
+
+		# picking counter
+		# how many tics to pass before claiming picked
+		pick_counter = 0
+
 
 		# get current max lateral velocity
 		saved_vmax = rospy.get_param(self.namespace + '/kBodVel/vMax')
 
-		# TODO: Activate gripper (write the ROS node for the gripper feedback/command)
+		# Activate gripper
 		self.gripper_action.data = True
 		self.gripper_pub.publish(self.gripper_action)
+		self.rate.sleep()
 
 		while  self.current_signal != 'Failed' and not picked and not rospy.is_shutdown():
 			# monitor objects
@@ -518,61 +559,143 @@ class StateMachineC( object ):
 			print 'ObjectFound confidence: ', self.way_points_tracker.confidence
 			print ' '
 
-			# found an object
-			if objectFound and not self.gripperIsPicked:
-				altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
-				self.bodK.xSp = xy[0]*altCorrect
-				self.bodK.ySp = xy[1]*altCorrect
-				# for debug
-				print 'XY setpoints: ', self.bodK.xSp, '/', self.bodK.ySp
-				# this is a good observation, store it
-				# store most recent successful target
-				self.home.x = self.bodK.x
-				self.home.y = self.bodK.y
-				if self.inside_envelope(xy):
-					# descend if inside envelope
-					self.altK.zSp = max(self.altK.z - 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_ALT)
-			# object not found
-			elif not objectFound and not self.gripperIsPicked:
-				# if at max ALT (stil did not find objects), exit state with signal='Failed', to search again
-				if (self.altK.z >= self.ZGROUND+self.PICK_FAIL_ALT):
-					self.current_signal = 'Failed'
+			# object is not picked
+			if not self.gripperIsPicked:
+				# reduce pick_counter
+				pick_counter = max(pick_counter-1, 0)
 
-				# set last location where object was seen
-				print 'Object not considered/seen, going to last good position'
-				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
-				# increase altitude gradually, until an object is seen again
-				print 'increasing altitude gradually.... possibly to see/consdier object again'
-				print '  '
-				self.altK.zSp = min(self.altK.z + 0.1*abs(self.altK.z), self.ZGROUND+self.PICK_FAIL_ALT)
+				# reset gripper counter since it is not picked
+				gripper_counter = 0
 
-			# check if object is picked, fly up 1 meter
-			if (self.gripperIsPicked):
-				print 'Object is picked. Flying up, 1 meter.'
-				print '   '
-				self.altK.zSp = self.ZGROUND + 1.0
-			# check if still picked up at 1 meter, then claim object is picked
-			if (self.gripperIsPicked and self.altK.z > (self.ZGROUND+1.0) ):
-				print 'Object is claimed Picked. Exiting Pick state..'
-				print ' ' 
-				picked = True	# set True to exit the while loop
-				self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+				# Update confidence of object detection
+				if objectFound: # object is most likely seen
+					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*1.0, 1)
+					# update direction towards object
+					obj_x = self.bgr_target.x
+					obj_y = self.bgr_target.y
+				else: # object is most likely NOT seen
+					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*0.0, 1)
 
-			# make sure to lower max lateral velocity if close to ground
-			# this is to avoid flipping at high velocity close to ground
-			if self.altK.z < (self.ZGROUND + 0.5) :
-				# if less the 0.5 meter from ground, set vMax = 0.5 [m/s]
-				rospy.set_param(self.namespace + '/kBodVel/vMax', 0.5)
+				# confidence is High
+				if self.confidence > self.cTh:
+
+					# two possibilites: 1) see it in the frame, 2) not
+					if objectSeen: # confidence high + detection
+
+						# track in xy
+						altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
+						self.bodK.xSp = obj_x*altCorrect
+						self.bodK.ySp = obj_y*altCorrect
+
+						# update home
+						self.home.x = self.bodK.x
+						self.home.y = self.bodK.y
+
+						print '#----------- Confidence = High  && Object is in frame --------------#'
+						print 'Confidence: ', self.confidence
+						print 'Altitude correction (meters): ', altCorrect
+						print 'X2Object/Y2Object (meters): ', self.bodK.xSp, '/', self.bodK.ySp
+						print '      '
+
+						# inside envelope: track+descend
+						# adjust envelope size based on height
+						# current envelope is convex combination of envelope end points (defined in initialization)
+						s = 0.0
+						s = abs(self.altK.z/self.TRACK_ALT)
+						s = min(s,1.0)
+						env_pos = s*self.envelope_pos_max + (1-s)*self.envelope_pos_min
+						env_vel = s*self.envelope_vel_max + (1-s)*self.envelope_vel_min
+						dxy = np.sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
+						dvxy = np.sqrt(self.bodK.vx**2 + self.bodK.vy**2)
+						if dxy <= env_pos and dvxy <= env_vel:
+							# record good position
+							good_x = self.bodK.x
+							good_y = self.bodK.y
+							good_z = self.altK.z
+
+							# lower descent rate if at low altitude
+							if (self.altK.z - self.ZGROUND) < self.LOW_ALT:
+								descend_rate = self.descend_factor_low
+							else:
+								descend_rate = self.descend_factor_high
+							# update descend altitude only if the previous one was reached
+							if abs(self.altK.z - descend_alt) < 0.1:
+								descend_alt = descend_alt - descend_rate*descend_alt
+								self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
+								# TODO: should update good_z here ??
+			
+							print 'Object seen and Descending.....'
+							print '   '
+
+						else: # not inside envelope; keep at last good z
+							self.altK.zSp = descend_alt	#TODO: good_z, or descend_alt ????
+							print 'Object seen but not inside envelope.'
+							print 'Keeping current altitude, tracking in xy.'
+							print '    '
+					else: # confidence high + miss-detection
+						# TODO: implement follow startegy
+						# hold last velocity
+						vHold = True
+						print 'Confidence high  +  miss-detection ==> holding last velocity'
+						print '   '
+			
+					
+
+
+				else: # low detection confidence: not seen
+					# set the last good position
+					self.home.x = good_x
+					self.home.y = good_y
+					#self.altK.zSp = good_z
+					(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
+
+					print 'X-------------- Confidence low => Not seen ----------------X'
+					print 'Confidence: ', self.confidence
+					print 'XY towards last good position (meters): ', self.bodK.xSp, '/', self.bodK.ySp
+					print 'Going up gradually....'
+					print '   '
+					# go up gradually
+					self.altK.zSp = min(self.altK.z + 0.1*(self.altK.z), self.ZGROUND + self.TRACK_ALT)
+
+			
+					if self.altK.z >= (self.ZGROUND + self.TRACK_ALT):
+						print 'Reached Max allowed altitude..... object still considered not seen'
+			
+			# object is picked
 			else:
-				rospy.set_param(self.namespace + '/kBodVel/vMax', saved_vmax)
+				# make sure to stay for some time to confirm
+				if pick_counter >= 20:
+					print 'Object is considered PICKED.'
+					print ' '
+					self.altK.zSp = self.ZGROUND + self.TRACK_ALT
+					print 'Climbing to Altitude: ', self.altK.zSp
+				else:
+					print 'Pick signal is received. Waiting for confirmation....'
+					print ' '
 
-			#TODO: Fix me, keep sending activation signal when at low ALT
-			if self.altK.z < (self.ZGROUND + 0.5):
-				self.gripper_action.data = True
-				self.gripper_pub.publish(self.gripper_action)
+				pick_counter = min(pick_counter+1, 20)
+
+				# activate magnets once more to ensure gripping
+				if gripper_counter <1:
+					gripper_counter = gripper_counter+1
+					self.gripper_action.data = True
+					self.gripper_pub.publish(self.gripper_action)
+
+				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 
 			self.setp.velocity.z = self.altK.controller()
-			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+			# save last xy velocity setpoint
+			last_vx = self.setp.velocity.x
+			last_vy = self.setp.velocity.y
+			# high confidence + miss-detection => hold last velocity
+			if vHold:
+				self.setp.velocity.x = last_vx*self.vHold_factor
+				self.setp.velocity.x = last_vy*self.vHold_factor
+				self.setp.yaw_rate = 0.0
+				# reset vHold
+				vHold = False
+			else:
+				(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
 			self.rate.sleep()
 			# publish setpoint to pixhawk
 			self.setp.header.stamp = rospy.Time.now()
@@ -610,9 +733,7 @@ class StateMachineC( object ):
 		self.debug()
 
 		return
-
-
-
+		##################### End of Pick state ######################
 
 	# State: GoToDrop
 	def execute_gotodrop(self):
@@ -1210,30 +1331,14 @@ class StateMachineC( object ):
 				[lat_object,lon_object]=self.local_deltaxy_LLA(self.current_lat, self.current_lon,  dy_enu,  dx_enu)
 				if( self.quad_op_area.is_inside([lat_object,lon_object]) ):
 					objectFound=True
-					self.way_points_tracker.confidence=min(self.way_points_tracker.confidence+self.way_points_tracker.confidenceRate,1)
-					self.way_points_tracker.targetFollowed=[xy_list_sorted[i][0],xy_list_sorted[i][1]]
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
 				else:
 					print("Object seen but neglected")
-					if (self.way_points_tracker.confidence < self.way_points_tracker.confidenceThreshold):
-						objectFound=False
-						self.way_points_tracker.confidence=0
-						return (objectFound, [])
-					else:
-						objectFound=True
-						self.way_points_tracker.confidence=self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate
-						return (objectFound, self.way_points_tracker.targetFollowed)
+					objectFound = False
+					return (objectFound, [])
 		else:
-			if (self.way_points_tracker.confidence < self.way_points_tracker.confidenceThreshold):
-				objectFound=False
-				self.way_points_tracker.confidence=0
-				return (objectFound, [])
-			else:
-				objectFound=True
-				self.way_points_tracker.confidence=max(self.way_points_tracker.confidence-self.way_points_tracker.confidenceRate,0)
-				return (objectFound, self.way_points_tracker.targetFollowed)
-		############################################################################
-
+			objectFound=False
+			return (objectFound, [])
 	########## End of Monitoring Single Object  #######################
 
 	# determins if an object is inside an allowable descend envelope
