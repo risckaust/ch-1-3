@@ -345,7 +345,7 @@ class StateMachineC( object ):
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
-			print 'State/Set/Alt/Gnd:', self.current_state, self.altK.zSp, self.altK.z, self.ZGROUND
+			rospy.loginfo( 'State/Set/Alt/Gnd: %s/%s/%s/%s', self.current_state, self.altK.zSp, self.altK.z, self.ZGROUND)
 
 			# check for interruption
 			if rospy.get_param(self.namespace+'/state_machine/interruption')>0.0:
@@ -380,7 +380,7 @@ class StateMachineC( object ):
 
 	# State: ObjectSearch
 	def execute_objectSearch(self):
-		print("I am in object search...")
+		rospy.loginfo("I am in object search...")
 		self.current_state = 'ObjectSearch'
 		self.current_signal= 'Running'
 
@@ -399,20 +399,18 @@ class StateMachineC( object ):
 				if((self.way_points_tracker.state == "still") and (sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
 					self.way_points_tracker.start = rospy.get_time()
 					self.way_points_tracker.state="checking"
-					print("cheking")
+					rospy.loginfo("cheking")
 				if(self.way_points_tracker.state == "checking"):
 					self.way_points_tracker.stop = rospy.get_time()
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
 					if (self.way_points_tracker.elapsed>2):
 					    self.way_points_tracker.state="reached"
-					    print("reached")
+					    rospy.loginfo("reached")
 				if(self.way_points_tracker.state == "reached"):
 					self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
 					self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
 					self.way_points_tracker.state="still"
-					print("Going to :")
-					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][0])
-					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][1])
+					rospy.loginfo("Going to : %s / %s", self.way_points_tracker.way_points_list[self.way_points_tracker.index][0], self.way_points_tracker.way_points_list[self.way_points_tracker.index][1])
 					self.way_points_tracker.object_position=[]
 					self.way_points_tracker.start=rospy.get_time()
 					self.way_points_tracker.stop = self.way_points_tracker.start
@@ -427,22 +425,20 @@ class StateMachineC( object ):
 				if((self.way_points_tracker.state == "still") and (sqrt(pow(self.home.x-self.bodK.x,2)+pow(self.home.y-self.bodK.y,2))<1)):
 					self.way_points_tracker.start = rospy.get_time()
 					self.way_points_tracker.state="checking"
-					print("cheking")
+					rospy.loginfo("cheking")
 				if(self.way_points_tracker.state == "checking"):
 					self.way_points_tracker.stop = rospy.get_time()
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
 					if (self.way_points_tracker.elapsed>2):
 					    self.way_points_tracker.state="reached"
-					    print("reached")
+					    rospy.loginfo("reached")
 				if(self.way_points_tracker.state == "reached"):
 					self.way_points_tracker.index=self.way_points_tracker.index+1
-					print(self.way_points_tracker.index)
+					rospy.loginfo('%s',self.way_points_tracker.index)
 					self.target_lat=self.way_points_tracker.way_points_list[self.way_points_tracker.index][0]
 					self.target_lon=self.way_points_tracker.way_points_list[self.way_points_tracker.index][1]
 					self.way_points_tracker.state="still"
-					print("Going to :")
-					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][0])
-					print(self.way_points_tracker.way_points_list[self.way_points_tracker.index][1])
+					rospy.loginfo("Going to : %s / %s", self.way_points_tracker.way_points_list[self.way_points_tracker.index][0], self.way_points_tracker.way_points_list[self.way_points_tracker.index][1])
 					self.way_points_tracker.start=rospy.get_time()
 					self.way_points_tracker.stop = self.way_points_tracker.start
 					self.way_points_tracker.elapsed = self.way_points_tracker.stop - self.way_points_tracker.start
@@ -456,9 +452,6 @@ class StateMachineC( object ):
 			# check for objects
 			#objectFound, _ = self.monitorObjects()
 			objectFound, _ = self.monitorSingleObject()
-			print 'ObjectFound condifence: ', self.way_points_tracker.confidence
-			print '  '
-
 
 			# publish control commands
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
@@ -556,8 +549,6 @@ class StateMachineC( object ):
 			# monitor objects
 			#objectFound, xy = self.monitorObjects()
 			objectFound, xy = self.monitorSingleObject()
-			print 'ObjectFound confidence: ', self.way_points_tracker.confidence
-			print ' '
 
 			# object is not picked
 			if not self.gripperIsPicked:
@@ -582,26 +573,20 @@ class StateMachineC( object ):
 					# two possibilites: 1) see it in the frame, 2) not
 					if objectSeen: # confidence high + detection
 
-						# track in xy
-						altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
-						self.bodK.xSp = obj_x*altCorrect
-						self.bodK.ySp = obj_y*altCorrect
-
-						# update home
+						# CK_		# update home
 						self.home.x = self.bodK.x
 						self.home.y = self.bodK.y
 
-						print '#----------- Confidence = High  && Object is in frame --------------#'
-						print 'Confidence: ', self.confidence
-						print 'Altitude correction (meters): ', altCorrect
-						print 'X2Object/Y2Object (meters): ', self.bodK.xSp, '/', self.bodK.ySp
-						print '      '
+						rospy.loginfo( '#----------- Confidence = High  && Object is in frame --------------#')
+						rospy.loginfo( 'Confidence: %s', self.confidence)
+						rospy.loginfo( 'Altitude correction (meters): %s', altCorrect)
+						rospy.loginfo( 'X2Object/Y2Object (meters): %s/%s', self.bodK.xSp, self.bodK.ySp)
 
 						# inside envelope: track+descend
 						# adjust envelope size based on height
 						# current envelope is convex combination of envelope end points (defined in initialization)
 						s = 0.0
-						s = abs(self.altK.z/self.TRACK_ALT)
+						s = abs(self.altK.z/self.SEARCH_ALT)
 						s = min(s,1.0)
 						env_pos = s*self.envelope_pos_max + (1-s)*self.envelope_pos_min
 						env_vel = s*self.envelope_vel_max + (1-s)*self.envelope_vel_min
@@ -624,22 +609,17 @@ class StateMachineC( object ):
 								self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
 								# TODO: should update good_z here ??
 			
-							print 'Object seen and Descending.....'
-							print '   '
+							rospy.loginfo( 'Object seen and Descending.....')
 
 						else: # not inside envelope; keep at last good z
 							self.altK.zSp = descend_alt	#TODO: good_z, or descend_alt ????
-							print 'Object seen but not inside envelope.'
-							print 'Keeping current altitude, tracking in xy.'
-							print '    '
+							rospy.loginfo( 'Object seen but not inside envelope.')
+							rospy.loginfo( 'Keeping current altitude, tracking in xy.')
 					else: # confidence high + miss-detection
 						# TODO: implement follow startegy
 						# hold last velocity
 						vHold = True
-						print 'Confidence high  +  miss-detection ==> holding last velocity'
-						print '   '
-			
-					
+						rospy.loginfo('Confidence high  +  miss-detection ==> holding last velocity')					
 
 
 				else: # low detection confidence: not seen
@@ -649,30 +629,27 @@ class StateMachineC( object ):
 					#self.altK.zSp = good_z
 					(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 
-					print 'X-------------- Confidence low => Not seen ----------------X'
-					print 'Confidence: ', self.confidence
-					print 'XY towards last good position (meters): ', self.bodK.xSp, '/', self.bodK.ySp
-					print 'Going up gradually....'
-					print '   '
+					rospy.loginfo('X-------------- Confidence low => Not seen ----------------X')
+					rospy.loginfo('Confidence: %s', self.confidence)
+					rospy.loginfo('XY towards last good position (meters): %s/%s ', self.bodK.xSp, self.bodK.ySp)
+					rospy.loginfo('Going up gradually....')
 					# go up gradually
-					self.altK.zSp = min(self.altK.z + 0.1*(self.altK.z), self.ZGROUND + self.TRACK_ALT)
+					self.altK.zSp = min(self.altK.z + 0.1*(self.altK.z), self.ZGROUND + self.SEARCH_ALT)
 
 			
-					if self.altK.z >= (self.ZGROUND + self.TRACK_ALT):
-						print 'Reached Max allowed altitude..... object still considered not seen'
+					if self.altK.z >= (self.ZGROUND + self.SEARCH_ALT):
+						rospy.logwarn('Reached Max allowed altitude..... object still considered not seen')
 			
 			# object is picked
 			else:
 				# make sure to stay for some time to confirm
 				if pick_counter >= 20:
-					print 'Object is considered PICKED.'
-					print ' '
-					self.altK.zSp = self.ZGROUND + self.TRACK_ALT
-					print 'Climbing to Altitude: ', self.altK.zSp
+					rospy.loginfo('Object is considered PICKED.')
+					self.altK.zSp = self.ZGROUND + self.SEARCH_ALT
+					rospy.loginfo('Climbing to Altitude: %s', self.altK.zSp)
 				else:
-					print 'Pick signal is received. Waiting for confirmation....'
-					print ' '
-
+					rospy.loginfo('Pick signal is received. Waiting for confirmation....')
+					
 				pick_counter = min(pick_counter+1, 20)
 
 				# activate magnets once more to ensure gripping
@@ -1333,7 +1310,7 @@ class StateMachineC( object ):
 					objectFound=True
 					return (objectFound, [xy_list_sorted[i][0],xy_list_sorted[i][1]])
 				else:
-					print("Object seen but neglected")
+					rospy.logwarn("Object seen but neglected")
 					objectFound = False
 					return (objectFound, [])
 		else:
@@ -1353,12 +1330,12 @@ class StateMachineC( object ):
 	######## for debug: prints the state/signal
 	def debug(self):
 		if self.DEBUG:
-			print '#--------------------------------------#'
-			print 'State/Signal: ', self.current_state, ' -> ', self.current_signal
-			print '#--------------------------------------#'
+			rospy.loginfo('#--------------------------------------#')
+			rospy.loginfo( 'State/Signal: %s -> %s', self.current_state, self.current_signal)
+			rospy.loginfo( '#--------------------------------------#')
 
 			if rospy.is_shutdown():
-				print '|------ ROS IS SHUTTING DOWN------|'
+				rospy.logwarn( '|------ ROS IS SHUTTING DOWN------|')
 	############### End of debug function ##################
 
 	######## for intermediate points along a great circle path:########################
@@ -1643,10 +1620,10 @@ def mission():
 	if rospy.has_param(ns+'/field_map'):
         	field_map = rospy.get_param(ns+'/field_map')
 
-	print 'Length of field map= ', len(field_map)
+	rospy.loginfo( 'Length of field map= %s', len(field_map) )
 
 	if len(field_map) < 14:
-		print 'Field map is not set properly. Exiting.....'
+		rospy.logerr( 'Field map is not set properly. Exiting.....')
 		return
 
 	sm = StateMachineC(ns,field_map)
