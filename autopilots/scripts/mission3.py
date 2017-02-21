@@ -21,9 +21,8 @@ import myLib
 import autopilotParams
 
 # TODO: include time stamp in state publisher
-# TODO: convert 'print' statments to ROS_INFO
 
-# TODO: move the gripper msg definition from autopilots pckg toi gripper pckg
+# TODO: move the gripper msg definition from autopilots pckg to gripper pckg
 
 #!!!!!!!!!!!!! Need to define a message type for the state machine !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ######################################################################################################
@@ -177,6 +176,8 @@ class StateMachineC( object ):
 		# Lat/Lon of pre-drop location: different for each vehicle
 		self.PRE_DROP_COORDS	= np.array([23.1, 12.1])
 		self.DROP_COORDS	= np.array([23.3, 12.5])
+		# DROP altitude [m]
+		self.DROP_ALT		= 0.5
 
 		# Altitude at ground level
 		self.ZGROUND		= 0.0
@@ -588,8 +589,8 @@ class StateMachineC( object ):
 						s = 0.0
 						s = abs(self.altK.z/self.SEARCH_ALT)
 						s = min(s,1.0)
-						env_pos = s*self.envelope_pos_max + (1-s)*self.envelope_pos_min
-						env_vel = s*self.envelope_vel_max + (1-s)*self.envelope_vel_min
+						env_pos = s*self.ENVELOPE_XY_POS_MAX + (1-s)*self.ENVELOPE_XY_POS_MIN
+						env_vel = s*self.ENVELOPE_XY_VEL_MAX + (1-s)*self.ENVELOPE_XY_VEL_MIN
 						dxy = np.sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
 						dvxy = np.sqrt(self.bodK.vx**2 + self.bodK.vy**2)
 						if dxy <= env_pos and dvxy <= env_vel:
@@ -884,6 +885,8 @@ class StateMachineC( object ):
 		# deactivate magnets, and keep checking gripper feedback!
 		# while loop
 		dropped = False
+		descend_alt = self.ZGROUND + self.SEARCH_ALT
+		self.altK.zSp = descend_alt
 		while not dropped and not rospy.is_shutdown():
 
 			# compute direction to drop waypoint
@@ -898,15 +901,22 @@ class StateMachineC( object ):
 			self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
 			# try to drop if arrived
-			distance = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
-			if distance < 0.2:
-				# deactivate gripper
-				self.gripper_action.data = False
-				self.gripper_pub.publish(self.gripper_action)
+			dxy = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
+			if dxy <= 0.15:
+				# descend gradually
+				if abs(self.altK.z - self.ZGROUND - descend_alt) <= 0.1:
+					descend_alt = descend_alt - self.descend_factor_high*descend_alt
+					descend_alt = max(self.ZGROUND+self.DROP_ALT, descend_alt)
 
-			#TODO break once drop is confirmed
-			distance = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
-			if distance < 0.2 and not self.gripperIsPicked:
+				
+				# deactivate gripper if at DROP_ALT
+				if abs(self.altK.z - self.ZGROUND - self.DROP_ALT) <= 0.1:
+					self.gripper_action.data = False
+					self.gripper_pub.publish(self.gripper_action)
+
+			# break once drop is confirmed
+			dxy = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
+			if dxy <= 0.15 and not self.gripperIsPicked:
 				dropped = True
 
 			# update setpoint topic
@@ -936,6 +946,7 @@ class StateMachineC( object ):
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
 		# update setpoint topic
+		# TODO: set the SEARCH_ALT ??
 		self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 		self.setp.velocity.z = self.altK.controller()
 		(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
@@ -1627,6 +1638,16 @@ def mission():
 		return
 
 	sm = StateMachineC(ns,field_map)
+
+	sm.SEARCH_ALT = 3.0
+	sm.PICK_ALT = 0.2
+	sm.DROP_ALT = 0.3
+	sm.ENVELOPE_XY_POS_MIN = 0.2
+	sm.ENVELOPE_XY_POS_MAX = 0.6
+	sm.ENVELOPE_XY_VEL_MIN = 0.15
+	sm.ENVELOPE_XY_VEL_MAX = 0.5
+	sm.vHold_factor = 0.1
+
 	sm.DEBUG=True
 	sm.TKOFFALT = 5.0
 	sm.current_state='Picking'
