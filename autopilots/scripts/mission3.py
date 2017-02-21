@@ -646,6 +646,8 @@ class StateMachineC( object ):
 			
 					if self.altK.z >= (self.ZGROUND + self.SEARCH_ALT):
 						rospy.logwarn('Reached Max allowed altitude..... object still considered not seen')
+						rospy.logwarn('Pick Failed')
+						self.current_signal = 'Failed'
 			
 			# object is picked
 			else:
