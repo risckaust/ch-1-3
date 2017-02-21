@@ -123,7 +123,7 @@ class Tracker():
 		pick_counter = 0
 
 		# make the magnets ready
-		self.gripper_action = True
+		self.gripper_action.data = True
 		self.gripper_pub.publish(self.gripper_action)
 		self.rate.sleep()
 
@@ -252,7 +252,7 @@ class Tracker():
 				# activate magnets once more to ensure gripping
 				if gripper_counter <1:
 					gripper_counter = gripper_counter+1
-					self.gripper_action = True
+					self.gripper_action.data = True
 					self.gripper_pub.publish(self.gripper_action)
 
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
