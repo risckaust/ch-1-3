@@ -65,7 +65,7 @@ def setParams(ns):
     
     # ROS parameters for pix2m
     rospy.set_param(ns+'/pix2m/m2pix', 0.00104167)                  # 0.5m = 480pixels
-    rospy.set_param(ns+'/pix2m/altCal',1.2)                         # calibration altitude (used in main loop)
+    rospy.set_param(ns+'/pix2m/altCal',1.3)                         # calibration altitude (used in main loop)
     
     # ROS parameters getLaunchPadx3 ***TO BE ELIMINATED***
     rospy.set_param(ns+'/getLaunchPadx3/pxMasking', False)            # use proximity masking
