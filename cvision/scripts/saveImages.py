@@ -96,7 +96,7 @@ def main():
 	print 'Image' + str(c) + '.jpg' + ' is saved in ' + path
 	c = c + 1
 
-	img_pub.publish(bridge.cv2_to_imgmsg(frame, encoding="passthrough"))
+	img_pub.publish(bridge.cv2_to_imgmsg(frame, encoding="bgr8"))
 	
 	rate.sleep()
     cap.release()
