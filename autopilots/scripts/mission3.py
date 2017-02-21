@@ -182,19 +182,27 @@ class StateMachineC( object ):
 		# Altitude at ground level
 		self.ZGROUND		= 0.0
 		self.home		= autopilotLib.xyzVar()
+		
+		# [meters]
+		self.TRACK_ALT		= 3.0
+		
 		# Altitude at which we pick object [m]
-		self.PICK_ALT		= 0.6
+		self.PICK_ALT		= 0.3
 		# Altitude at which PICK fails if object not seen, [m]
 		self.PICK_FAIL_ALT	= 5.0
 		# Object search Altitude, [m]
 		self.SEARCH_ALT		= 3.0
 		# camera offset from ground [m]
 		self.CAMOFFSET		= 0.1
-		# relative pos error where descend is allowed [m]
-		self.ENVELOPE_XY_POS	= 0.2
-		# relative vel error where descend is allowed [m/s]
-		self.ENVELOPE_XY_V	= 0.1
+		# distance from object threshold
+		self.envelope_pos_max	= 0.6 # [m]
+		self.envelope_pos_min	= 0.2 # [m]
+		self.envelope_vel_min	= 0.15 # [m/s]
+		self.envelope_vel_max	= 0.5 # [m/s]
 
+		# how much velocity to hold if confidenc is high+ object not seen in the current frame
+		self.vHold_factor = 0.1
+		
 		# Instantiate a setpoint topic structure
 		self.setp		= PositionTarget()
 		# use velocity setpoints
