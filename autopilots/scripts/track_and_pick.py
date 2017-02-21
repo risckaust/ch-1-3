@@ -35,6 +35,12 @@ class Tracker():
 		self.envelope_vel_min	= 0.15 # [m/s]
 		self.envelope_vel_max	= 0.5 # [m/s]
 
+		# descend_rate: fraction of the previous setpoint
+		self.descend_factor_low = 0.05 #[ % ]
+		self.descend_factor_high = 0.1 #[ % ]
+		# altitude where descend rate is reduced, [m]
+		self.LOW_ALT		= 1.0
+
 		# ground altitude
 		self.ZGROUND		= 0.0
 
@@ -155,6 +161,10 @@ class Tracker():
 						self.bodK.xSp = obj_x*altCorrect
 						self.bodK.ySp = obj_y*altCorrect
 
+						# update home
+						self.home.x = self.bodK.x
+						self.home.y = self.bodK.y
+
 						print '#----------- Confidence = High  && Object is in frame --------------#'
 						print 'Confidence: ', self.confidence
 						print 'Altitude correction (meters): ', altCorrect
@@ -176,9 +186,15 @@ class Tracker():
 							good_x = self.bodK.x
 							good_y = self.bodK.y
 							good_z = self.altK.z
+
+							# lower descent rate if at low altitude
+							if (self.altK.z - self.ZGROUND) < self.LOW_ALT:
+								descend_rate = self.descend_factor_low
+							else:
+								descend_rate = self.descend_factor_high
 							# update descend altitude only if the previous one was reached
 							if abs(self.altK.z - descend_alt) < 0.1:
-								descend_alt = descend_alt - 0.1*descend_alt
+								descend_alt = descend_alt - descend_rate*descend_alt
 								self.altK.zSp = max(descend_alt, self.ZGROUND + self.PICK_ALT)
 								# TODO: should update good_z here ??
 			
@@ -238,6 +254,8 @@ class Tracker():
 					gripper_counter = gripper_counter+1
 					self.gripper_action = True
 					self.gripper_pub.publish(self.gripper_action)
+
+				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK,self.home)
 				
 			# update setpoint topic
 			self.setp.velocity.z = self.altK.controller()
