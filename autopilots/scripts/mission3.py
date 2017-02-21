@@ -294,12 +294,14 @@ class StateMachineC( object ):
 			# do nothing, until we receive the start signal
 
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
 
 		self.current_signal = 'Ready'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -342,6 +344,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -362,6 +365,7 @@ class StateMachineC( object ):
 		if self.current_signal != 'Interrupted':
 		    self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -464,6 +468,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -479,6 +484,7 @@ class StateMachineC( object ):
 		if self.current_signal != 'Interrupted':
 		    self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -679,6 +685,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -697,6 +704,7 @@ class StateMachineC( object ):
 		#save the picked object position
 		self.way_points_tracker.object_position=[self.current_lat,self.current_lon]
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -757,6 +765,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -772,6 +781,7 @@ class StateMachineC( object ):
 		if self.current_signal != 'Interrupted':
 		          self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -843,6 +853,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -865,6 +876,7 @@ class StateMachineC( object ):
 		self.setp.header.stamp = rospy.Time.now()
 		self.command.publish(self.setp)
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -927,6 +939,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -942,6 +955,7 @@ class StateMachineC( object ):
 		if self.current_signal != 'Interrupted':
 			self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -971,6 +985,7 @@ class StateMachineC( object ):
 		# Done with GoHome state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -1056,6 +1071,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -1066,6 +1082,7 @@ class StateMachineC( object ):
 		# Done with Land state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
@@ -1105,6 +1122,7 @@ class StateMachineC( object ):
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
 			# publish state topic
+			self.state_topic.header.stamp = rospy.Time.now()
 			self.state_topic.state = self.current_state
 			self.state_topic.signal = self.current_signal
 			self.state_pub.publish(self.state_topic)
@@ -1121,6 +1139,7 @@ class StateMachineC( object ):
 		# Done with Hover state, send signal
 		self.current_signal = 'Done'
 		# publish state topic
+		self.state_topic.header.stamp = rospy.Time.now()
 		self.state_topic.state = self.current_state
 		self.state_topic.signal = self.current_signal
 		self.state_pub.publish(self.state_topic)
