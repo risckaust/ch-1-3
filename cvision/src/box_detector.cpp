@@ -70,7 +70,6 @@ int main(int argc, char** argv)
     std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
 
-
     //ROS Init
     ros::init(argc, argv, "box_detector");
 

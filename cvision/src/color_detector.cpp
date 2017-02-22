@@ -64,7 +64,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& input)
     }
 }
 
-
 class ImageConverter
 {
 
@@ -387,6 +386,7 @@ int main(int argc, char** argv)
                 vector<Point2f> cc(cont_sz);
                 vector<float> cr(cont_sz);
                 vector<int> minRectArea(cont_sz);
+		vector<int> minCircleArea(cont_sz);
                 int max_idx_c= 0;
                 int max_idx_r= 0;
 
@@ -414,18 +414,19 @@ int main(int argc, char** argv)
                         {
                             minRect[i] = minAreaRect( Mat(contours_poly[i]) );
                             minRectArea[i]=minRect[i].size.width*minRect[i].size.height;
-                            if (minRectArea[max_idx_c]<minRectArea[i])
+                            if (minRectArea[max_idx_r]<minRectArea[i])
                             {
-                                max_idx_c = i;
+                                max_idx_r = i;
                             }
                         }
                         if (bFitCircle || bDebug)
                         {
                             minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
-                        }
-                        if (minRectArea[max_idx_r]<minRectArea[i])
-                        {
-                            max_idx_r = i;
+                            minCircleArea[i]=cr[i]*cr[i]*CV_PI;
+                            if (minCircleArea[max_idx_c]<minCircleArea[i])
+                                {
+                                    max_idx_c = i;
+                                }
                         }
                         //cout << "Bounding Box: " << boundRect[i] << endl;
                         //cout << "Smallest Rect: " << minRect[i] << endl;
