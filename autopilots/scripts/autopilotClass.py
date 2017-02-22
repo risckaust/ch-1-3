@@ -210,8 +210,9 @@ class autopilotClass:
     #   ySp = commanded y setpoint (NED-h, m)
     #   x = x of body frame origin in local ENU coordinates (m)
     #   y = y of body frame origin in local ENU coordinates (m)
+    #   yaw = yaw angle of relative (yaw,pitch,roll) in Local ENU -> Body NED    
     #   vx, vy = body frame velocities (m/s)
-    #   yaw = yaw angle of relative (yaw,pitch,roll) in Local ENU -> Body NED
+    #   vxFF, vyFF = filtered feedforward velocities from EKF
     #   engaged = Boolean if armed and offboard
     #
     #   ekf = subclass to estimate the velocity and orientation of the setpoint
@@ -252,6 +253,8 @@ class autopilotClass:
         class EKF:
             def __init__(self):
                 self.xhat = np.matrix(np.zeros( (5,1) ))
+                self.VxFF = 0.0 # Filtered ekf estimates in ENU
+                self.VyFF = 0.0
                 self.F = np.matrix(np.identity(5))
                 self.H = np.matrix(np.zeros( (2,5) ))
                 self.H[0,0] = 1.0
@@ -261,9 +264,9 @@ class autopilotClass:
                 self.Q[0,0] = 0.1 # .1, .1, .1, .5, .5
                 self.Q[1,1] = 0.1
                 self.Q[2,2] = 0.1
-                self.Q[3,3] = 1.0
+                self.Q[3,3] = 0.1
                 self.Q[4,4] = 0.5
-                self.R = np.matrix(np.identity(2))*1.0 # TODO: parameter
+                self.R = np.matrix(np.identity(2))*10.0 # TODO: parameter
                 
 
         def cbPos(self,msg):
@@ -365,14 +368,17 @@ class autopilotClass:
                 vHat =  self.ekf.xhat[3]
                 wHat = self.ekf.xhat[4]
                 
-                VX = vHat*cos(thHat)      # ENU coordinates                  
+                VX = vHat*cos(thHat)      # ENU coordinates             
                 VY = vHat*sin(thHat)
                 
+                self.ekf.VxFF = 0.9*self.ekf.VxFF + 0.1*VX # TODO: parameter
+                self.ekf.VyFF = 0.9*self.ekf.VyFF + 0.1*VY
+                        
                 #### vxRef = vxRef - VX*sin(thHat) + VY*cos(thHat) # convert estimates to body coordinates
                 #### vyRef = vyRef + VX*cos(thHat) + VY*sin(thHat)
                 
-                vxRef = vxRef - VX*sin(bodyRot) + VY*cos(bodyRot) # convert estimates to body coordinates
-                vyRef = vyRef + VX*cos(bodyRot) + VY*sin(bodyRot)
+                vxRef = vxRef - self.ekf.VxFF*sin(bodyRot) + self.ekf.VyFF*cos(bodyRot) # convert estimates to body coordinates
+                vyRef = vyRef + self.ekf.VxFF*cos(bodyRot) + self.ekf.VyFF*sin(bodyRot)
 
             vel = sqrt(vxRef**2 + vyRef**2)
             if vel > vMax:                            # anti-windup scaling      

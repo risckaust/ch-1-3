@@ -69,10 +69,16 @@ def getValve():
         #     _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
         #############
         
+        # Mask all but center
+        
+        pxMask = np.zeros((480,640,1), np.uint8)
+        radius = 150
+        cv2.rectangle(pxMask, pt1 = (320-radius,240+radius), pt2 = (320+radius,240-radius), color = 255, thickness = -1)
+        mask = cv2.bitwise_and(mask,pxMask)
         
         # Find center of valve
 
-        _, mask = cv2.threshold(gray,205,255,cv2.THRESH_BINARY)
+        _, mask = cv2.threshold(mask,205,255,cv2.THRESH_BINARY)
         
         if OLDCV:
             cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
@@ -80,37 +86,49 @@ def getValve():
             _, cnts, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
             
         c0 = 320,240
-        if len(cnts) > 0:
-            # keep largest contour
-            c = max(cnts, key=cv2.contourArea)
-            # construct & draw bounding circle
-            ((x, y), radius) = cv2.minEnclosingCircle(c)
-            cv2.circle(gray, (int(x), int(y)), int(radius),(0, 0, 0), 2)
-            c0 = int(x),int(y)
         
-        # Create proximity mask
+        if False:
+            if len(cnts) > 0:
+                # keep largest contour
+                c = max(cnts, key=cv2.contourArea)
+                # construct & draw bounding circle
+                ((x, y), radius) = cv2.minEnclosingCircle(c)
+                cv2.circle(gray, (int(x), int(y)), int(radius),(0, 0, 0), 2)
+                c0 = int(x),int(y)
         
+        # Create proximity mask around center
+        
+        radius = 100
         pxMask = np.zeros((480,640,1), np.uint8)
-        cv2.rectangle(pxMask, pt1 = (c0[0]-100,c0[1]+100), pt2 = (c0[0]+100,c0[1]-100), color = 255, thickness = -1)
+        cv2.rectangle(pxMask, \
+            pt1 = (c0[0]-radius,c0[1]+radius), pt2 = (c0[0]+radius,c0[1]-radius), color = 255, thickness = -1)
         mask = cv2.bitwise_and(mask,pxMask)
             
+        # threshold
+        
         mask = cv2.adaptiveThreshold(mask,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
-           cv2.THRESH_BINARY,11,5)
-           
+           cv2.THRESH_BINARY,11,1) # 11, 5
+        
         mask = cv2.bitwise_not(mask)
+        
+        # Shrink proximity mask to remove outline
         
         pxMask = np.zeros((480,640,1), np.uint8)
         cv2.rectangle(pxMask, pt1 = (c0[0]-90,c0[1]+90), pt2 = (c0[0]+90,c0[1]-90), color = 255, thickness = -1)
         mask = cv2.bitwise_and(mask,pxMask) 
         
-        mask = cv2.dilate(mask, kernel, iterations=1)
+        # exaggerate white
+        
+        mask = cv2.dilate(mask, kernel, iterations=2) #iter = 1
+        
+        # Template matching
 
         best = 0.0, 0.0, 0.0, 0.0 # score, r, q (degrees)
         score = -np.inf
             
         for dx in range(-10,11,5):
             for dy in range(-10,11,5):
-                for r in range(5,26):
+                for r in range(8,44,2):
                     for q in range(0,90,5):
                     
                         c = c0[0]+dx, c0[1]+dy
@@ -147,7 +165,9 @@ def getValve():
                             cv2.imshow('temp',gray2)
                             cv2.imshow('mask',mask2)
                             key = cv2.waitKey(1) & 0xFF
-                            
+                                                
+        
+        print best
                             
         if False:
             cB = best[0],best[1]

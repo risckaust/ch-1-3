@@ -66,33 +66,31 @@ def getColor():
     feMask = np.zeros((LY,LX,1), np.uint8)
     cv2.circle(feMask,(LX/2,LY/2),LX/2,(255,255,255),-1)
 
-    # start video stream: Replaces
-    #   cap = cv2.VideoCapture(0) or cap = cv2.VideoCapture('file.mp4')
-    #   _, frame = cap.read()
     quadCam = cvisionLib.getFrame()
-    #quadCam = cvisionLib.getCvFrame()
-    
-    
-    # Code for testing from video file
-    if rospy.get_param('/getColors/testFileOn'):
-        cap = cv2.VideoCapture(rospy.get_param('/getColors/fileName'))
 
     while not rospy.is_shutdown():
 
-        # grab a frame
-        if rospy.get_param('/getColors/testFileOn'):
-            _, frame = cap.read()
-        else:
-            frame = quadCam.BGR
+        frame = quadCam.BGR
         
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) # convert to HSV
+        mask = hsv
+        
+        # Apply masks
+        
+        # apply fisheye mask
+        if rospy.get_param('/cvision/feCamera'):
+            mask = cv2.bitwise_and(mask,feMask)
+
+        # apply proximity mask
+        if rospy.get_param('/getColors/proximityOn') and MaskItNow:
+            mask = cv2.bitwise_and(mask,pxMask)
             
     	# find the color in the image for blue, green, and red
     	
         # Blue
         lowerB = np.array([100,100,100],np.uint8)
         upperB = np.array([130,255,255],np.uint8)
-        maskB = cv2.inRange(hsv,lowerB,upperB)
+        maskB = cv2.inRange(mask,lowerB,upperB)
         
         # Green
         lowerG = np.array([70,100,100],np.uint8)
@@ -111,14 +109,6 @@ def getColor():
 
         mask = cv2.bitwise_or(maskB,maskG)
         mask = cv2.bitwise_or(mask,maskR)
-
-        # apply fisheye mask
-        if rospy.get_param('/cvision/feCamera'):
-            mask = cv2.bitwise_and(mask,feMask)
-
-        # apply proximity mask
-        if rospy.get_param('/getColors/proximityOn') and MaskItNow:
-            mask = cv2.bitwise_and(mask,pxMask)
             
         if rospy.get_param('/getColors/erodeOn'):
             # opening
@@ -162,7 +152,7 @@ def getColor():
                 
                 # M = cv2.moments(c)
                 M = cv2.moments(mask)  # Find moments of mask or contour?
-                
+                print M["m00"]
                 if M["m00"]>rospy.get_param('/getColors/minMass'):
                 
                     # flag positive detection
@@ -179,7 +169,9 @@ def getColor():
                 msgPixels.x=center[0]
                 msgPixels.y=center[1]
                 msgPixels.z = radius # report radius of enclosing circle
-                
+        else:
+            print "no cnts"
+                    
         # create proximity mask
 
         pxMask = np.zeros((rospy.get_param('/cvision/LY'),rospy.get_param('/cvision/LX'),1), np.uint8)
@@ -188,6 +180,8 @@ def getColor():
                 MaskItNow = True
         else:
             MaskItNow = False
+            
+        print kc, Detect, DetectHold, MaskItNow
                 
         DetectHold = Detect # hold for next iteration
         
@@ -209,8 +203,9 @@ def getColor():
 
         # show processed images to screen
         if rospy.get_param('/getColors/imgShow'):
-            cv2.imshow(color,frame)
+            cv2.imshow('color',frame)
             cv2.imshow('mask',mask)
+            cv2.imshow('pxMask',pxMask)
             key = cv2.waitKey(1) & 0xFF
 
         # published downsized/grayscale processed image

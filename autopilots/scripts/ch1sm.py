@@ -215,6 +215,8 @@ def ch1sm():
             sm.bodK.ekf.xhat[2] = sm.bodK.yaw # current heading
             sm.bodK.ekf.xhat[3] = 0.0 # TODO: sqrt(sm.bodK.vx**2 + sm.bodK.vy**2)
             sm.bodK.ekf.xhat[4] = 0.0
+            sm.bodK.ekf.VxFF = 0.0
+            sm.bodK.ekf.VyFF = 0.0
             sm.bodK.ekf.P = np.matrix(np.identity(5))*1.0
 
             # Start time count
@@ -268,7 +270,7 @@ def ch1sm():
                 dT = dTee.to_sec()
                 print " "
                 print "Tracking: conf", confidence
-                print "dX/dY: ", sm.bodK.x - np.asscalar(sm.bodK.ekf.xhat[0]), sm.bodK.y - np.asscalar(sm.bodK.ekf.xhat[1])
+                print "x-xHat/y-yHat: ", sm.bodK.x - np.asscalar(sm.bodK.ekf.xhat[0]), sm.bodK.y - np.asscalar(sm.bodK.ekf.xhat[1])
                 print "dT/seeIt/vHat: ", dT, seeIt, np.asscalar(sm.bodK.ekf.xhat[3])
 
 
@@ -302,7 +304,7 @@ def ch1sm():
             if smartLanding:
                 theAlt = sm.altK.distanceSensor - zGroundDistanceSensor
             else:
-                theAlt = sm.altK.z -zGround
+                theAlt = sm.altK.z - zGround
 
             zSp = theAlt/2.0    # incremental target waypoint
             zFix = -1.0
@@ -386,6 +388,8 @@ def ch1sm():
                             AllAgree = True
                         
                     if HighAltitude: # descend if seeIt and high altitude and platform velocity match:
+                        # sm.altK.zSp = 2.0
+                        # sm.setp.velocity.z = sm.altK.controller()
                         sm.setp.velocity.z = -rospy.get_param('/kAltVel/vMaxD')
                         Descend = True
                     elif Envelope and AllAgree: # descend if seeIt and platform match and teraRangers agree with distanceSensor
@@ -426,9 +430,9 @@ def ch1sm():
                 print "Descending: conf/PlatformFix:", confidence, PlatformFix
                 print "teras/teraAgree:", sm.altK.teraRanges, teraAgree
                 print "seeIt/Env/High/AllAgree: ", seeIt, Envelope, HighAltitude, AllAgree
-                print "dXY/dV/vHat: ", dXY, dV, np.asscalar(sm.bodK.ekf.xhat[3])
                 print "Descend/z/zSp/zFix: ", Descend, theAlt, zSp, zFix
-
+                print "dXY/dV/vHat: ", dXY, dV, np.asscalar(sm.bodK.ekf.xhat[3])
+                
             TrackDown = False
             
             # Cleanup
