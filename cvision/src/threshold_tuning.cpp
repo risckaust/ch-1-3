@@ -22,8 +22,10 @@ using namespace cv;
 
 struct MouseParams
 {
-    Mat img;
-    Point3_<uchar> pt;
+    Mat img_HSV;
+    Mat img_BGR;
+    Point3_<uchar> pt_HSV;
+    Point3_<uchar> pt_BGR;
     bool bMouseClicked;
 };
 
@@ -35,17 +37,26 @@ void mouseHandler( int event, int x, int y, int flags, void* param)
 
 // Mount back the parameters
     MouseParams* mp = (MouseParams*)param;
-    Mat img = mp->img;
+    Mat img_HSV = mp->img_HSV;
+    Mat img_BGR = mp->img_BGR;
 
-    Point3_<uchar>* point = img.ptr<Point3_<uchar> >(y,x);
+    Point3_<uchar>* point_HSV = img_HSV.ptr<Point3_<uchar> >(y,x);
+    Point3_<uchar>* point_BGR = img_BGR.ptr<Point3_<uchar> >(y,x);
 //Point3_<uchar>* point = img->ptr<Point3_<uchar> >(y,x);
-    mp->pt = * point;
+    mp->pt_HSV = *point_HSV;
+    mp->pt_BGR = *point_BGR;
     mp->bMouseClicked = true;
 
-//int H=point->x; //hue
-//int S=point->y; //saturation
-//int V=point->z; //value
-//cout << "H:" << H << " S:" << S << " V:" << V << endl;
+    int H=point_HSV->x; //hue
+    int S=point_HSV->y; //saturation
+    int V=point_HSV->z; //value
+
+    int B=point_BGR->x; //blue
+    int G=point_BGR->y; //green
+    int R=point_BGR->z; //red
+
+cout << "H:" << H << " S:" << S << " V:" << V << endl;
+cout << "B:" << B << " G:" << G << " R:" << R << endl;
 
 }
 
@@ -63,39 +74,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& input)
         ROS_ERROR("cv_bridge exception: %s", e.what());
     }
 }
-
-class ImageConverter
-{
-
-
-public:
-  ros::NodeHandle nh;
-  cv_bridge::CvImagePtr cv_ptr;
-  ImageConverter()
-  {
-    // Subscrive to input video feed and publish output video feed
-    ros::Subscriber image_sub_ = nh.subscribe("/Quad1/cvision/frame", 1,
-      &ImageConverter::imageCb, this);
-  }
-
-  ~ImageConverter()
-  {
-  }
-
-  void imageCb(const sensor_msgs::ImageConstPtr& msg)
-  {
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-  }
-};
 
 int main(int argc, char** argv)
 {
@@ -122,6 +100,7 @@ int main(int argc, char** argv)
     bool bFitCircle = true;
     //Set min object size
     int min_obj_sz = 5;
+    int obj_sz = 0;
     int thres_tol = 50;
     int morph_sz = 5;
     int frameRate = 30;
@@ -129,43 +108,41 @@ int main(int argc, char** argv)
     int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
     int frame_counter = 0;
     int frame_count_max = -1; //infinite
-    int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow
+    int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow, 5-box
 
 
     std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    std::string img_tp = "/cv_camera/image_raw";
 
     //ROS Init
-    ros::init(argc, argv, "color_detector");
+    ros::init(argc, argv, "threshold_tuning");
 
     //Node handle
     ros::NodeHandle n;
 
-     /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
+    /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
     if (n.getParam("pkg_path", pkgpath))
     {
-      ROS_INFO("Got pkg path: %s", pkgpath.c_str());
-      srcpath = pkgpath + "/src";
+        ROS_INFO("Got pkg path: %s", pkgpath.c_str());
+        srcpath = pkgpath + "/src";
     }
     else
     {
-      ROS_INFO("Failed to get param 'pkgpath'. Default to hardcoded paths.");
+        ROS_INFO("Failed to get param 'pkgpath'. Default to hardcoded paths.");
     }
 
     /* get the topic name of image feed */
-    std::string img_tp;
     if (n.getParam("image_feed", img_tp))
     {
-      ROS_INFO("Got param: %s", img_tp.c_str());
+        ROS_INFO("Got param: %s", img_tp.c_str());
     }
     else
     {
-      ROS_INFO("Failed to get param 'image_feed'. Default to 'Quad1/cvision/frame' ");
-      img_tp = "/Quad1/cvision/frame";
+        ROS_INFO("Failed to get param 'image_feed'. Default to hardcoded topic.");
     }
 
     cvision::ObjectPose msg;
-
     ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("colorObj",1000);
 
     /* Subscribe to image ROS topic*/
@@ -207,6 +184,8 @@ int main(int argc, char** argv)
         else if (name == "morph_sz") iss >> morph_sz;
         else if (name == "frameRate") iss >> frameRate;
     }
+
+    int thres_tol_old = thres_tol;
 
     RNG rng(12345);
 
@@ -301,6 +280,10 @@ int main(int argc, char** argv)
         else if (name1 == "iHighV") iss >> iHighV;
     }
 
+    int H=floor((iLowH+iHighH)/2); //hue
+    int S=floor((iLowS+iHighS)/2); //saturation
+    int V=floor((iLowV+iHighV)/2); //value
+
     cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
@@ -311,219 +294,236 @@ int main(int argc, char** argv)
         Mat imgContours;
 
 
-            if ( (bCamera || bVideo) && !bCompetition)
-            {
-                bool bSuccess = cap.read(imgBGR); // read a new frame from video
+        if ( (bCamera || bVideo) && !bCompetition)
+        {
+            bool bSuccess = cap.read(imgBGR); // read a new frame from video
 
-                if (!bSuccess) //if not success, break loop
+            if (!bSuccess) //if not success, break loop
+            {
+                cout << "Cannot read a frame from video stream" << endl;
+                break;
+            }
+
+        }
+
+        else if (cv_img_ptr_ros)
+        {
+            imgBGR = cv_img_ptr_ros->image;
+        }
+        else
+        {
+            ros::spinOnce();
+            loop_rate.sleep();
+            continue;
+        }
+
+
+        frame_counter++;
+
+        //Determine size of video input
+        int irows_imgBGR = imgBGR.rows;
+        int icols_imgBGR = imgBGR.cols;
+
+        imgSz = Size(icols_imgBGR,irows_imgBGR);
+        cvtColor(imgBGR, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+
+        ///////Thresholding
+        //inRange(imgBGR, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+        inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+
+        morph_sz=max(morph_sz,1);
+        //Width and height for morph
+        int morph_width = morph_sz;
+        int morph_height = morph_sz;
+
+        //GaussianBlur(imgThresholded, imgThresholded, Size(0, 0),morph_sz);
+        //blur(imgThresholded, imgThresholded, Size(morph_width, morph_height));
+
+        //morphological opening (removes small objects from the foreground)
+        erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+        dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+        //morphological closing (removes small holes from the foreground)
+        dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+        erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+
+        imgContours = imgThresholded.clone();
+
+        //Create a black image with the size as the camera output
+        Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
+        vector<vector<Point> > contours;
+        vector<Vec4i> hierarchy;
+        //cvFindContours()
+        findContours(imgContours, contours, hierarchy,
+                     CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+        int cont_sz = contours.size();
+
+        int x_SP = 0;
+        int y_SP = 0;
+        float r_SP = 0;
+        float t_SP = 0;
+
+        if (cont_sz>0)
+        {
+            vector<Moments> mu(cont_sz);
+            vector<vector<Point> > contours_poly(cont_sz);
+            vector<Rect> boundRect(cont_sz);
+            vector<RotatedRect> minRect(cont_sz);
+            vector<Point2f> mc(cont_sz);
+            vector<Point2f> mc_dist(cont_sz);
+            vector<Point2f> cc(cont_sz);
+            vector<float> cr(cont_sz);
+            vector<int> minBoundArea(cont_sz);
+            vector<int> minRectArea(cont_sz);
+            vector<int> minCircleArea(cont_sz);
+            int max_idx_b= 0;
+            int max_idx_c= 0;
+            int max_idx_r= 0;
+
+            //center of frame
+            Point2f frameCenter(icols_imgBGR / 2, irows_imgBGR / 2);
+
+            /// Approximate contours to polygons + get bounding rects and circles
+            for (int i = 0; i < cont_sz; i++)
+            {
+                approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+                // Get the moments
+                mu[i] = moments(contours_poly[i], false);
+                //Assuming object is circle, calculate diameter
+                //m00 is object area in pixels
+                obj_sz = 2*sqrt(mu[i].m00/CV_PI);
+//                cout << "Approximate Object Diameter: " << obj_sz << endl;
+
+                if (obj_sz>min_obj_sz)
                 {
-                    cout << "Cannot read a frame from video stream" << endl;
-                    break;
-                }
+                    // Get the mass centers:
+                    mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
+                    mc_dist[i] = frameCenter - mc[i];
 
-            }
-
-            else if (cv_img_ptr_ros)
-            {
-                imgBGR = cv_img_ptr_ros->image;
-            }
-            else
-            {
-                ros::spinOnce();
-                loop_rate.sleep();
-                continue;
-            }
-
-
-            frame_counter++;
-
-            //Determine size of video input
-            int irows_imgBGR = imgBGR.rows;
-            int icols_imgBGR = imgBGR.cols;
-
-            imgSz = Size(icols_imgBGR,irows_imgBGR);
-            cvtColor(imgBGR, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
-
-            ///////Thresholding
-            //inRange(imgBGR, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
-            inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
-
-            //Width and height for morph
-            int morph_width = morph_sz;
-            int morph_height = morph_sz;
-
-            //morphological opening (removes small objects from the foreground)
-            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
-            dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
-
-            //morphological closing (removes small holes from the foreground)
-            dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
-            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
-
-            imgContours = imgThresholded;
-            //Create a black image with the size as the camera output
-            Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
-            vector<vector<Point> > contours;
-            vector<Vec4i> hierarchy;
-            //cvFindContours()
-            findContours(imgContours, contours, hierarchy,
-                         CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-            int cont_sz = contours.size();
-
-            int x_SP = 0;
-            int y_SP = 0;
-            float r_SP = 0;
-            float t_SP = 0;
-
-            if (cont_sz>0)
-            {
-                vector<Moments> mu(cont_sz);
-                vector<vector<Point> > contours_poly(cont_sz);
-                vector<Rect> boundRect(cont_sz);
-                vector<RotatedRect> minRect(cont_sz);
-                vector<Point2f> mc(cont_sz);
-                vector<Point2f> mc_dist(cont_sz);
-                vector<Point2f> cc(cont_sz);
-                vector<float> cr(cont_sz);
-                vector<int> minRectArea(cont_sz);
-		vector<int> minCircleArea(cont_sz);
-                int max_idx_c= 0;
-                int max_idx_r= 0;
-
-                //center of frame
-                Point2f frameCenter(icols_imgBGR / 2, irows_imgBGR / 2);
-
-                /// Approximate contours to polygons + get bounding rects and circles
-                for (int i = 0; i < cont_sz; i++)
-                {
-                    // Get the moments
-                    mu[i] = moments(contours[i], false);
-
-                    if (mu[i].m00>min_obj_sz)
+//                    approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+                    if (bFitBoundingBox || bDebug)
                     {
-                        // Get the mass centers:
-                        mc[i] = Point2f(mu[i].m10 / mu[i].m00, mu[i].m01 / mu[i].m00);
-                        mc_dist[i] = frameCenter - mc[i];
-
-                        approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
-                        if (bFitBoundingBox || bDebug)
+                        boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+                        minBoundArea[i]=boundRect[i].width*boundRect[i].height;
+                        if (minBoundArea[max_idx_b]<minBoundArea[i])
                         {
-                            boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+                            max_idx_b = i;
                         }
-                        if (bFitRotatedRect || bDebug)
-                        {
-                            minRect[i] = minAreaRect( Mat(contours_poly[i]) );
-                            minRectArea[i]=minRect[i].size.width*minRect[i].size.height;
-                            if (minRectArea[max_idx_r]<minRectArea[i])
-                            {
-                                max_idx_r = i;
-                            }
-                        }
-                        if (bFitCircle || bDebug)
-                        {
-                            minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
-                            minCircleArea[i]=cr[i]*cr[i]*CV_PI;
-                            if (minCircleArea[max_idx_c]<minCircleArea[i])
-                                {
-                                    max_idx_c = i;
-                                }
-                        }
-                        //cout << "Bounding Box: " << boundRect[i] << endl;
-                        //cout << "Smallest Rect: " << minRect[i] << endl;
-                        //cout << "Smallest Circle: " << cc[i] << ", " << cr[i] << endl;
                     }
-                }
-
-
-                if (bFitCircle || bDebug)
-                {
-                    x_SP = cc[max_idx_c].x;
-                    y_SP = cc[max_idx_c].y;
-                    r_SP = cr[max_idx_c];
-                }
-                if (bFitRotatedRect || bDebug)
-                {
-                    x_SP = mc[max_idx_r].x;
-                    y_SP = mc[max_idx_r].y;
-                    t_SP = minRect[max_idx_r].angle;
-                }
-
-                //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
-
-                //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-                Scalar color = Scalar(0, 255, 255);
-                Scalar color1 = Scalar(255, 0, 0);
-                Scalar color2 = Scalar(0, 255, 0);
-                Scalar color3 = Scalar(0, 0, 255);
-
-                if (bViz && !bCompetition)
-                {
-//                    if (bFitBoundingBox)
-//                    {
-//                        //bounding box
-//                        rectangle(imgBGR, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
-//                    }
-                    if (bFitRotatedRect)
+                    if (bFitRotatedRect || bDebug)
                     {
+                        minRect[i] = minAreaRect( Mat(contours_poly[i]) );
+                        minRectArea[i]=minRect[i].size.width*minRect[i].size.height;
+                        if (minRectArea[max_idx_r]<minRectArea[i])
+                        {
+                            max_idx_r = i;
+                        }
+                    }
+                    if (bFitCircle || bDebug)
+                    {
+                        minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
+                        minCircleArea[i]=cr[i]*cr[i]*CV_PI;
+                        if (minCircleArea[max_idx_c]<minCircleArea[i])
+                        {
+                            max_idx_c = i;
+                        }
+                    }
+                    //cout << "Bounding Box: " << boundRect[i] << endl;
+                    //cout << "Smallest Rect: " << minRect[i] << endl;
+                    //cout << "Smallest Circle: " << cc[i] << ", " << cr[i] << endl;
+                }
+            }
+
+
+            if (bFitCircle || bDebug)
+            {
+                x_SP = cc[max_idx_c].x;
+                y_SP = cc[max_idx_c].y;
+                r_SP = cr[max_idx_c];
+            }
+            if (bFitRotatedRect || bDebug)
+            {
+                x_SP = mc[max_idx_r].x;
+                y_SP = mc[max_idx_r].y;
+                t_SP = minRect[max_idx_r].angle;
+            }
+
+            //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
+
+            //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+            Scalar color = Scalar(0, 255, 255);
+            Scalar color1 = Scalar(255, 0, 0);
+            Scalar color2 = Scalar(0, 255, 0);
+            Scalar color3 = Scalar(0, 0, 255);
+
+            if (bViz && !bCompetition)
+            {
+                    if (bFitBoundingBox)
+                    {
+                        //bounding box
+                        rectangle(imgBGR, boundRect[max_idx_b].tl(), boundRect[max_idx_b].br(), color1, 2, 8, 0 );
+                    }
+                if (bFitRotatedRect)
+                {
+                    //rotated rectangle
+                    Point2f rect_points[4];
+                    minRect[max_idx_r].points( rect_points );
+                    for( int j = 0; j < 4; j++ )
+                        line(imgBGR, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
+                    //Center
+                    circle(imgBGR, mc[max_idx_r], 5, color, -1, 8, 0);
+                }
+                if (bFitCircle)
+                {
+                    //min circle
+                    circle(imgBGR, cc[max_idx_c], (int)cr[max_idx_c], color3, 2, 8, 0 );
+                    //Center
+                    circle(imgBGR, cc[max_idx_c], 5, color, -1, 8, 0);
+                }
+                //putText(imgBGR, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
+            }
+
+            if (bDebug && !bCompetition)
+            {
+                for (int i = 0; i< contours.size(); i++)
+                {
+                    if (obj_sz>min_obj_sz) //Minimum size for object, otherwise it is considered noise
+                    {
+
+                        /// Draw polygonal contour + bonding rects + circles
+                        //poly contours
+                        //drawContours( drawing, contours_poly, i, color, 1, 8, hierarchy, 0, Point() );
+                        drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+                        //bounding box
+                        rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
                         //rotated rectangle
                         Point2f rect_points[4];
-                        minRect[max_idx_r].points( rect_points );
+                        minRect[i].points( rect_points );
                         for( int j = 0; j < 4; j++ )
-                            line(imgBGR, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
-                        //Center
-                        circle(imgBGR, mc[max_idx_r], 5, color, -1, 8, 0);
-                    }
-                    if (bFitCircle)
-                    {
+                            line( drawing, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
                         //min circle
-                        circle(imgBGR, cc[max_idx_c], (int)cr[max_idx_c], color3, 2, 8, 0 );
-                        //Center
-                        circle(imgBGR, cc[max_idx_c], 5, color, -1, 8, 0);
+                        circle( drawing, cc[i], (int)cr[i], color3, 2, 8, 0 );
                     }
-                    //putText(imgBGR, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
-                }
 
-                if (bDebug && !bCompetition)
-                {
-                    for (int i = 0; i< contours.size(); i++)
-                    {
-                        if (mu[i].m00 > min_obj_sz) //Minimum size for object, otherwise it is considered noise
-                        {
-
-
-                            /// Draw polygonal contour + bonding rects + circles
-                            //poly contours
-                            //drawContours( drawing, contours_poly, i, color, 1, 8, hierarchy, 0, Point() );
-                            drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
-                            //bounding box
-                            rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
-                            //rotated rectangle
-                            Point2f rect_points[4];
-                            minRect[i].points( rect_points );
-                            for( int j = 0; j < 4; j++ )
-                                line( drawing, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
-                            //min circle
-                            circle( drawing, cc[i], (int)cr[i], color3, 2, 8, 0 );
-                        }
-
-                    }
                 }
             }
-            else
-            {
-                //No contours found
-            }
+        }
+        else
+        {
+            //No contours found
+        }
 
 
-if (!bCompetition) {
+        if (!bCompetition)
+        {
 
             //Adjust thresholds with values selected by mouse
             if(mp.bMouseClicked)
             {
                 mp.bMouseClicked = false;
-                int H=mp.pt.x; //hue
-                int S=mp.pt.y; //saturation
-                int V=mp.pt.z; //value
+                H=mp.pt_HSV.x; //hue
+                S=mp.pt_HSV.y; //saturation
+                V=mp.pt_HSV.z; //value
                 iLowH = max(H-thres_tol,0);
                 iHighH = min(H+thres_tol,179);
                 iLowS = max(S-thres_tol,0);
@@ -535,23 +535,22 @@ if (!bCompetition) {
 
             if (bDebug == true)
             {
-                namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
-                imshow( "Contours", drawing );
+                imshow( "Poly Contours", drawing );
                 drawing = Mat::zeros(imgSz, CV_8UC3 );
-
+                //imshow("Contour Image", imgContours); //show the thresholded image
                 imshow("Thresholded Image", imgThresholded); //show the thresholded image
             }
             else
             {
                 //if not in debug mode, destroy the window
+                cv::destroyWindow("Poly Contours");
+                //cv::destroyWindow("Contour Image");
                 cv::destroyWindow("Thresholded Image");
-                cv::destroyWindow("Contours");
             }
 
             if (bViz == true)
             {
                 /// Show in a window
-                namedWindow( "VideoFeed", CV_WINDOW_AUTOSIZE );
                 imshow("VideoFeed", imgBGR); //show the original image
             }
             else
@@ -560,10 +559,10 @@ if (!bCompetition) {
                 cv::destroyWindow("VideoFeed");
             }
 
+
             if (bCtrl == true)
             {
                 namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
-
                 //Create trackbars in "Control" window
                 createTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
                 createTrackbar("HighH", "Control", &iHighH, 179);
@@ -575,10 +574,11 @@ if (!bCompetition) {
                 createTrackbar("HighV", "Control", &iHighV, 255);
 
                 createTrackbar("Tolerance", "Control", &thres_tol, 100);
+                createTrackbar("Object Sz", "Control", &min_obj_sz, 100);
+                createTrackbar("Morph Sz", "Control", &morph_sz, 25);
 
-                createTrackbar("Tolerance", "Control", &thres_tol, 100);
-
-                mp.img = imgHSV;
+                mp.img_HSV = imgHSV;
+                mp.img_BGR = imgBGR;
                 cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
 
             }
@@ -586,6 +586,18 @@ if (!bCompetition) {
             {
                 //if not in ctrl mode, destroy the window
                 cv::destroyWindow("Control");
+            }
+
+            //If threshold tolerance was changed update values.
+            if (thres_tol_old - thres_tol != 0)
+            {
+                iLowH = max(H-thres_tol,0);
+                iHighH = min(H+thres_tol,179);
+                iLowS = max(S-thres_tol,0);
+                iHighS = min(S+thres_tol,255);
+                iLowV = max(V-thres_tol,0);
+                iHighV = min(V+thres_tol,255);
+                thres_tol_old = thres_tol;
             }
 
             if (bOutputVideo)
@@ -681,319 +693,365 @@ if (!bCompetition) {
             switch (color)
             {
             case 1: //Red color selected.
-                if (bSend) {
-                //Send ROS message here
+                if (bSend)
+                {
+                    //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
+                    threshParam[0] = iLowH;
+                    threshParam[1] = iLowS;
+                    threshParam[2] = iLowV;
                     n.setParam("/Quad1/RedHSV/low", threshParam);
                     n.setParam("/Quad2/RedHSV/low", threshParam);
                     n.setParam("/Quad3/RedHSV/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
+                    threshParam[0] = iHighH;
+                    threshParam[1] = iHighS;
+                    threshParam[2] = iHighV;
                     n.setParam("/Quad1/RedHSV/high", threshParam);
                     n.setParam("/Quad2/RedHSV/high", threshParam);
                     n.setParam("/Quad3/RedHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending red thresholds complete." << endl;
+                    bSend = false;
+                    cout << "Sending red thresholds complete." << endl;
                 }
-		if (bWrite) {
+                if (bWrite)
+                {
 
-		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-		    ifstream streamYaml (configYaml.c_str());
-		    if (!streamYaml)
-		    {
-			cout << "error: could not load yaml color_thresholds file," << endl;
-		    }
+                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+                    ifstream streamYaml (configYaml.c_str());
+                    if (!streamYaml)
+                    {
+                        cout << "error: could not load yaml color_thresholds file," << endl;
+                    }
 
-		    int idx = 0;
-		    std::vector<std::string> text_file(10);
-		    string txt_line;
-		    while (getline(streamYaml, txt_line))
-		    {
-			text_file[idx] = txt_line;
-			idx++;
-		    }
+                    int idx = 0;
+                    std::vector<std::string> text_file(10);
+                    string txt_line;
+                    while (getline(streamYaml, txt_line))
+                    {
+                        text_file[idx] = txt_line;
+                        idx++;
+                    }
 
-		    ofstream fileYaml(configYaml.c_str());
-		    //Save values to file
-		    if (fileYaml.is_open())
-		    {
-			for (int i=0; i<10; i++) {
+                    ofstream fileYaml(configYaml.c_str());
+                    //Save values to file
+                    if (fileYaml.is_open())
+                    {
+                        for (int i=0; i<10; i++)
+                        {
 
-				if (i==color){
-				fileYaml << "RedHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
-				}
-				else{
-					fileYaml << text_file[i] << "\n";
-				}
-			}
-			fileYaml.close();
-			cout << "Finished writing" << endl;
-		    }
-		    else cout << "Unable to open file";
-		
+                            if (i==color)
+                            {
+                                fileYaml << "RedHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                            }
+                            else
+                            {
+                                fileYaml << text_file[i] << "\n";
+                            }
+                        }
+                        fileYaml.close();
+                        cout << "Finished writing" << endl;
+                    }
+                    else cout << "Unable to open file";
+
                     bWrite = false;
                     cout << "Writing red thresholds complete." << endl;
-		}
+                }
                 break;
 
             case 2: //Green color selected.
-                if (bSend) {
-                //Send ROS message here
+                if (bSend)
+                {
+                    //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
+                    threshParam[0] = iLowH;
+                    threshParam[1] = iLowS;
+                    threshParam[2] = iLowV;
                     n.setParam("/Quad1/GreenHSV/low", threshParam);
                     n.setParam("/Quad2/GreenHSV/low", threshParam);
                     n.setParam("/Quad3/GreenHSV/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
+                    threshParam[0] = iHighH;
+                    threshParam[1] = iHighS;
+                    threshParam[2] = iHighV;
                     n.setParam("/Quad1/GreenHSV/high", threshParam);
                     n.setParam("/Quad2/GreenHSV/high", threshParam);
                     n.setParam("/Quad3/GreenHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending green thresholds complete." << endl;
+                    bSend = false;
+                    cout << "Sending green thresholds complete." << endl;
                 }
-		if (bWrite) {
+                if (bWrite)
+                {
 
-		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-		    ifstream streamYaml (configYaml.c_str());
-		    if (!streamYaml)
-		    {
-			cout << "error: could not load yaml color_thresholds file," << endl;
-		    }
+                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+                    ifstream streamYaml (configYaml.c_str());
+                    if (!streamYaml)
+                    {
+                        cout << "error: could not load yaml color_thresholds file," << endl;
+                    }
 
-		    int idx = 0;
-		    std::vector<std::string> text_file(10);
-		    string txt_line;
-		    while (getline(streamYaml, txt_line))
-		    {
-			text_file[idx] = txt_line;
-			idx++;
-		    }
+                    int idx = 0;
+                    std::vector<std::string> text_file(10);
+                    string txt_line;
+                    while (getline(streamYaml, txt_line))
+                    {
+                        text_file[idx] = txt_line;
+                        idx++;
+                    }
 
-		    ofstream fileYaml(configYaml.c_str());
-		    //Save values to file
-		    if (fileYaml.is_open())
-		    {
-			for (int i=0; i<10; i++) {
+                    ofstream fileYaml(configYaml.c_str());
+                    //Save values to file
+                    if (fileYaml.is_open())
+                    {
+                        for (int i=0; i<10; i++)
+                        {
 
-				if (i==color){
-				fileYaml << "GreenHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
-				}
-				else{
-					fileYaml << text_file[i] << "\n";
-				}
-			}
-			fileYaml.close();
-			cout << "Finished writing" << endl;
-		    }
-		    else cout << "Unable to open file";
-		
+                            if (i==color)
+                            {
+                                fileYaml << "GreenHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                            }
+                            else
+                            {
+                                fileYaml << text_file[i] << "\n";
+                            }
+                        }
+                        fileYaml.close();
+                        cout << "Finished writing" << endl;
+                    }
+                    else cout << "Unable to open file";
+
                     bWrite = false;
                     cout << "Writing green thresholds complete." << endl;
-		}
+                }
                 break;
 
             case 3: //Blue color selected.
-                if (bSend) {
-                //Send ROS message here
+                if (bSend)
+                {
+                    //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
+                    threshParam[0] = iLowH;
+                    threshParam[1] = iLowS;
+                    threshParam[2] = iLowV;
                     n.setParam("/Quad1/BlueHSV/low", threshParam);
                     n.setParam("/Quad2/BlueHSV/low", threshParam);
                     n.setParam("/Quad3/BlueHSV/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
+                    threshParam[0] = iHighH;
+                    threshParam[1] = iHighS;
+                    threshParam[2] = iHighV;
                     n.setParam("/Quad1/BlueHSV/high", threshParam);
                     n.setParam("/Quad2/BlueHSV/high", threshParam);
                     n.setParam("/Quad3/BlueHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending blue thresholds complete." << endl;
+                    bSend = false;
+                    cout << "Sending blue thresholds complete." << endl;
                 }
-		if (bWrite) {
+                if (bWrite)
+                {
 
-		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-		    ifstream streamYaml (configYaml.c_str());
-		    if (!streamYaml)
-		    {
-			cout << "error: could not load yaml color_thresholds file," << endl;
-		    }
+                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+                    ifstream streamYaml (configYaml.c_str());
+                    if (!streamYaml)
+                    {
+                        cout << "error: could not load yaml color_thresholds file," << endl;
+                    }
 
-		    int idx = 0;
-		    std::vector<std::string> text_file(10);
-		    string txt_line;
-		    while (getline(streamYaml, txt_line))
-		    {
-			text_file[idx] = txt_line;
-			idx++;
-		    }
+                    int idx = 0;
+                    std::vector<std::string> text_file(10);
+                    string txt_line;
+                    while (getline(streamYaml, txt_line))
+                    {
+                        text_file[idx] = txt_line;
+                        idx++;
+                    }
 
-		    ofstream fileYaml(configYaml.c_str());
-		    //Save values to file
-		    if (fileYaml.is_open())
-		    {
-			for (int i=0; i<10; i++) {
+                    ofstream fileYaml(configYaml.c_str());
+                    //Save values to file
+                    if (fileYaml.is_open())
+                    {
+                        for (int i=0; i<10; i++)
+                        {
 
-				if (i==color){
-				fileYaml << "BlueHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
-				}
-				else{
-					fileYaml << text_file[i] << "\n";
-				}
-			}
-			fileYaml.close();
-			cout << "Finished writing" << endl;
-		    }
-		    else cout << "Unable to open file";
-		
+                            if (i==color)
+                            {
+                                fileYaml << "BlueHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                            }
+                            else
+                            {
+                                fileYaml << text_file[i] << "\n";
+                            }
+                        }
+                        fileYaml.close();
+                        cout << "Finished writing" << endl;
+                    }
+                    else cout << "Unable to open file";
+
                     bWrite = false;
                     cout << "Writing blue thresholds complete." << endl;
-		}
+                }
                 break;
 
             case 4: //Yellow color selected.
-                if (bSend) {
-                //Send ROS message here
+                if (bSend)
+                {
+                    //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
+                    threshParam[0] = iLowH;
+                    threshParam[1] = iLowS;
+                    threshParam[2] = iLowV;
                     n.setParam("/Quad1/YellowHSV/low", threshParam);
                     n.setParam("/Quad2/YellowHSV/low", threshParam);
                     n.setParam("/Quad3/YellowHSV/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
+                    threshParam[0] = iHighH;
+                    threshParam[1] = iHighS;
+                    threshParam[2] = iHighV;
                     n.setParam("/Quad1/YellowHSV/high", threshParam);
                     n.setParam("/Quad2/YellowHSV/high", threshParam);
                     n.setParam("/Quad3/YellowHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending yellow thresholds complete." << endl;
+                    bSend = false;
+                    cout << "Sending yellow thresholds complete." << endl;
                 }
-		if (bWrite) {
+                if (bWrite)
+                {
 
-		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-		    ifstream streamYaml (configYaml.c_str());
-		    if (!streamYaml)
-		    {
-			cout << "error: could not load yaml color_thresholds file," << endl;
-		    }
+                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+                    ifstream streamYaml (configYaml.c_str());
+                    if (!streamYaml)
+                    {
+                        cout << "error: could not load yaml color_thresholds file," << endl;
+                    }
 
-		    int idx = 0;
-		    std::vector<std::string> text_file(10);
-		    string txt_line;
-		    while (getline(streamYaml, txt_line))
-		    {
-			text_file[idx] = txt_line;
-			idx++;
-		    }
+                    int idx = 0;
+                    std::vector<std::string> text_file(10);
+                    string txt_line;
+                    while (getline(streamYaml, txt_line))
+                    {
+                        text_file[idx] = txt_line;
+                        idx++;
+                    }
 
-		    ofstream fileYaml(configYaml.c_str());
-		    //Save values to file
-		    if (fileYaml.is_open())
-		    {
-			for (int i=0; i<10; i++) {
+                    ofstream fileYaml(configYaml.c_str());
+                    //Save values to file
+                    if (fileYaml.is_open())
+                    {
+                        for (int i=0; i<10; i++)
+                        {
 
-				if (i==color){
-				fileYaml << "YellowHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
-				}
-				else{
-					fileYaml << text_file[i] << "\n";
-				}
-			}
-			fileYaml.close();
-			cout << "Finished writing" << endl;
-		    }
-		    else cout << "Unable to open file";
-		
+                            if (i==color)
+                            {
+                                fileYaml << "YellowHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                            }
+                            else
+                            {
+                                fileYaml << text_file[i] << "\n";
+                            }
+                        }
+                        fileYaml.close();
+                        cout << "Finished writing" << endl;
+                    }
+                    else cout << "Unable to open file";
+
                     bWrite = false;
                     cout << "Writing yellow thresholds complete." << endl;
-		}
+                }
                 break;
-	    case 5: // box
-		if (bSend) {
-                //Send ROS message here
+            case 5: // box
+                if (bSend)
+                {
+                    //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
+                    threshParam[0] = iLowH;
+                    threshParam[1] = iLowS;
+                    threshParam[2] = iLowV;
                     n.setParam("/Quad1/BoxHSV/low", threshParam);
                     n.setParam("/Quad2/BoxHSV/low", threshParam);
                     n.setParam("/Quad3/BoxHSV/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
+                    threshParam[0] = iHighH;
+                    threshParam[1] = iHighS;
+                    threshParam[2] = iHighV;
                     n.setParam("/Quad1/BoxHSV/high", threshParam);
                     n.setParam("/Quad2/BoxHSV/high", threshParam);
                     n.setParam("/Quad3/BoxHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending Box thresholds complete." << endl;
+                    bSend = false;
+                    cout << "Sending Box thresholds complete." << endl;
                 }
-		if (bWrite) {
+                if (bWrite)
+                {
 
-		    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-		    ifstream streamYaml (configYaml.c_str());
-		    if (!streamYaml)
-		    {
-			cout << "error: could not load yaml color_thresholds file," << endl;
-		    }
+                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+                    ifstream streamYaml (configYaml.c_str());
+                    if (!streamYaml)
+                    {
+                        cout << "error: could not load yaml color_thresholds file," << endl;
+                    }
 
-		    int idx = 0;
-		    std::vector<std::string> text_file(10);
-		    string txt_line;
-		    while (getline(streamYaml, txt_line))
-		    {
-			text_file[idx] = txt_line;
-			idx++;
-		    }
+                    int idx = 0;
+                    std::vector<std::string> text_file(10);
+                    string txt_line;
+                    while (getline(streamYaml, txt_line))
+                    {
+                        text_file[idx] = txt_line;
+                        idx++;
+                    }
 
-		    ofstream fileYaml(configYaml.c_str());
-		    //Save values to file
-		    if (fileYaml.is_open())
-		    {
-			for (int i=0; i<10; i++) {
+                    ofstream fileYaml(configYaml.c_str());
+                    //Save values to file
+                    if (fileYaml.is_open())
+                    {
+                        for (int i=0; i<10; i++)
+                        {
 
-				if (i==color){
-				fileYaml << "BoxHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
-				}
-				else{
-					fileYaml << text_file[i] << "\n";
-				}
-			}
-			fileYaml.close();
-			cout << "Finished writing" << endl;
-		    }
-		    else cout << "Unable to open file";
-		
+                            if (i==color)
+                            {
+                                fileYaml << "BoxHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                            }
+                            else
+                            {
+                                fileYaml << text_file[i] << "\n";
+                            }
+                        }
+                        fileYaml.close();
+                        cout << "Finished writing" << endl;
+                    }
+                    else cout << "Unable to open file";
+
                     bWrite = false;
                     cout << "Writing box thresholds complete." << endl;
-		}
+                }
                 break;
             }
 
-            }
+        }
 
-            //ROS Topics
-            //pose (setpoint - 2D float [m], heading - float [deg])
-            //valid - bool
-            //radius - float [m]
-            if (cont_sz>0)
-            {
-                msg.pose.x = x_SP;
-                msg.pose.y = y_SP;
-                msg.pose.theta = t_SP;
-                msg.radius = r_SP;
-                msg.valid = true;
-            }
-            else
-            {
-                msg.valid = false;
-            }
+        //ROS Topics
+        //pose (setpoint - 2D float [m], heading - float [deg])
+        //valid - bool
+        //radius - float [m]
+        if (cont_sz>0)
+        {
+            msg.pose.x = x_SP;
+            msg.pose.y = y_SP;
+            msg.pose.theta = t_SP;
+            msg.radius = r_SP;
+            msg.valid = true;
+        }
+        else
+        {
+            msg.valid = false;
+        }
 
-            //ROS Publisher
-            object_pub.publish(msg);
+        //ROS Publisher
+        object_pub.publish(msg);
 
-            if (cv_img_ptr_ros){
+        if (cv_img_ptr_ros)
+        {
             //Clear pointer
             cv_img_ptr_ros.reset();
-            }
+        }
 
-            ros::spinOnce();
-            loop_rate.sleep();
+        ros::spinOnce();
+        loop_rate.sleep();
     }
 
     string newThres = srcpath + "/ThresholdValuesNew.txt";
