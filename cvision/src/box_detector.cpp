@@ -20,35 +20,6 @@
 using namespace std;
 using namespace cv;
 
-struct MouseParams
-{
-    Mat img;
-    Point3_<uchar> pt;
-    bool bMouseClicked;
-};
-
-void mouseHandler( int event, int x, int y, int flags, void* param)
-{
-
-    if( event != CV_EVENT_LBUTTONDOWN )
-        return;
-
-// Mount back the parameters
-    MouseParams* mp = (MouseParams*)param;
-    Mat img = mp->img;
-
-    Point3_<uchar>* point = img.ptr<Point3_<uchar> >(y,x);
-//Point3_<uchar>* point = img->ptr<Point3_<uchar> >(y,x);
-    mp->pt = * point;
-    mp->bMouseClicked = true;
-
-//int H=point->x; //hue
-//int S=point->y; //saturation
-//int V=point->z; //value
-//cout << "H:" << H << " S:" << S << " V:" << V << endl;
-
-}
-
 cv_bridge::CvImagePtr cv_img_ptr_ros;
 cv_bridge::CvImagePtr cv_img_gray_ptr_ros;
 
@@ -65,44 +36,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& input)
     }
 }
 
-
-class ImageConverter
-{
-
-
-public:
-  ros::NodeHandle nh;
-  cv_bridge::CvImagePtr cv_ptr;
-  ImageConverter()
-  {
-    // Subscrive to input video feed and publish output video feed
-    ros::Subscriber image_sub_ = nh.subscribe("/Quad1/cvision/frame", 1,
-      &ImageConverter::imageCb, this);
-  }
-
-  ~ImageConverter()
-  {
-  }
-
-  void imageCb(const sensor_msgs::ImageConstPtr& msg)
-  {
-    try
-    {
-      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-  }
-};
-
 int main(int argc, char** argv)
 {
-    MouseParams mp;
-    mp.bMouseClicked = false;
     //pause and resume code
     bool bPause = false;
     bool bESC = false;
@@ -116,7 +51,6 @@ int main(int argc, char** argv)
     bool bROS = false;
     bool bViz = false;
     bool bCompetition = false;
-    bool bSend = false;
     //Fit shapes
     bool bFitBoundingBox = true;
     bool bFitRotatedRect = true;
@@ -143,7 +77,7 @@ int main(int argc, char** argv)
     //Node handle
     ros::NodeHandle n;
     image_transport::ImageTransport it(n);
-    
+
 
     std::string ns = ros::this_node::getNamespace();
 
@@ -180,7 +114,7 @@ int main(int argc, char** argv)
     bool bStream = false;
     int stream_rate = 1;
     // get gray image stream rate
-    
+
     if (n.getParam(ns + "/stream_img", bStream) && n.getParam(ns + "/stream_rate", stream_rate) )
     {
       ROS_INFO("Got streaming info.");
@@ -192,9 +126,6 @@ int main(int argc, char** argv)
 
     /* Subscribe to image ROS topic*/
     ros::Subscriber image_sub = n.subscribe(img_tp,1,imageCallback);
-
-    /* list variables to be published in ROS parameters server */
-    std::vector<int> threshParam(3);
 
     string configFile = srcpath + "/box_config.txt";
     ifstream f_config(configFile.c_str());
@@ -341,8 +272,6 @@ int main(int argc, char** argv)
 	 }
     }
 
-
-
     cout << "Ready to loop..." << endl;
     Mat imgBGR;
     Mat imgHSV;
@@ -378,7 +307,6 @@ int main(int argc, char** argv)
                 continue;
             }
 
-
             frame_counter++;
 
             //Determine size of video input
@@ -389,7 +317,6 @@ int main(int argc, char** argv)
             cvtColor(imgBGR, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
 
             ///////Thresholding
-            //inRange(imgBGR, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
             inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
 
             //Width and height for morph
@@ -430,6 +357,7 @@ int main(int argc, char** argv)
                 vector<Point2f> cc(cont_sz);
                 vector<float> cr(cont_sz);
                 vector<int> minRectArea(cont_sz);
+                vector<int> minCircleArea(cont_sz);
                 int max_idx_c= 0;
                 int max_idx_r= 0;
 
@@ -457,19 +385,21 @@ int main(int argc, char** argv)
                         {
                             minRect[i] = minAreaRect( Mat(contours_poly[i]) );
                             minRectArea[i]=minRect[i].size.width*minRect[i].size.height;
-                            if (minRectArea[max_idx_c]<minRectArea[i])
+                            if (minRectArea[max_idx_r]<minRectArea[i])
                             {
-                                max_idx_c = i;
+                                max_idx_r = i;
                             }
                         }
                         if (bFitCircle || bDebug)
                         {
                             minEnclosingCircle( (Mat)contours_poly[i], cc[i], cr[i] );
+                            minCircleArea[i]=cr[i]*cr[i]*CV_PI;
+                            if (minCircleArea[max_idx_c]<minCircleArea[i])
+                                {
+                                    max_idx_c = i;
+                                }
                         }
-                        if (minRectArea[max_idx_r]<minRectArea[i])
-                        {
-                            max_idx_r = i;
-                        }
+
                         //cout << "Bounding Box: " << boundRect[i] << endl;
                         //cout << "Smallest Rect: " << minRect[i] << endl;
                         //cout << "Smallest Circle: " << cc[i] << ", " << cr[i] << endl;
@@ -499,11 +429,9 @@ int main(int argc, char** argv)
                 Scalar color3 = Scalar(0, 0, 255);
 
 
-//////// PUT ROS CONDITION FOR IMAGE SENDING HERE
                 //if ( (bViz && !bCompetition) || (bStream && (((frame_counter*stream_rate)%frameRate)<stream_rate) ) )  //replace condition with stream param, then publish imgBGR
-                if ( (bStream && (((frame_counter*stream_rate)%frameRate)<stream_rate) ) )  //replace condition with stream param, then publish imgBGR
+                if ( (bStream && (((frame_counter*stream_rate)%frameRate)<stream_rate) ) )
                 {
-cout << "I am trying to stream" << endl;
 //                    if (bFitBoundingBox)
 //                    {
 //                        //bounding box
@@ -527,19 +455,12 @@ cout << "I am trying to stream" << endl;
                         circle(imgBGR, cc[max_idx_c], 5, color, -1, 8, 0);
                     }
                     //putText(imgBGR, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
-		    
-		    //Publish gray image to ROS
-		    cvtColor(imgBGR, imgGray, CV_BGR2GRAY);
 
-		//Color image
-  		    sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", imgGray).toImageMsg();
-		    img_pub.publish(img_msg);
+                    //Publish gray image to ROS
+                    cvtColor(imgBGR, imgGray, CV_BGR2GRAY);
+                    sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", imgGray).toImageMsg();
+                    img_pub.publish(img_msg);
 
-//		    cv_img_gray_ptr_ros->image = imgGray;
-//		    cv_img_gray_ptr_ros->toImageMsg()->height = imgGray.rows;
-//		    cv_img_gray_ptr_ros->toImageMsg()->width = imgGray.cols;
-//		    cv_img_gray_ptr_ros->toImageMsg()->step = imgGray.cols * 8;
-//		    img_pub.publish(cv_img_gray_ptr_ros->toImageMsg());
                 }
 
                 if (bDebug && !bCompetition)
@@ -548,8 +469,6 @@ cout << "I am trying to stream" << endl;
                     {
                         if (mu[i].m00 > min_obj_sz) //Minimum size for object, otherwise it is considered noise
                         {
-
-
                             /// Draw polygonal contour + bonding rects + circles
                             //poly contours
                             //drawContours( drawing, contours_poly, i, color, 1, 8, hierarchy, 0, Point() );
@@ -575,22 +494,6 @@ cout << "I am trying to stream" << endl;
 
 
 if (!bCompetition) {
-
-            //Adjust thresholds with values selected by mouse
-            if(mp.bMouseClicked)
-            {
-                mp.bMouseClicked = false;
-                int H=mp.pt.x; //hue
-                int S=mp.pt.y; //saturation
-                int V=mp.pt.z; //value
-                iLowH = max(H-thres_tol,0);
-                iHighH = min(H+thres_tol,179);
-                iLowS = max(S-thres_tol,0);
-                iHighS = min(S+thres_tol,255);
-                iLowV = max(V-thres_tol,0);
-                iHighV = min(V+thres_tol,255);
-                //cout << "H:" << H << " S:" << S << " V:" << V << endl;
-            }
 
             if (bDebug == true)
             {
@@ -635,9 +538,6 @@ if (!bCompetition) {
 
                 createTrackbar("Tolerance", "Control", &thres_tol, 100);
 
-                mp.img = imgHSV;
-                cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
-
             }
             else
             {
@@ -658,31 +558,6 @@ if (!bCompetition) {
             //cout << "Reached switch statement..." << endl;
             case 27: //'esc' key has been pressed, exit program.
                 bESC = 1;
-                break;
-
-            case 114: //'r' has been pressed.
-                color = 1;
-                cout << "Color: Red" << endl;
-                break;
-
-            case 103: //'g' has been pressed.
-                color = 2;
-                cout << "Color: Green" << endl;
-                break;
-
-            case 98: //'b' has been pressed.
-                color = 3;
-                cout << "Color: Blue" << endl;
-                break;
-
-            case 121: //'y' has been pressed.
-                color = 4;
-                cout << "Color: Yellow" << endl;
-                break;
-
-            case 115: //'s' has been pressed.
-                bSend = 1;
-                cout << "Sending triggered." << endl;
                 break;
 
             case 100: //'d' has been pressed. Toggle debug
@@ -725,81 +600,6 @@ if (!bCompetition) {
                 }
             }
 
-            switch (color)
-            {
-            case 1: //Red color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/RedHSV/low", threshParam);
-                    n.setParam("/Quad2/RedHSV/low", threshParam);
-                    n.setParam("/Quad3/RedHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/RedHSV/high", threshParam);
-                    n.setParam("/Quad2/RedHSV/high", threshParam);
-                    n.setParam("/Quad3/RedHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending red thresholds complete." << endl;
-                }
-                break;
-
-            case 2: //Green color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/GreenHSV/low", threshParam);
-                    n.setParam("/Quad2/GreenHSV/low", threshParam);
-                    n.setParam("/Quad3/GreenHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/GreenHSV/high", threshParam);
-                    n.setParam("/Quad2/GreenHSV/high", threshParam);
-                    n.setParam("/Quad3/GreenHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending green thresholds complete." << endl;
-                }
-                break;
-
-            case 3: //Blue color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/BlueHSV/low", threshParam);
-                    n.setParam("/Quad2/BlueHSV/low", threshParam);
-                    n.setParam("/Quad3/BlueHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/BlueHSV/high", threshParam);
-                    n.setParam("/Quad2/BlueHSV/high", threshParam);
-                    n.setParam("/Quad3/BlueHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending blue thresholds complete." << endl;
-                }
-                break;
-
-            case 4: //Yellow color selected.
-                if (bSend) {
-                //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowH; threshParam[1] = iLowS; threshParam[2] = iLowV;
-                    n.setParam("/Quad1/YellowHSV/low", threshParam);
-                    n.setParam("/Quad2/YellowHSV/low", threshParam);
-                    n.setParam("/Quad3/YellowHSV/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighH; threshParam[1] = iHighS; threshParam[2] = iHighV;
-                    n.setParam("/Quad1/YellowHSV/high", threshParam);
-                    n.setParam("/Quad2/YellowHSV/high", threshParam);
-                    n.setParam("/Quad3/YellowHSV/high", threshParam);
-                bSend = false;
-                cout << "Sending yellow thresholds complete." << endl;
-                }
-                break;
-            }
-
             }
 
             //ROS Topics
@@ -831,39 +631,5 @@ if (!bCompetition) {
             loop_rate.sleep();
     }
 
-//    string newThres = srcpath + "/ThresholdValuesBoxNew.txt";
-//    switch (color)
-//    {
-//    case 1: //Red color selected.
-//        newThres = srcpath + "/ThresholdValuesRed.txt";
-//        break;
-//
-//    case 2: //Green color selected.
-//        newThres = srcpath + "/ThresholdValuesGreen.txt";
-//        break;
-//
-//    case 3: //Blue color selected.
-//        newThres = srcpath + "/ThresholdValuesBlue.txt";
-//        break;
-//
-//    case 4: //Yellow color selected.
-//        newThres = srcpath + "/ThresholdValuesYellow.txt";
-//        break;
-//    }
-//
-//    ofstream myfile(newThres.c_str());
-//    //Save values to file
-//    if (myfile.is_open())
-//    {
-//        myfile << "iLowH = " << iLowH << "\n";
-//        myfile << "iHighH = " << iHighH << "\n";
-//        myfile << "iLowS = " << iLowS << "\n";
-//        myfile << "iHighS = " << iHighS << "\n";
-//        myfile << "iLowV = " << iLowV << "\n";
-//        myfile << "iHighV = " << iHighV << "\n";
-//        myfile.close();
-//        cout << "Finished writing" << endl;
-//    }
-//    else cout << "Unable to open file";
     return 0;
 }
