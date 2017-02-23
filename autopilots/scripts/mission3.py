@@ -166,7 +166,8 @@ class StateMachineC( object ):
 		self.target_lon		= 1.1
 
 		# takeoff altitude [m] to be set by external controller
-		self.TKOFFALT		= 2.0
+		self.TKOFFALT1		= 1.0
+		self.TKOFFALT2		= 3.0
 		# Takeoff velocity [m/s]
 		self.TAKEOFF_V		= 1.0
 
@@ -185,7 +186,7 @@ class StateMachineC( object ):
 		# Altitude at which we pick object [m]
 		self.PICK_ALT		= 0.6
 		# Altitude at which PICK fails if object not seen, [m]
-		self.PICK_FAIL_ALT	= 5.0
+		self.PICK_FAIL_ALT	= 3.0
 		# Object search Altitude, [m]
 		self.SEARCH_ALT		= 3.0
 		# camera offset from ground [m]
@@ -331,14 +332,14 @@ class StateMachineC( object ):
 		self.debug()
 		# cycle for some time to register local poisiton
 		c=0
-		while c<2:
+		while c<10:
 		    self.rate.sleep()
 		    c = c + 1
 		# get ground level
 		self.ZGROUND = self.altK.z
 		# set the controllers setpoints
 		#self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
-		self.altK.zSp = self.ZGROUND + self.TKOFFALT
+		self.altK.zSp = self.ZGROUND + self.TKOFFALT1
 		self.home.x = self.bodK.x
 		self.home.y = self.bodK.y
 
@@ -347,11 +348,36 @@ class StateMachineC( object ):
 		# lower lateral vMax
 		rospy.set_param(self.namespace + '/kBodVel/vMax', 0.5)
 
+		phase1 = True
+		phase2 = False
+		Done = False
+
 		# takeoff
-		while abs(self.altK.zSp - self.altK.z) > 0.2 and not rospy.is_shutdown():
+		while not Done and not rospy.is_shutdown():
+
+			if phase1:
+				self.setp.velocity.x = 0.0
+				self.setp.velocity.y = 0.0
+				self.setp.yaw_rate = 0.0
+				self.altK.zSp = self.ZGROUND + self.TKOFFALT1
+
+				# check if done with phase 1
+				if abs(self.altK.z - self.ZGROUND - self.TKOFFALT1) <= 0.1:
+					phase1 = False
+					phase2 = True
+			if phase2:
+				self.altK.zSp = self.ZGROUND + self.TKOFFALT2
+				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
+				(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+
+				# check if done with takeoff
+				if abs(self.altK.z - self.ZGROUND - self.TKOFFALT2) <= 0.1:
+					phase1 = False
+					phase2 = False
+					Done = True
+
 			self.setp.velocity.z = self.altK.controller()
-			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
-			(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+
 			self.rate.sleep()
 			self.setp.header.stamp = rospy.Time.now()
 			self.command.publish(self.setp)
@@ -1693,7 +1719,7 @@ def mission():
 
 	sm.SEARCH_ALT = 3.0
 	sm.PICK_ALT = 0.2
-	sm.DROP_ALT = 0.3
+	sm.DROP_ALT = 1.0
 	sm.ENVELOPE_XY_POS_MIN = 0.2
 	sm.ENVELOPE_XY_POS_MAX = 0.6
 	sm.ENVELOPE_XY_VEL_MIN = 0.15
@@ -1702,9 +1728,10 @@ def mission():
 	sm.USE_LIDAR = True
 
 	sm.DEBUG=True
-	sm.TKOFFALT = 5.0
-	sm.current_state='Picking'
-	sm.current_signal='Resume'
+	sm.TKOFFALT1 = 1.0
+	sm.TKOFFALT2 = 3.0
+	sm.current_state='START'
+	sm.current_signal='Ready'
 	sm.START_SIGNAL=True
 	sm.cameraView=1
 
