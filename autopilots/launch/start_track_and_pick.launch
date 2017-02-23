@@ -9,10 +9,13 @@
 	<arg name="log_output" default="screen" />
 	<arg name="arduino_url" default="/dev/ttyACM0" />
 	<arg name="arduino_baud" default="115200" />
+	<arg name="record" default="false"/>
+	<arg name="ns" default="Quad1"/>
+	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/raw/fix /$(arg ns)/mavros/setpoint_raw/local"/>
 
 	
 
-<group ns="Quad1">
+<group ns="$(arg ns)">
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
 		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -46,10 +49,10 @@
         </node-->
 
         <!--node pkg="topic_tools" type="throttle" name="throttle" args="messages /frameBGR 5.0 /frameBGR_reduced" required="true" >
-        </node>
-
-        <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
+
+        <node pkg="rosbag" type="record" name="record" args="-o /home/risc/ros_bags/LogData.bag $(arg record_topics)"  if="$(arg record)">
+        </node>
 
 	<node pkg="autopilots" type="track_and_pick.py" name="track_and_pick" output="screen" respawn="true">	
         </node>
