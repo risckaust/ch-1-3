@@ -965,6 +965,7 @@ class StateMachineC( object ):
 			# try to drop if arrived
 			dxy = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
 			if dxy <= 0.15:
+				rospy.loginfo('Arrived at drop zone..')
 				# descend gradually
 				if abs(self.altK.z - self.ZGROUND - descend_alt) <= 0.1:
 					descend_alt = descend_alt - self.descend_factor_high*descend_alt
@@ -973,12 +974,16 @@ class StateMachineC( object ):
 				
 				# deactivate gripper if at DROP_ALT
 				if abs(self.altK.z - self.ZGROUND - self.DROP_ALT) <= 0.1:
+					rospy.loginfo('arrived at drop altitude...dropping')
 					self.gripper_action.data = False
 					self.gripper_pub.publish(self.gripper_action)
+			else:
+				rospy.loginfo('Trying to approach drop point...')
 
 			# break once drop is confirmed
 			dxy = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
 			if dxy <= 0.15 and not self.gripperIsPicked:
+				rospy.loginfo('Dropping is done. Exiting...')
 				dropped = True
 
 			# update setpoint topic
