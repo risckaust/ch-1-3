@@ -1730,7 +1730,7 @@ def mission():
 	sm.DEBUG=True
 	sm.TKOFFALT1 = 1.0
 	sm.TKOFFALT2 = 3.0
-	sm.current_state='START'
+	sm.current_state='Start'
 	sm.current_signal='Ready'
 	sm.START_SIGNAL=True
 	sm.cameraView=1
