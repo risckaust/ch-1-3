@@ -280,6 +280,18 @@ class StateMachineC( object ):
 		# >0: resume
 		rospy.set_param(ns+'/state_machine/resume', 0.0)
 
+		# lidar measurements
+		self.USE_LIDAR		= False # set by user
+		self.OBJ_OFFSET		= 0.2 # set by user
+		self.lidar_z 		= 0.0
+		self.lidar_active 	= False # set internally
+		# lidar msg sequence
+		self.lidar_seq		= 0
+		# altitude at which the lidar measurement is used [m], set by user
+		self.LIDAR_USE_ALT	= 1.0
+		rospy.Subscriber(ns+'/mavros/distance_sensor/hrlv_ez4_pub', Range, self.lidar_cb)
+
+
 #----------------------------------------------------------------------------------------------------------------------------------------#
 #                                                   (States implementation)                                                              #
 
@@ -580,7 +592,15 @@ class StateMachineC( object ):
 					# two possibilites: 1) see it in the frame, 2) not
 					if objectSeen: # confidence high + detection
 
-						# CK_		# update home
+						if self.USE_LIDAR and self.lidar_active and (self.lidar_z <= self.LIDAR_USE_ALT):
+							rospy.loginfo( '#------------Using Lidar for altitude correction-----------#')
+							dz = max(self.lidar_z - self.OBJ_OFFSET, 0.0)
+							altCorrect = dz/rospy.get_param(self.ns+'/pix2m/altCal')
+						else:
+							dz = max(self.altK.z - self.ZGROUND, 0.0)
+							altCorrect = (dz + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
+
+						# update home
 						self.home.x = self.bodK.x
 						self.home.y = self.bodK.y
 
@@ -1633,6 +1653,17 @@ class StateMachineC( object ):
 		if msg is not None:
 			self.other_2_state = msg.state
 	################## End of other others states callback ##################
+	################# Lidar callback #####################3
+	def lidar_cb(self, msg):
+		if msg is not None:
+			if msg.header.seq > self.lidar_seq:
+				self.lidar_active = True
+				self.lidar_seq = self.lidar_seq + 1
+			else:
+				self.lidar_active = False
+			if self.lidar_active:
+				self.lidar_z = msg.range
+	############## End of LIDAR callback #################s
 
 #                                              (End of Callbacks)                                                                        #
 #----------------------------------------------------------------------------------------------------------------------------------------#
@@ -1668,6 +1699,7 @@ def mission():
 	sm.ENVELOPE_XY_VEL_MIN = 0.15
 	sm.ENVELOPE_XY_VEL_MAX = 0.5
 	sm.vHold_factor = 0.1
+	sm.USE_LIDAR = True
 
 	sm.DEBUG=True
 	sm.TKOFFALT = 5.0
