@@ -88,6 +88,17 @@ class Tracker():
 		self.cTh 		= 0.5
 		self.cRate		= 0.95
 
+		# lidar measurements
+		self.USE_LIDAR		= False
+		self.OBJ_OFFSET		= 0.2
+		self.lidar_z 		= 0.0
+		self.lidar_active 	= False
+		# lidar msg sequence
+		self.lidar_seq		= 0
+		# altitude at which the lidar measurement is used [m]
+		self.LIDAR_USE_ALT	= 1.0
+		rospy.Subscriber(ns+'/mavros/distance_sensor/hrlv_ez4_pub', Range, self.lidar_cb)
+
 	def main(self):
 		objectSeen = False
 		vHold = False
@@ -157,7 +168,13 @@ class Tracker():
 					if objectSeen: # confidence high + detection
 
 						# track in xy
-						altCorrect = (self.altK.z - self.ZGROUND + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
+						if self.USE_LIDAR and self.lidar_active and (self.lidar_z <= self.LIDAR_USE_ALT):
+							print '#------------Using Lidar correction-----------#'
+							dz = max(self.lidar_z - self.OBJ_OFFSET, 0.0)
+							altCorrect = dz/rospy.get_param(self.ns+'/pix2m/altCal')
+						else:
+							dz = max(self.altK.z - self.ZGROUND, 0.0)
+							altCorrect = (dz + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
 						self.bodK.xSp = obj_x*altCorrect
 						self.bodK.ySp = obj_y*altCorrect
 
@@ -280,6 +297,15 @@ class Tracker():
 		if msg is not None:
 			self.gripperIsPicked = msg.data
 	########### End of Gripper callback function ##############
+	def lidar_cb(self, msg):
+		if msg is not None:
+			if msg.header.seq > self.lidar_seq:
+				self.lidar_active = True
+				self.lidar_seq = self.lidar_seq + 1
+			else:
+				self.lidar_active = False
+			if self.lidar_active:
+				self.lidar_z = msg.range
 
 
 #############################################
