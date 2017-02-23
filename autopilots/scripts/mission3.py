@@ -1720,11 +1720,11 @@ def mission():
 	sm.SEARCH_ALT = 3.0
 	sm.PICK_ALT = 0.2
 	sm.DROP_ALT = 1.0
-	sm.ENVELOPE_XY_POS_MIN = 0.2
+	sm.ENVELOPE_XY_POS_MIN = 0.1
 	sm.ENVELOPE_XY_POS_MAX = 0.6
 	sm.ENVELOPE_XY_VEL_MIN = 0.15
 	sm.ENVELOPE_XY_VEL_MAX = 0.5
-	sm.vHold_factor = 0.1
+	sm.vHold_factor = 0.05
 	sm.USE_LIDAR = True
 
 	sm.DEBUG=True
