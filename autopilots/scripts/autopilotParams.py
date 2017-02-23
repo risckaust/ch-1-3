@@ -17,10 +17,10 @@ def setParams(ns):
     rospy.set_param(ns+'/kAltVel/gP',1.5)
     rospy.set_param(ns+'/kAltVel/gI',0.1)
     rospy.set_param(ns+'/kAltVel/vMaxU',2.0)
-    rospy.set_param(ns+'/kAltVel/vMaxD',0.5)
+    rospy.set_param(ns+'/kAltVel/vMaxD',0.2)
 
     # ROS parameters for kBodVel
-    rospy.set_param(ns+'/kBodVel/gP',0.75)
+    rospy.set_param(ns+'/kBodVel/gP',1.0)
     rospy.set_param(ns+'/kBodVel/gI',0.05)
     rospy.set_param(ns+'/kBodVel/vMax',2.0)
     rospy.set_param(ns+'/kBodVel/gPyaw',0.5)           # yaw proportional gain
