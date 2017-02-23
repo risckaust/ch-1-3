@@ -326,6 +326,7 @@ def mission():
 	tr.envelope_vel_max = 0.5
 	tr.envelope_vel = 0.15
 	tr.vHold_factor = 0.1
+	tr..USE_LIDAR = True
 
 	# run the main function
 	tr.main()
