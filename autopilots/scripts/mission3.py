@@ -360,6 +360,7 @@ class StateMachineC( object ):
 				self.setp.velocity.y = 0.0
 				self.setp.yaw_rate = 0.0
 				self.altK.zSp = self.ZGROUND + self.TKOFFALT1
+				rospy.loginfo('Takeoff phase 1')
 
 				# check if done with phase 1
 				if abs(self.altK.z - self.ZGROUND - self.TKOFFALT1) <= 0.1:
@@ -369,6 +370,7 @@ class StateMachineC( object ):
 				self.altK.zSp = self.ZGROUND + self.TKOFFALT2
 				(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
 				(self.setp.velocity.x, self.setp.velocity.y, self.setp.yaw_rate) = self.bodK.controller()
+				rospy.loginfo('Takeoff phase 2')
 
 				# check if done with takeoff
 				if abs(self.altK.z - self.ZGROUND - self.TKOFFALT2) <= 0.1:
