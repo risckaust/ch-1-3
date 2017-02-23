@@ -28,7 +28,7 @@ def setParams(ns):
     rospy.set_param(ns+'/cv_camers/image_height',rospy.get_param(ns+'/cvision/LY'))
         
     # ROS parameters getLaunchpad
-    rospy.set_param(ns+'/getLaunchpad/useMass', False)
+    rospy.set_param(ns+'/getLaunchpad/useMass', True)
     rospy.set_param(ns+'/getLaunchpad/minMass',50.0)                # minimum mass to detect a color blob
     rospy.set_param(ns+'/getLaunchpad/minRadius',10.0)              # minimum circle to detect a white blob
     rospy.set_param(ns+'/getLaunchpad/erodeOn',True)                # use erode/dilate vs blurring in white detection 
