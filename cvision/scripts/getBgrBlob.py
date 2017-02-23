@@ -291,7 +291,7 @@ def getColor():
             if (kc*STREAM_RATE)%rospy.get_param(ns+'/cvision/loopRate') < STREAM_RATE:
                 gray_frame=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 gray_frame=imutils.resize(gray_frame, width=rospy.get_param(ns+'/cvision/LX')/2)
-                img_pub.publish(bridge.cv2_to_imgmsg(gray_frame, encoding="passthrough"))
+                img_pub.publish(bridge.cv2_to_imgmsg(gray_frame, encoding="mono8"))
 
         kc = kc + 1
 

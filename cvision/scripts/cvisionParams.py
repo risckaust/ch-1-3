@@ -19,7 +19,7 @@ def setParams(ns):
         rospy.set_param(ns+'/cvision/LY', 480)                          # full size screen height
 
     rospy.set_param(ns+'/cvision/camRotate', False)                 # camera rotated 90 degrees CCW facing down
-    rospy.set_param(ns+'/cvision/feCamera', False)                   # use fisheye mask and meter conversions
+    rospy.set_param(ns+'/cvision/feCamera', True)                   # use fisheye mask and meter conversions
     rospy.set_param(ns+'/cvision/gripperOffset', 0.0)               # gripper location from screen center in NED x-axis 
                                                                  # measured in pixels when landed at full size screen
                                                                  
