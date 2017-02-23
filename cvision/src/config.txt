@@ -1,5 +1,5 @@
 bDebug = 0
-bCtrl = 1
+bCtrl = 0
 bOutputVideo = 0
 bCamera = 0
 bVideo = 1
@@ -9,6 +9,9 @@ bFitBoundingBox = 0
 bFitRotatedRect = 1
 bFitCircle = 1
 min_obj_sz = 5
-thres_tol = 50
+thres_tol_LAB = 10
+thres_tol_HLS = 5
+thres_tol_BGR = 30 
+mergeThres = 100
 morph_sz = 5
 frameRate = 30

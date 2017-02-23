@@ -22,9 +22,11 @@ using namespace cv;
 
 struct MouseParams
 {
-    Mat img_HSV;
+    Mat img_LAB;
+    Mat img_HLS;
     Mat img_BGR;
-    Point3_<uchar> pt_HSV;
+    Point3_<uchar> pt_LAB;
+    Point3_<uchar> pt_HLS;
     Point3_<uchar> pt_BGR;
     bool bMouseClicked;
 };
@@ -37,26 +39,34 @@ void mouseHandler( int event, int x, int y, int flags, void* param)
 
 // Mount back the parameters
     MouseParams* mp = (MouseParams*)param;
-    Mat img_HSV = mp->img_HSV;
+    Mat img_LAB = mp->img_LAB;
+    Mat img_HLS = mp->img_HLS;
     Mat img_BGR = mp->img_BGR;
 
-    Point3_<uchar>* point_HSV = img_HSV.ptr<Point3_<uchar> >(y,x);
+    Point3_<uchar>* point_LAB = img_LAB.ptr<Point3_<uchar> >(y,x);
+    Point3_<uchar>* point_HLS = img_HLS.ptr<Point3_<uchar> >(y,x);
     Point3_<uchar>* point_BGR = img_BGR.ptr<Point3_<uchar> >(y,x);
 //Point3_<uchar>* point = img->ptr<Point3_<uchar> >(y,x);
-    mp->pt_HSV = *point_HSV;
+    mp->pt_LAB = *point_LAB;
+    mp->pt_HLS = *point_HLS;
     mp->pt_BGR = *point_BGR;
     mp->bMouseClicked = true;
 
-    int H=point_HSV->x; //hue
-    int S=point_HSV->y; //saturation
-    int V=point_HSV->z; //value
+    int vL=point_LAB->x; //hue
+    int vA=point_LAB->y; //saturation
+    int vB=point_LAB->z; //value
 
-    int B=point_BGR->x; //blue
-    int G=point_BGR->y; //green
-    int R=point_BGR->z; //red
+    int vHue=point_HLS->x; //hue
+    int vSat=point_HLS->y; //saturation
+    int vLum=point_HLS->z; //value
 
-cout << "H:" << H << " S:" << S << " V:" << V << endl;
-cout << "B:" << B << " G:" << G << " R:" << R << endl;
+    int vBlue=point_BGR->x; //blue
+    int vGreen=point_BGR->y; //green
+    int vRed=point_BGR->z; //red
+
+//cout << "L:" << vL << " A:" << vA << " B:" << vB << endl;
+//cout << "H:" << vHue << " S:" << vSat << " L:" << vLum << endl;
+//cout << "B:" << vBlue << " G:" << vGreen << " R:" << vRed << endl;
 
 }
 
@@ -98,11 +108,15 @@ int main(int argc, char** argv)
     bool bFitBoundingBox = true;
     bool bFitRotatedRect = true;
     bool bFitCircle = true;
+    bool bUpdateThres = false;
     //Set min object size
     int min_obj_sz = 5;
     int obj_sz = 0;
-    int thres_tol = 50;
+    int thres_tol_LAB = 10;
+    int thres_tol_HLS = 5;
+    int thres_tol_BGR = 30;
     int morph_sz = 5;
+    int mergeThres = 100;
     int frameRate = 30;
 
     int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
@@ -180,12 +194,17 @@ int main(int argc, char** argv)
         else if (name == "bFitRotatedRect") iss >> bFitRotatedRect;
         else if (name == "bFitCircle") iss >> bFitCircle;
         else if (name == "min_obj_sz") iss >> min_obj_sz;
-        else if (name == "thres_tol") iss >> thres_tol;
+        else if (name == "thres_tol_LAB") iss >> thres_tol_LAB;
+        else if (name == "thres_tol_HLS") iss >> thres_tol_HLS;
+        else if (name == "thres_tol_BGR") iss >> thres_tol_BGR;
+        else if (name == "mergeThres") iss >> mergeThres;
         else if (name == "morph_sz") iss >> morph_sz;
         else if (name == "frameRate") iss >> frameRate;
     }
 
-    int thres_tol_old = thres_tol;
+    int thres_tol_LAB_old = thres_tol_LAB;
+    int thres_tol_HLS_old = thres_tol_HLS;
+    int thres_tol_BGR_old = thres_tol_BGR;
 
     RNG rng(12345);
 
@@ -247,14 +266,27 @@ int main(int argc, char** argv)
     }
 
     //Set threshold values
-    int iLowH = 0;
-    int iHighH = 179;
+    int iLowHue = 0;
+    int iHighHue = 179;
+    int iLowSat = 0;
+    int iHighSat = 255;
+    int iLowLum = 0;
+    int iHighLum = 255;
 
-    int iLowS = 0;
-    int iHighS = 255;
+    int iLowBlue = 0;
+    int iHighBlue = 255;
+    int iLowGreen = 0;
+    int iHighGreen = 255;
+    int iLowRed = 0;
+    int iHighRed = 255;
 
-    int iLowV = 0;
-    int iHighV = 255;
+    int iLowL = 0;
+    int iHighL = 255; //standard convention 0 TO 100
+    int iLowA = 0;
+    int iHighA = 255; //standard convention -127 TO 127
+    int iLowB = 0;
+    int iHighB = 255; //standard convention -127 TO 127
+
 
     string colorThres = srcpath + "/ThresholdValues.txt";
     ifstream f_colorThres(colorThres.c_str());
@@ -272,27 +304,54 @@ int main(int argc, char** argv)
         // skip invalid lines and comments
         if (iss.fail() || tmp1 != "=" || name1[0] == '#') continue;
 
-        if (name1 == "iLowH") iss >> iLowH;
-        else if (name1 == "iHighH") iss >> iHighH;
-        else if (name1 == "iLowS") iss >> iLowS;
-        else if (name1 == "iHighS") iss >> iHighS;
-        else if (name1 == "iLowV") iss >> iLowV;
-        else if (name1 == "iHighV") iss >> iHighV;
+        if (name1 == "iLowHue") iss >> iLowHue;
+        else if (name1 == "iHighHue") iss >> iHighHue;
+        else if (name1 == "iLowSat") iss >> iLowSat;
+        else if (name1 == "iHighSat") iss >> iHighSat;
+        else if (name1 == "iLowLum") iss >> iLowLum;
+        else if (name1 == "iHighLum") iss >> iHighLum;
+        else if (name1 == "iLowBlue") iss >> iLowBlue;
+        else if (name1 == "iHighBlue") iss >> iHighBlue;
+        else if (name1 == "iLowGreen") iss >> iLowGreen;
+        else if (name1 == "iHighGreen") iss >> iHighGreen;
+        else if (name1 == "iLowRed") iss >> iLowRed;
+        else if (name1 == "iHighRed") iss >> iHighRed;
+        else if (name1 == "iLowL") iss >> iLowL;
+        else if (name1 == "iHighL") iss >> iHighL;
+        else if (name1 == "iLowA") iss >> iLowA;
+        else if (name1 == "iHighA") iss >> iHighA;
+        else if (name1 == "iLowB") iss >> iLowB;
+        else if (name1 == "iHighB") iss >> iHighB;
     }
 
-    int H=floor((iLowH+iHighH)/2); //hue
-    int S=floor((iLowS+iHighS)/2); //saturation
-    int V=floor((iLowV+iHighV)/2); //value
+//Initialize some values
+    int vHue=floor((iLowHue+iHighHue)/2); //hue
+    int vSat=floor((iLowSat+iHighSat)/2); //saturation
+    int vLum=floor((iLowLum+iHighLum)/2); //luminosity
+
+    int vBlue=floor((iLowBlue+iHighBlue)/2); //blue
+    int vGreen=floor((iLowGreen+iHighGreen)/2); //green
+    int vRed=floor((iLowRed+iHighRed)/2); //red
+
+    int vL=floor((iLowL+iHighL)/2); //L
+    int vA=floor((iLowA+iHighA)/2); //A
+    int vB=floor((iLowB+iHighB)/2); //B
 
     cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
         //cout << "Frame: " << frame_counter << endl;
         Mat imgBGR;
-        Mat imgHSV;
-        Mat imgThresholded;
+        Mat imgHLS;
+        Mat imgLAB;
+        Mat imgThresSum;
+        Mat imgThresAll;
+        Mat imgThresAllGray;
+        Mat imgThres3[3];
+        Mat imgBGRThres;
+        Mat imgHLSThres;
+        Mat imgLABThres;
         Mat imgContours;
-
 
         if ( (bCamera || bVideo) && !bCompetition)
         {
@@ -317,7 +376,6 @@ int main(int argc, char** argv)
             continue;
         }
 
-
         frame_counter++;
 
         //Determine size of video input
@@ -325,29 +383,43 @@ int main(int argc, char** argv)
         int icols_imgBGR = imgBGR.cols;
 
         imgSz = Size(icols_imgBGR,irows_imgBGR);
-        cvtColor(imgBGR, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
+        cvtColor(imgBGR, imgHLS, COLOR_BGR2HLS); //Convert the captured frame from BGR to HLS
+        cvtColor(imgBGR, imgLAB, COLOR_BGR2Lab); //Convert the captured frame from BGR to LAB
 
         ///////Thresholding
-        //inRange(imgBGR, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
-        inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+        inRange(imgBGR, Scalar(iLowBlue, iLowGreen, iLowRed), Scalar(iHighBlue, iHighGreen, iHighRed), imgBGRThres); //Threshold the image
+        inRange(imgHLS, Scalar(iLowHue, iLowLum, iLowSat), Scalar(iHighHue, iHighLum, iHighSat), imgHLSThres); //Threshold the image
+        inRange(imgLAB, Scalar(iLowL, iLowA, iLowB), Scalar(iHighL, iHighA, iHighB), imgLABThres); //Threshold the image
+
+
+        imgThres3[0] = imgBGRThres;
+        imgThres3[1] = imgLABThres;
+        imgThres3[2] = imgHLSThres;
+        merge(imgThres3,3,imgThresAll);
+
+        //gray = 0.114b + 0.587g + 0.299r
+        //100, 160, 200
+        cvtColor(imgThresAll, imgThresAllGray, COLOR_BGR2GRAY);
+        threshold(imgThresAllGray,imgThresSum,mergeThres,255,THRESH_BINARY);
+
 
         morph_sz=max(morph_sz,1);
         //Width and height for morph
         int morph_width = morph_sz;
         int morph_height = morph_sz;
 
-        //GaussianBlur(imgThresholded, imgThresholded, Size(0, 0),morph_sz);
-        //blur(imgThresholded, imgThresholded, Size(morph_width, morph_height));
+        //GaussianBlur(imgHLSThres, imgHLSThres, Size(0, 0),morph_sz);
+        //blur(imgHLSThres, imgHLSThres, Size(morph_width, morph_height));
 
         //morphological opening (removes small objects from the foreground)
-        erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
-        dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+        erode(imgThresSum, imgThresSum, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+        dilate(imgThresSum, imgThresSum, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
 
         //morphological closing (removes small holes from the foreground)
-        dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
-        erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+        dilate(imgThresSum, imgThresSum, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
+        erode(imgThresSum, imgThresSum, getStructuringElement(MORPH_ELLIPSE, Size(morph_width, morph_height)));
 
-        imgContours = imgThresholded.clone();
+        imgContours = imgThresSum.clone();
 
         //Create a black image with the size as the camera output
         Mat drawing = Mat::zeros(imgSz, CV_8UC3 );
@@ -458,11 +530,11 @@ int main(int argc, char** argv)
 
             if (bViz && !bCompetition)
             {
-                    if (bFitBoundingBox)
-                    {
-                        //bounding box
-                        rectangle(imgBGR, boundRect[max_idx_b].tl(), boundRect[max_idx_b].br(), color1, 2, 8, 0 );
-                    }
+                if (bFitBoundingBox)
+                {
+                    //bounding box
+                    rectangle(imgBGR, boundRect[max_idx_b].tl(), boundRect[max_idx_b].br(), color1, 2, 8, 0 );
+                }
                 if (bFitRotatedRect)
                 {
                     //rotated rectangle
@@ -521,42 +593,68 @@ int main(int argc, char** argv)
             if(mp.bMouseClicked)
             {
                 mp.bMouseClicked = false;
-                H=mp.pt_HSV.x; //hue
-                S=mp.pt_HSV.y; //saturation
-                V=mp.pt_HSV.z; //value
-                iLowH = max(H-thres_tol,0);
-                iHighH = min(H+thres_tol,179);
-                iLowS = max(S-thres_tol,0);
-                iHighS = min(S+thres_tol,255);
-                iLowV = max(V-thres_tol,0);
-                iHighV = min(V+thres_tol,255);
-                //cout << "H:" << H << " S:" << S << " V:" << V << endl;
+                vHue=mp.pt_HLS.x; //hue
+                vSat=mp.pt_HLS.y; //saturation
+                vLum=mp.pt_HLS.z; //value
+
+                vBlue=mp.pt_BGR.x; //blue
+                vGreen=mp.pt_BGR.y; //green
+                vRed=mp.pt_BGR.z; //red
+
+                vL=mp.pt_LAB.x; //L
+                vA=mp.pt_LAB.y; //A
+                vB=mp.pt_LAB.z; //B
+
+                bUpdateThres = true;
+
+                cout << "L:" << vL << " A:" << vA << " B:" << vB << endl;
+                cout << "H:" << vHue << " S:" << vSat << " L:" << vLum << endl;
+                cout << "B:" << vBlue << " G:" << vGreen << " R:" << vRed << endl;
             }
 
             if (bDebug == true)
             {
-                imshow( "Poly Contours", drawing );
+                imshow( "PolyContours", drawing );
                 drawing = Mat::zeros(imgSz, CV_8UC3 );
                 //imshow("Contour Image", imgContours); //show the thresholded image
-                imshow("Thresholded Image", imgThresholded); //show the thresholded image
+                //imshow("ThresholdedImageLAB", imgLABThres); //show the thresholded image
+                //imshow("ThresholdedImageHLS", imgHLSThres); //show the thresholded image
+                //imshow("ThresholdedImageBGR", imgBGRThres); //show the thresholded image
+                imshow("ThresholdedImageAll", imgThresAll); //show the thresholded image
             }
             else
             {
                 //if not in debug mode, destroy the window
-                cv::destroyWindow("Poly Contours");
+                cv::destroyWindow("PolyContours");
                 //cv::destroyWindow("Contour Image");
-                cv::destroyWindow("Thresholded Image");
+                //cv::destroyWindow("ThresholdedImageLAB");
+                //cv::destroyWindow("ThresholdedImageHLS");
+                //cv::destroyWindow("ThresholdedImageBGR");
+                cv::destroyWindow("ThresholdedImageAll");
+
             }
 
             if (bViz == true)
             {
                 /// Show in a window
                 imshow("VideoFeed", imgBGR); //show the original image
+                imshow("ThresholdedImage", imgThresSum); //show the thresholded image
+                createTrackbar("ToleranceLAB", "ThresholdedImage", &thres_tol_LAB, 50);
+                createTrackbar("ToleranceHLS", "ThresholdedImage", &thres_tol_HLS, 25);
+                createTrackbar("ToleranceBGR", "ThresholdedImage", &thres_tol_BGR, 100);
+                createTrackbar("Object Sz", "ThresholdedImage", &min_obj_sz, 100);
+                createTrackbar("Morph Sz", "ThresholdedImage", &morph_sz, 10);
+
+                mp.img_LAB = imgLAB;
+                mp.img_HLS = imgHLS;
+                mp.img_BGR = imgBGR;
+                cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
             }
             else
             {
                 //if not in viz mode, destroy the windows
                 cv::destroyWindow("VideoFeed");
+                cv::destroyWindow("ThresholdedImage");
             }
 
 
@@ -564,23 +662,26 @@ int main(int argc, char** argv)
             {
                 namedWindow("Control", CV_WINDOW_AUTOSIZE); //create a window called "Control"
                 //Create trackbars in "Control" window
-                createTrackbar("LowH", "Control", &iLowH, 179); //Hue (0 - 179)
-                createTrackbar("HighH", "Control", &iHighH, 179);
+                createTrackbar("LowHue", "Control", &iLowHue, 179); //Hue (0 - 179)
+                createTrackbar("HighHue", "Control", &iHighHue, 179);
+                createTrackbar("LowSat", "Control", &iLowSat, 255); //Saturation (0 - 255)
+                createTrackbar("HighSat", "Control", &iHighSat, 255);
+                createTrackbar("LowLum", "Control", &iLowLum, 255);//Value (0 - 255)
+                createTrackbar("HighLum", "Control", &iHighLum, 255);
 
-                createTrackbar("LowS", "Control", &iLowS, 255); //Saturation (0 - 255)
-                createTrackbar("HighS", "Control", &iHighS, 255);
+                createTrackbar("LowBlue", "Control", &iLowBlue, 255); //Blue (0 - 179)
+                createTrackbar("HighBlue", "Control", &iHighBlue, 255);
+                createTrackbar("LowGreen", "Control", &iLowGreen, 255); //Green (0 - 255)
+                createTrackbar("HighGreen", "Control", &iHighGreen, 255);
+                createTrackbar("LowRed", "Control", &iLowRed, 255);//Red (0 - 255)
+                createTrackbar("HighRed", "Control", &iHighRed, 255);
 
-                createTrackbar("LowV", "Control", &iLowV, 255);//Value (0 - 255)
-                createTrackbar("HighV", "Control", &iHighV, 255);
-
-                createTrackbar("Tolerance", "Control", &thres_tol, 100);
-                createTrackbar("Object Sz", "Control", &min_obj_sz, 100);
-                createTrackbar("Morph Sz", "Control", &morph_sz, 25);
-
-                mp.img_HSV = imgHSV;
-                mp.img_BGR = imgBGR;
-                cv::setMouseCallback("VideoFeed", mouseHandler, (void*)&mp);
-
+                createTrackbar("LowL", "Control", &iLowL, 255); //L (0 - 179)
+                createTrackbar("HighL", "Control", &iHighL, 255);
+                createTrackbar("LowA", "Control", &iLowA, 255); //A (0 - 255)
+                createTrackbar("HighA", "Control", &iHighA, 255);
+                createTrackbar("LowB", "Control", &iLowB, 255);//B (0 - 255)
+                createTrackbar("HighB", "Control", &iHighB, 255);
             }
             else
             {
@@ -589,16 +690,85 @@ int main(int argc, char** argv)
             }
 
             //If threshold tolerance was changed update values.
-            if (thres_tol_old - thres_tol != 0)
+            if ((thres_tol_LAB_old - thres_tol_LAB != 0) || bUpdateThres)
             {
-                iLowH = max(H-thres_tol,0);
-                iHighH = min(H+thres_tol,179);
-                iLowS = max(S-thres_tol,0);
-                iHighS = min(S+thres_tol,255);
-                iLowV = max(V-thres_tol,0);
-                iHighV = min(V+thres_tol,255);
-                thres_tol_old = thres_tol;
+                iLowL = max(vL-thres_tol_LAB*10,0);
+                iHighL = min(vL+thres_tol_LAB*10,255);
+                iLowA = max(vA-thres_tol_LAB,0);
+                iHighA = min(vA+thres_tol_LAB,255);
+                iLowB = max(vB-thres_tol_LAB,0);
+                iHighB = min(vB+thres_tol_LAB,255);
+                thres_tol_LAB_old = thres_tol_LAB;
             }
+
+            //If threshold tolerance was changed update values.
+            if ((thres_tol_HLS_old - thres_tol_HLS != 0) || bUpdateThres)
+            {
+                iLowHue = max(vHue-thres_tol_HLS,0);
+                iHighHue = min(vHue+thres_tol_HLS,179);
+                iLowSat = max(vSat-thres_tol_HLS*10,0);
+                iHighSat = min(vSat+thres_tol_HLS*10,255);
+                iLowLum = max(vLum-thres_tol_HLS*10,0);
+                iHighLum = min(vLum+thres_tol_HLS*10,255);
+                thres_tol_HLS_old = thres_tol_HLS;
+            }
+
+            //If threshold tolerance was changed update values.
+            if ((thres_tol_BGR_old - thres_tol_BGR != 0) || bUpdateThres)
+            {
+                if (vBlue < 85)
+                {
+                    iLowBlue = 0;
+                }
+                else
+                {
+                    iLowBlue = vBlue-thres_tol_BGR;
+                }
+                if (vBlue > 170)
+                {
+                    iHighBlue = 255;
+                }
+                else
+                {
+                    iHighBlue = vBlue+thres_tol_BGR;
+                }
+                if (vGreen < 85)
+                {
+                    iLowGreen = 0;
+                }
+                else
+                {
+                    iLowGreen = vGreen-thres_tol_BGR;
+                }
+                if (vGreen > 170)
+                {
+                    iHighGreen = 255;
+                }
+                else
+                {
+                    iHighGreen = vGreen+thres_tol_BGR;
+                }
+                if (vRed < 85)
+                {
+                    iLowRed = 0;
+                }
+                else
+                {
+                    iLowRed = vRed-thres_tol_BGR;
+                }
+                if (vRed > 170)
+                {
+                    iHighRed = 255;
+                }
+                else
+                {
+                    iHighRed = vRed+thres_tol_BGR;
+                }
+
+                thres_tol_BGR_old = thres_tol_BGR;
+            }
+
+            bUpdateThres = false;
 
             if (bOutputVideo)
             {
@@ -697,19 +867,19 @@ int main(int argc, char** argv)
                 {
                     //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH;
-                    threshParam[1] = iLowS;
-                    threshParam[2] = iLowV;
-                    n.setParam("/Quad1/RedHSV/low", threshParam);
-                    n.setParam("/Quad2/RedHSV/low", threshParam);
-                    n.setParam("/Quad3/RedHSV/low", threshParam);
+                    threshParam[0] = iLowHue;
+                    threshParam[1] = iLowSat;
+                    threshParam[2] = iLowLum;
+                    n.setParam("/Quad1/RedHLS/low", threshParam);
+                    n.setParam("/Quad2/RedHLS/low", threshParam);
+                    n.setParam("/Quad3/RedHLS/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH;
-                    threshParam[1] = iHighS;
-                    threshParam[2] = iHighV;
-                    n.setParam("/Quad1/RedHSV/high", threshParam);
-                    n.setParam("/Quad2/RedHSV/high", threshParam);
-                    n.setParam("/Quad3/RedHSV/high", threshParam);
+                    threshParam[0] = iHighHue;
+                    threshParam[1] = iHighSat;
+                    threshParam[2] = iHighLum;
+                    n.setParam("/Quad1/RedHLS/high", threshParam);
+                    n.setParam("/Quad2/RedHLS/high", threshParam);
+                    n.setParam("/Quad3/RedHLS/high", threshParam);
                     bSend = false;
                     cout << "Sending red thresholds complete." << endl;
                 }
@@ -741,7 +911,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "RedHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                                fileYaml << "RedHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
                             }
                             else
                             {
@@ -763,19 +933,19 @@ int main(int argc, char** argv)
                 {
                     //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH;
-                    threshParam[1] = iLowS;
-                    threshParam[2] = iLowV;
-                    n.setParam("/Quad1/GreenHSV/low", threshParam);
-                    n.setParam("/Quad2/GreenHSV/low", threshParam);
-                    n.setParam("/Quad3/GreenHSV/low", threshParam);
+                    threshParam[0] = iLowHue;
+                    threshParam[1] = iLowSat;
+                    threshParam[2] = iLowLum;
+                    n.setParam("/Quad1/GreenHLS/low", threshParam);
+                    n.setParam("/Quad2/GreenHLS/low", threshParam);
+                    n.setParam("/Quad3/GreenHLS/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH;
-                    threshParam[1] = iHighS;
-                    threshParam[2] = iHighV;
-                    n.setParam("/Quad1/GreenHSV/high", threshParam);
-                    n.setParam("/Quad2/GreenHSV/high", threshParam);
-                    n.setParam("/Quad3/GreenHSV/high", threshParam);
+                    threshParam[0] = iHighHue;
+                    threshParam[1] = iHighSat;
+                    threshParam[2] = iHighLum;
+                    n.setParam("/Quad1/GreenHLS/high", threshParam);
+                    n.setParam("/Quad2/GreenHLS/high", threshParam);
+                    n.setParam("/Quad3/GreenHLS/high", threshParam);
                     bSend = false;
                     cout << "Sending green thresholds complete." << endl;
                 }
@@ -807,7 +977,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "GreenHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                                fileYaml << "GreenHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
                             }
                             else
                             {
@@ -829,19 +999,19 @@ int main(int argc, char** argv)
                 {
                     //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH;
-                    threshParam[1] = iLowS;
-                    threshParam[2] = iLowV;
-                    n.setParam("/Quad1/BlueHSV/low", threshParam);
-                    n.setParam("/Quad2/BlueHSV/low", threshParam);
-                    n.setParam("/Quad3/BlueHSV/low", threshParam);
+                    threshParam[0] = iLowHue;
+                    threshParam[1] = iLowSat;
+                    threshParam[2] = iLowLum;
+                    n.setParam("/Quad1/BlueHLS/low", threshParam);
+                    n.setParam("/Quad2/BlueHLS/low", threshParam);
+                    n.setParam("/Quad3/BlueHLS/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH;
-                    threshParam[1] = iHighS;
-                    threshParam[2] = iHighV;
-                    n.setParam("/Quad1/BlueHSV/high", threshParam);
-                    n.setParam("/Quad2/BlueHSV/high", threshParam);
-                    n.setParam("/Quad3/BlueHSV/high", threshParam);
+                    threshParam[0] = iHighHue;
+                    threshParam[1] = iHighSat;
+                    threshParam[2] = iHighLum;
+                    n.setParam("/Quad1/BlueHLS/high", threshParam);
+                    n.setParam("/Quad2/BlueHLS/high", threshParam);
+                    n.setParam("/Quad3/BlueHLS/high", threshParam);
                     bSend = false;
                     cout << "Sending blue thresholds complete." << endl;
                 }
@@ -873,7 +1043,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "BlueHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                                fileYaml << "BlueHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
                             }
                             else
                             {
@@ -895,19 +1065,19 @@ int main(int argc, char** argv)
                 {
                     //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH;
-                    threshParam[1] = iLowS;
-                    threshParam[2] = iLowV;
-                    n.setParam("/Quad1/YellowHSV/low", threshParam);
-                    n.setParam("/Quad2/YellowHSV/low", threshParam);
-                    n.setParam("/Quad3/YellowHSV/low", threshParam);
+                    threshParam[0] = iLowHue;
+                    threshParam[1] = iLowSat;
+                    threshParam[2] = iLowLum;
+                    n.setParam("/Quad1/YellowHLS/low", threshParam);
+                    n.setParam("/Quad2/YellowHLS/low", threshParam);
+                    n.setParam("/Quad3/YellowHLS/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH;
-                    threshParam[1] = iHighS;
-                    threshParam[2] = iHighV;
-                    n.setParam("/Quad1/YellowHSV/high", threshParam);
-                    n.setParam("/Quad2/YellowHSV/high", threshParam);
-                    n.setParam("/Quad3/YellowHSV/high", threshParam);
+                    threshParam[0] = iHighHue;
+                    threshParam[1] = iHighSat;
+                    threshParam[2] = iHighLum;
+                    n.setParam("/Quad1/YellowHLS/high", threshParam);
+                    n.setParam("/Quad2/YellowHLS/high", threshParam);
+                    n.setParam("/Quad3/YellowHLS/high", threshParam);
                     bSend = false;
                     cout << "Sending yellow thresholds complete." << endl;
                 }
@@ -939,7 +1109,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "YellowHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                                fileYaml << "YellowHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
                             }
                             else
                             {
@@ -960,19 +1130,19 @@ int main(int argc, char** argv)
                 {
                     //Send ROS message here
                     // send low values
-                    threshParam[0] = iLowH;
-                    threshParam[1] = iLowS;
-                    threshParam[2] = iLowV;
-                    n.setParam("/Quad1/BoxHSV/low", threshParam);
-                    n.setParam("/Quad2/BoxHSV/low", threshParam);
-                    n.setParam("/Quad3/BoxHSV/low", threshParam);
+                    threshParam[0] = iLowHue;
+                    threshParam[1] = iLowSat;
+                    threshParam[2] = iLowLum;
+                    n.setParam("/Quad1/BoxHLS/low", threshParam);
+                    n.setParam("/Quad2/BoxHLS/low", threshParam);
+                    n.setParam("/Quad3/BoxHLS/low", threshParam);
                     // send high values
-                    threshParam[0] = iHighH;
-                    threshParam[1] = iHighS;
-                    threshParam[2] = iHighV;
-                    n.setParam("/Quad1/BoxHSV/high", threshParam);
-                    n.setParam("/Quad2/BoxHSV/high", threshParam);
-                    n.setParam("/Quad3/BoxHSV/high", threshParam);
+                    threshParam[0] = iHighHue;
+                    threshParam[1] = iHighSat;
+                    threshParam[2] = iHighLum;
+                    n.setParam("/Quad1/BoxHLS/high", threshParam);
+                    n.setParam("/Quad2/BoxHLS/high", threshParam);
+                    n.setParam("/Quad3/BoxHLS/high", threshParam);
                     bSend = false;
                     cout << "Sending Box thresholds complete." << endl;
                 }
@@ -1004,7 +1174,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "BoxHSV: {low: [" << iLowH << ", " << iLowS << ", " << iLowV << "], high: [" << iHighH << ", " << iHighS << ", " << iHighV << "]} \n";
+                                fileYaml << "BoxHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
                             }
                             else
                             {
@@ -1082,12 +1252,24 @@ int main(int argc, char** argv)
     //Save values to file
     if (myfile.is_open())
     {
-        myfile << "iLowH = " << iLowH << "\n";
-        myfile << "iHighH = " << iHighH << "\n";
-        myfile << "iLowS = " << iLowS << "\n";
-        myfile << "iHighS = " << iHighS << "\n";
-        myfile << "iLowV = " << iLowV << "\n";
-        myfile << "iHighV = " << iHighV << "\n";
+        myfile << "iLowHue = " << iLowHue << "\n";
+        myfile << "iHighHue = " << iHighHue << "\n";
+        myfile << "iLowSat = " << iLowSat << "\n";
+        myfile << "iHighSat = " << iHighSat << "\n";
+        myfile << "iLowLum = " << iLowLum << "\n";
+        myfile << "iHighLum = " << iHighLum << "\n";
+        myfile << "iLowBlue = " << iLowBlue << "\n";
+        myfile << "iHighBlue = " << iHighBlue << "\n";
+        myfile << "iLowGreen = " << iLowGreen << "\n";
+        myfile << "iHighGreen = " << iHighGreen << "\n";
+        myfile << "iLowRed = " << iLowRed << "\n";
+        myfile << "iHighRed = " << iHighRed << "\n";
+        myfile << "iLowL = " << iLowL << "\n";
+        myfile << "iHighL = " << iHighL << "\n";
+        myfile << "iLowA = " << iLowA << "\n";
+        myfile << "iHighA = " << iHighA << "\n";
+        myfile << "iLowB = " << iLowB << "\n";
+        myfile << "iHighB = " << iHighB << "\n";
         myfile.close();
         cout << "Finished writing" << endl;
     }
