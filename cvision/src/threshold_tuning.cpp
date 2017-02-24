@@ -911,7 +911,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "RedHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
+                                fileYaml << "Red: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
                             }
                             else
                             {
@@ -977,7 +977,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "GreenHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
+                                fileYaml << "Green: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
                             }
                             else
                             {
@@ -1043,7 +1043,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "BlueHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
+                                fileYaml << "Blue: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
                             }
                             else
                             {
@@ -1109,7 +1109,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "YellowHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
+                                fileYaml << "Yellow: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
                             }
                             else
                             {
@@ -1174,7 +1174,7 @@ int main(int argc, char** argv)
 
                             if (i==color)
                             {
-                                fileYaml << "BoxHLS: {low: [" << iLowHue << ", " << iLowSat << ", " << iLowLum << "], high: [" << iHighHue << ", " << iHighSat << ", " << iHighLum << "]} \n";
+                                fileYaml << "Box: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
                             }
                             else
                             {
