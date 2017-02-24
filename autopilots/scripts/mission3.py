@@ -704,6 +704,9 @@ class StateMachineC( object ):
 					rospy.loginfo('Object is considered PICKED.')
 					self.altK.zSp = self.ZGROUND + self.SEARCH_ALT
 					rospy.loginfo('Climbing to Altitude: %s', self.altK.zSp)
+					# check if Picking is done
+					if abs(self.altK.z - self.ZGROUND - self.SEARCH_ALT) <= 0.1 :
+						picked = True
 				else:
 					rospy.loginfo('Pick signal is received. Waiting for confirmation....')
 					
