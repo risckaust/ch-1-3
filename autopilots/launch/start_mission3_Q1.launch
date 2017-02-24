@@ -9,6 +9,9 @@
 	<arg name="log_output" default="screen" />
 	<arg name="arduino_url" default="/dev/ttyACM0" />
 	<arg name="arduino_baud" default="115200" />
+	<arg name="record" default="false"/>
+	<arg name="ns" default="Quad1"/>
+	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/raw/fix /$(arg ns)/mavros/setpoint_raw/local /$(arg ns)/state_machine/state" />
 
 	
 
@@ -51,6 +54,9 @@
 
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
+
+        <node pkg="rosbag" type="record" name="record" args="-o /home/risc/ros_bags/LogSM.bag $(arg record_topics)"  if="$(arg record)">
+        </node>
 	
 	<node pkg="rosserial_python" type="serial_node.py" name="gripper_node" args="_port:=$(arg arduino_url) _baud:=$(arg arduino_baud)" output="screen">
         </node>
