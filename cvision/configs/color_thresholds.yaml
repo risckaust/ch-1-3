@@ -1,11 +1,11 @@
 # stores HSV color thresholds for {blue, green, red, yellow}
-RedHSV: {low: [114, 147, 175], high: [179, 247, 255]}
-BlueHSV: {low: [110, 100, 100], high: [130, 255, 255]}
-GreenHSV: {low: [71, 133, 154], high: [121, 183, 204]}
+RedHSV: {low: [166, 77, 140], high: [176, 177, 240]}
+BlueHSV: {low: [100, 155, 161], high: [110, 255, 255]}
+GreenHSV: {low: [75, 73, 95], high: [85, 173, 195]}
 YellowHSV: {low: [5, 0, 206], high: [55, 35, 255]}
-BoxHSV: {low: [117, 114, 87], high: [179, 214, 187]}
+BoxHSV: {low: [0, 0, 30], high: [10, 157, 230]}
 
 FindBlue: True
 FindGreen: False
 FindRed: True
-FindYellow: True
+FindYellow: False
