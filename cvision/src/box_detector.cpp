@@ -114,7 +114,7 @@ int main(int argc, char** argv)
     int stream_rate = 1;
     // get gray image stream rate
 
-    if (n.getParam(ns + "/stream_img", bStream) && n.getParam(ns + "/stream_rate", stream_rate) )
+    if (n.getParam(ns + "/bStream", bStream) && n.getParam(ns + "/stream_rate", stream_rate) )
     {
       ROS_INFO("Got streaming info.");
     }
@@ -218,57 +218,58 @@ int main(int argc, char** argv)
             return -1;
         }
     }
-
+	
     //Set threshold values
-    int iLowH = 0;
-    int iHighH = 179;
+    int iLowHue = 0;
+    int iHighHue = 179;
+    int iLowSat = 0;
+    int iHighSat = 255;
+    int iLowLum = 0;
+    int iHighLum = 255;
 
-    int iLowS = 0;
-    int iHighS = 255;
+    int iLowBlue = 0;
+    int iHighBlue = 255;
+    int iLowGreen = 0;
+    int iHighGreen = 255;
+    int iLowRed = 0;
+    int iHighRed = 255;
 
-    int iLowV = 0;
-    int iHighV = 255;
+    int iLowL = 0;
+    int iHighL = 255; //standard convention 0 TO 100
+    int iLowA = 0;
+    int iHighA = 255; //standard convention -127 TO 127
+    int iLowB = 0;
+    int iHighB = 255; //standard convention -127 TO 127
 
 
     /* get the topic name of image feed */
-    std::vector<int> threshBox_low(3);
-    std::vector<int> threshBox_high(3);
-    if (n.getParam(ns+"BoxHSV/low", threshBox_low) && n.getParam(ns+"BoxHSV/high", threshBox_high))
+    std::vector<int> threshBox_low(9);
+    std::vector<int> threshBox_high(9);
+    if (n.getParam(ns+"Box/low", threshBox_low) && n.getParam(ns+"Box/high", threshBox_high))
     {
       ROS_INFO("Got Box Thresholds.");
-	iLowH = threshBox_low[0];
-	iHighH = threshBox_high[0];
-	iLowS = threshBox_low[1];
-	iHighS = threshBox_high[1];
-	iLowV = threshBox_low[2];
-	iHighV = threshBox_high[2];
+	iLowBlue = threshBox_low[0];
+	iLowGreen = threshBox_low[1];
+	iLowRed = threshBox_low[2];
+	iLowL = threshBox_low[3];
+	iLowA = threshBox_low[4];
+	iLowB = threshBox_low[5];
+	iLowHue = threshBox_low[6];
+	iLowLum = threshBox_low[7];
+	iLowSat = threshBox_low[8];	    
+	iHighBlue = threshBox_high[0];
+	iHighGreen = threshBox_high[1];
+	iHighRed = threshBox_high[2];
+	iHighL = threshBox_high[3];
+	iHighA = threshBox_high[4];
+	iHighB = threshBox_high[5];
+	iHighHue = threshBox_high[6];
+	iHighLum = threshBox_high[7];
+	iHighSat = threshBox_high[8];
     }
     else
     {
-	//Read thresholds from text file
-	    string colorThres = srcpath + "/ThresholdValuesBox.txt";
-	    ifstream f_colorThres(colorThres.c_str());
-	    if (!f_colorThres)
-	    {
-		cout << "error: could not load box threshold file," << endl;
-	    }
-
-	    string txt_line1, name1, tmp1;
-	    while (getline(f_colorThres, txt_line1))
-	    {
-		istringstream iss(txt_line1);
-		iss >> name1 >> tmp1;
-
-		// skip invalid lines and comments
-		if (iss.fail() || tmp1 != "=" || name1[0] == '#') continue;
-
-		if (name1 == "iLowH") iss >> iLowH;
-		else if (name1 == "iHighH") iss >> iHighH;
-		else if (name1 == "iLowS") iss >> iLowS;
-		else if (name1 == "iHighS") iss >> iHighS;
-		else if (name1 == "iLowV") iss >> iLowV;
-		else if (name1 == "iHighV") iss >> iHighV;
-	 }
+      ROS_INFO("Failed to get thresholds.");
     }
 
     cout << "Ready to loop..." << endl;
