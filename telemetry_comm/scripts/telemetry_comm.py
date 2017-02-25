@@ -75,6 +75,14 @@ class Telecom():
 		# counter for transmission
 		self.counter 		= 0
 
+		# receoption counter
+		# quadA
+		self.qA_gps_c		= 0
+		self.qA_sm_c		= 0
+		# quadB
+		self.qB_gps_c		= 0
+		self.qB_sm_c		= 0
+
 
 	# callbacks
 	def gps_cb(self, msg):
@@ -98,7 +106,7 @@ class Telecom():
 	# encoding function
 	def encode(self):
 		if self.ser.isOpen():
-			self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.my_gps_msg.latitude) + ',' + str(self.my_gps_msg.longitude)+ ',' + str(self.my_gps_msg.altitude)+ ',' +  'sm'+ ',' + self.my_sm_msg.state+'\n'
+			self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.my_gps_msg.header.seq) + ',' + str(self.my_gps_msg.latitude) + ',' + str(self.my_gps_msg.longitude)+ ',' + str(self.my_gps_msg.altitude)+ ',' +  'sm'+ ',' + str(self.my_sm_msg.header.seq) + ',' +  self.my_sm_msg.state+'\n'
 			# send buffer
 			if self.my_gps_msg.header.seq > self.counter or self.my_sm_msg.header.seq > self.counter :
 				self.ser.write(bytearray(self.out_buf))
@@ -111,11 +119,15 @@ class Telecom():
 	def decode(self):
 		res = False
 		q= None
+		gps_a = False
+		sm_a = False
+		gps_b = False
+		sm_b = False
 		if self.ser.isOpen():
 			self.in_buf 	= self.ser.readline()
 			parser = self.in_buf.split(',')							
 			L = len(parser)
-			if L == 8:
+			if L == 10:
 				# check if first letter is Q
 				if parser[0] == 'Q':
 					qn = parser[1]
@@ -123,13 +135,18 @@ class Telecom():
 					# other quad A
 					if qn == str(self.quadA_N):
 						self.quadA_gps_msg.header.stamp = rospy.Time.now()
-						self.quadA_gps_msg.latitude = float(parser[3])
-						self.quadA_gps_msg.longitude = float(parser[4])
-						self.quadA_gps_msg.altitude = float(parser[5])
+						self.quadA_gps_msg.latitude = float(parser[4])
+						self.quadA_gps_msg.longitude = float(parser[5])
+						self.quadA_gps_msg.altitude = float(parser[6])
 						self.quadA_sm_msg.header.stamp = rospy.Time.now()
 						self.quadA_sm_msg.state = parser[7].replace('\n','')	
 						res =  True
-						q = 'A'
+						if int(parser[3]) > self.qA_gps_c:
+							gps_a = True
+							self.qA_gps_c = int(parser[3])
+						if int(parser[8]) > self.qA_sm_c:
+							sm_a = True
+							self.qA_sm_c = int(parser[8])
 					# other quad B
 					if qn == str(self.quadB_N):
 						self.quadB_gps_msg.header.stamp = rospy.Time.now()
@@ -137,17 +154,21 @@ class Telecom():
 						self.quadB_gps_msg.longitude = float(parser[4])
 						self.quadB_gps_msg.altitude = float(parser[5])
 						self.quadB_sm_msg.header.stamp = rospy.Time.now()
-						self.quadB_sm_msg.state = parser[7].replace('\n','')
+						self.quadB_sm_msg.state = parser[9].replace('\n','')
 						res =  True
-						q = 'B'
+						if int(parser[3]) > self.qB_gps_c:
+							gps_B = True
+							self.qB_gps_c = int(parser[3])
+						if int(parser[8]) > self.qB_sm_c:
+							sm_B = True
+							self.qB_sm_c = int(parser[8])
 			self.in_buf = []
 			self.parser = []
-			self.ser.flushInput()
 
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
 		
-		return res,q
+		return res, gps_a, sm_a, gps_b, sm_b
 
 	def test(self):
 		if True:
@@ -180,15 +201,17 @@ def main(arg):
 		# encode
 		obj.encode()
 		# decode
-		res,q = obj.decode()
+		res,gps_a, sm_a, gps_b, sm_b = obj.decode()
 
 		# publish
 		if res:
-			if q == 'A':
+			if gps_a:
 				obj.qA_gps_pub.publish(obj.quadA_gps_msg)
+			if sm_a:
 				obj.qA_state_pub.publish(obj.quadA_sm_msg)
-			if q == 'B':
+			if gps_b:
 				obj.qB_gps_pub.publish(obj.quadB_gps_msg)
+			if sm_b:
 				obj.qB_state_pub.publish(obj.quadB_sm_msg)
 
 		rate.sleep()
