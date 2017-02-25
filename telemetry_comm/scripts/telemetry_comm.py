@@ -157,10 +157,10 @@ class Telecom():
 						self.quadB_sm_msg.state = parser[9].replace('\n','')
 						res =  True
 						if int(parser[3]) > self.qB_gps_c:
-							gps_B = True
+							gps_b = True
 							self.qB_gps_c = int(parser[3])
 						if int(parser[8]) > self.qB_sm_c:
-							sm_B = True
+							sm_b = True
 							self.qB_sm_c = int(parser[8])
 			self.in_buf = []
 			self.parser = []
