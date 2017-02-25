@@ -10,8 +10,9 @@
 	<arg name="arduino_url" default="/dev/ttyACM0" />
 	<arg name="arduino_baud" default="115200" />
 	<arg name="quadN" default="1"/>
+	<arg name="telem_port" default="/dev/ttyUSB1"/>
 
-<group ns="Quad1">
+<group ns="Quad$(arg quadN)">
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
 		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -23,7 +24,7 @@
 		<arg name="log_output" value="$(arg log_output)" />
 	</include>
 
-        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN)">
+        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)">
         </node>
 
 </group>

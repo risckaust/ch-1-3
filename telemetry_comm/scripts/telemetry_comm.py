@@ -110,6 +110,7 @@ class Telecom():
 
 	def decode(self):
 		res = False
+		q= None
 		if self.ser.isOpen():
 			self.in_buf 	= self.ser.readline()
 			parser = self.in_buf.split(',')							
@@ -128,6 +129,7 @@ class Telecom():
 						self.quadA_sm_msg.header.stamp = rospy.Time.now()
 						self.quadA_sm_msg.state = parser[7].replace('\n','')	
 						res =  True
+						q = 'A'
 					# other quad B
 					if qn == str(self.quadB_N):
 						self.quadB_gps_msg.header.stamp = rospy.Time.now()
@@ -137,11 +139,12 @@ class Telecom():
 						self.quadB_sm_msg.header.stamp = rospy.Time.now()
 						self.quadB_sm_msg.state = parser[7].replace('\n','')
 						res =  True
+						q = 'B'
 
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
 		
-		return res
+		return res,q
 
 	def test(self):
 		if True:
@@ -157,11 +160,15 @@ def main(arg):
 	if len(arg)<2:
 		rospy.logerr('Insufficient input arguments')
 		return
+		
 
 	quadN = int(arg[1])
 	obj = Telecom(quadN)
 
-	obj.port = '/dev/ttyUSB0'
+	if len(arg)>2:
+		obj.port = arg[2]
+	else:
+		obj.port = '/dev/ttyUSB0'
 	obj.baudrate = 57600
 
 	obj.open_serial()
@@ -170,15 +177,16 @@ def main(arg):
 		# encode
 		obj.encode()
 		# decode
-		res = obj.decode()
+		res,q = obj.decode()
 
 		# publish
 		if res:
-			obj.qA_gps_pub.publish(obj.quadA_gps_msg)
-			obj.qA_state_pub.publish(obj.quadA_sm_msg)
-
-			obj.qB_gps_pub.publish(obj.quadB_gps_msg)
-			obj.qB_state_pub.publish(obj.quadB_sm_msg)
+			if q == 'A':
+				obj.qA_gps_pub.publish(obj.quadA_gps_msg)
+				obj.qA_state_pub.publish(obj.quadA_sm_msg)
+			if q == 'B':
+				obj.qB_gps_pub.publish(obj.quadB_gps_msg)
+				obj.qB_state_pub.publish(obj.quadB_sm_msg)
 
 		rate.sleep()
 
