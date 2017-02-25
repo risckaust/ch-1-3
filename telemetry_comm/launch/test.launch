@@ -25,5 +25,5 @@
         <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true">
         </node>
 
-<group/>
+</group>
 </launch>
