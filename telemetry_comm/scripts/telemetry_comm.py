@@ -174,11 +174,11 @@ def main(arg):
 
 		# publish
 		if res:
-			self.qA_gps_pub.publish(self.quadA_gps_msg)
-			self.qA_sm_pub.publish(self.quadA_sm_msg)
+			obj.qA_gps_pub.publish(obj.quadA_gps_msg)
+			obj.qA_state_pub.publish(obj.quadA_sm_msg)
 
-			self.qB_gps_pub.publish(self.quadB_gps_msg)
-			self.qB_sm_pub.publish(self.quadB_sm_msg)
+			obj.qB_gps_pub.publish(obj.quadB_gps_msg)
+			obj.qB_state_pub.publish(obj.quadB_sm_msg)
 
 		rate.sleep()
 
