@@ -140,6 +140,8 @@ class Telecom():
 						self.quadB_sm_msg.state = parser[7].replace('\n','')
 						res =  True
 						q = 'B'
+			self.in_buff = []
+			self.parser = []
 
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
