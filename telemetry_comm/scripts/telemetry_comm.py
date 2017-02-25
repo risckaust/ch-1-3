@@ -140,7 +140,7 @@ class Telecom():
 						self.quadB_sm_msg.state = parser[7].replace('\n','')
 						res =  True
 						q = 'B'
-			self.in_buff = []
+			self.in_buf = []
 			self.parser = []
 
 		else:
