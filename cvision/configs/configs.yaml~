@@ -1,5 +1,6 @@
 # path to source file; topic of image feed
-pkg_path: '/home/abdkadma/ros_ws/src/ch-1-3/cvision'
-image_feed: '/Quad2/cvision/frame'
-stream_img: True
+pkg_path: '/home/odroid/ros_ws/src/ch-1-3/cvision'
+image_feed: '/Quad1/cvision/frame'
+frame_rate: 30
 stream_rate: 4
+bStream: True
