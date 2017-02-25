@@ -104,7 +104,7 @@ class Telecom():
 				self.ser.write(bytearray(self.out_buf))
 				self.counter = max(self.my_gps_msg.header.seq, self.my_sm_msg.header.seq)
 			else:
-				rospy.logwarn('Nothing to write to telemetry module.')
+				#rospy.logwarn('Nothing to write to telemetry module.')
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
 
