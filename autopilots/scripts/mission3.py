@@ -692,7 +692,7 @@ class StateMachineC( object ):
 					rospy.loginfo('XY towards last good position (meters): %s/%s ', self.bodK.xSp, self.bodK.ySp)
 					rospy.loginfo('Going up gradually....')
 					# go up gradually
-					self.altK.zSp = min(self.altK.z + 0.1*(self.altK.z), self.ZGROUND + self.SEARCH_ALT)
+					self.altK.zSp = min(self.altK.z + 0.05*(self.altK.z), self.ZGROUND + self.SEARCH_ALT)
 
 			
 					if self.altK.z >= (self.ZGROUND + self.SEARCH_ALT):
