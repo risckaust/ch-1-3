@@ -104,9 +104,17 @@ int main(int argc, char** argv)
     bool bCompetition = false;
     bool bSend = false;
     bool bWrite = false;
+    //Object shapes
+    int obj_shape = 1; //0-upright bouding box, 1-circle, 2-rotated rect
+    int red_shape = 1; //circle
+    int green_shape = 1; //circle
+    int blue_shape = 1; //circle
+    int yellow_shape = 2; //rotated rect
+    int box_shape = 2; //rotated rect
+
     //Fit shapes
-    bool bFitBoundingBox = true;
-    bool bFitRotatedRect = true;
+    bool bFitBoundingBox = false;
+    bool bFitRotatedRect = false;
     bool bFitCircle = true;
     bool bUpdateThres = false;
     //Set min object size
@@ -123,11 +131,12 @@ int main(int argc, char** argv)
     int frame_counter = 0;
     int frame_count_max = -1; //infinite
     int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow, 5-box
-
+    std::string colorAsString = "None";
 
     std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
     std::string img_tp = "/cv_camera/image_raw";
+
 
     //ROS Init
     ros::init(argc, argv, "threshold_tuning");
@@ -163,7 +172,8 @@ int main(int argc, char** argv)
     ros::Subscriber image_sub = n.subscribe(img_tp,1,imageCallback);
 
     /* list variables to be published in ROS parameters server */
-    std::vector<int> threshParam(3);
+    std::vector<int> thres_low(9);
+    std::vector<int> thres_high(9);
 
     ros::Rate loop_rate(frameRate);
 
@@ -190,9 +200,7 @@ int main(int argc, char** argv)
         else if (name == "bVideo") iss >> bVideo;
         else if (name == "bViz") iss >> bViz;
         else if (name == "bCompetition") iss >> bCompetition;
-        else if (name == "bFitBoundingBox") iss >> bFitBoundingBox;
-        else if (name == "bFitRotatedRect") iss >> bFitRotatedRect;
-        else if (name == "bFitCircle") iss >> bFitCircle;
+        else if (name == "obj_shape") iss >> obj_shape;
         else if (name == "min_obj_sz") iss >> min_obj_sz;
         else if (name == "thres_tol_LAB") iss >> thres_tol_LAB;
         else if (name == "thres_tol_HLS") iss >> thres_tol_HLS;
@@ -337,21 +345,22 @@ int main(int argc, char** argv)
     int vA=floor((iLowA+iHighA)/2); //A
     int vB=floor((iLowB+iHighB)/2); //B
 
+    Mat imgBGR;
+    Mat imgHLS;
+    Mat imgLAB;
+    Mat imgThresSum;
+    Mat imgThresAll;
+    Mat imgThresAllGray;
+    Mat imgThres3[3];
+    Mat imgBGRThres;
+    Mat imgHLSThres;
+    Mat imgLABThres;
+    Mat imgContours;
+
     cout << "Ready to loop..." << endl;
     while (frame_counter != frame_count_max && !bESC  && ros::ok())
     {
         //cout << "Frame: " << frame_counter << endl;
-        Mat imgBGR;
-        Mat imgHLS;
-        Mat imgLAB;
-        Mat imgThresSum;
-        Mat imgThresAll;
-        Mat imgThresAllGray;
-        Mat imgThres3[3];
-        Mat imgBGRThres;
-        Mat imgHLSThres;
-        Mat imgLABThres;
-        Mat imgContours;
 
         if ( (bCamera || bVideo) && !bCompetition)
         {
@@ -506,19 +515,24 @@ int main(int argc, char** argv)
                 }
             }
 
-
-            if (bFitCircle || bDebug)
-            {
-                x_SP = cc[max_idx_c].x;
-                y_SP = cc[max_idx_c].y;
-                r_SP = cr[max_idx_c];
-            }
-            if (bFitRotatedRect || bDebug)
-            {
-                x_SP = mc[max_idx_r].x;
-                y_SP = mc[max_idx_r].y;
-                t_SP = minRect[max_idx_r].angle;
-            }
+        //Circle
+        if (bFitCircle)
+        {
+            //x_SP = mc[max_idx_c].x;
+            //y_SP = mc[max_idx_c].y;
+            x_SP = cc[max_idx_c].x;
+            y_SP = cc[max_idx_c].y;
+            r_SP = cr[max_idx_c];
+        }
+        //Rotated rect
+        else if (bFitRotatedRect)
+        {
+            //x_SP = mc[max_idx_r].x;
+            //y_SP = mc[max_idx_r].y;
+            x_SP = minRect[max_idx_r].center.x;
+            y_SP = minRect[max_idx_r].center.y;
+            t_SP = minRect[max_idx_r].angle;
+        }
 
             //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
 
@@ -543,13 +557,15 @@ int main(int argc, char** argv)
                     for( int j = 0; j < 4; j++ )
                         line(imgBGR, rect_points[j], rect_points[(j+1)%4], color2, 1, 8 );
                     //Center
-                    circle(imgBGR, mc[max_idx_r], 5, color, -1, 8, 0);
+                    //circle(imgBGR, mc[max_idx_r], 5, color, -1, 8, 0);
+                    circle(imgBGR, minRect[max_idx_r].center, 5, color, -1, 8, 0);
                 }
                 if (bFitCircle)
                 {
                     //min circle
                     circle(imgBGR, cc[max_idx_c], (int)cr[max_idx_c], color3, 2, 8, 0 );
                     //Center
+                    //circle(imgBGR, mc[max_idx_c], 5, color, -1, 8, 0);
                     circle(imgBGR, cc[max_idx_c], 5, color, -1, 8, 0);
                 }
                 //putText(imgBGR, "Object Detected", mc[i] + Point2f(50, 50), 1, 2, Scalar(150, 0, 0), 2);
@@ -860,419 +876,232 @@ int main(int argc, char** argv)
                 }
             }
 
+
             switch (color)
             {
             case 1: //Red color selected.
-                if (bSend)
-                {
-                    //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowHue;
-                    threshParam[1] = iLowSat;
-                    threshParam[2] = iLowLum;
-                    n.setParam("/Quad1/RedHLS/low", threshParam);
-                    n.setParam("/Quad2/RedHLS/low", threshParam);
-                    n.setParam("/Quad3/RedHLS/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighHue;
-                    threshParam[1] = iHighSat;
-                    threshParam[2] = iHighLum;
-                    n.setParam("/Quad1/RedHLS/high", threshParam);
-                    n.setParam("/Quad2/RedHLS/high", threshParam);
-                    n.setParam("/Quad3/RedHLS/high", threshParam);
-                    bSend = false;
-                    cout << "Sending red thresholds complete." << endl;
-                }
-                if (bWrite)
-                {
-
-                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-                    ifstream streamYaml (configYaml.c_str());
-                    if (!streamYaml)
-                    {
-                        cout << "error: could not load yaml color_thresholds file," << endl;
-                    }
-
-                    int idx = 0;
-                    std::vector<std::string> text_file(10);
-                    string txt_line;
-                    while (getline(streamYaml, txt_line))
-                    {
-                        text_file[idx] = txt_line;
-                        idx++;
-                    }
-
-                    ofstream fileYaml(configYaml.c_str());
-                    //Save values to file
-                    if (fileYaml.is_open())
-                    {
-                        for (int i=0; i<10; i++)
-                        {
-
-                            if (i==color)
-                            {
-                                fileYaml << "Red: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
-                            }
-                            else
-                            {
-                                fileYaml << text_file[i] << "\n";
-                            }
-                        }
-                        fileYaml.close();
-                        cout << "Finished writing" << endl;
-                    }
-                    else cout << "Unable to open file";
-
-                    bWrite = false;
-                    cout << "Writing red thresholds complete." << endl;
-                }
+                obj_shape = red_shape;
+                colorAsString = "Red";
                 break;
-
             case 2: //Green color selected.
-                if (bSend)
-                {
-                    //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowHue;
-                    threshParam[1] = iLowSat;
-                    threshParam[2] = iLowLum;
-                    n.setParam("/Quad1/GreenHLS/low", threshParam);
-                    n.setParam("/Quad2/GreenHLS/low", threshParam);
-                    n.setParam("/Quad3/GreenHLS/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighHue;
-                    threshParam[1] = iHighSat;
-                    threshParam[2] = iHighLum;
-                    n.setParam("/Quad1/GreenHLS/high", threshParam);
-                    n.setParam("/Quad2/GreenHLS/high", threshParam);
-                    n.setParam("/Quad3/GreenHLS/high", threshParam);
-                    bSend = false;
-                    cout << "Sending green thresholds complete." << endl;
-                }
-                if (bWrite)
-                {
-
-                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-                    ifstream streamYaml (configYaml.c_str());
-                    if (!streamYaml)
-                    {
-                        cout << "error: could not load yaml color_thresholds file," << endl;
-                    }
-
-                    int idx = 0;
-                    std::vector<std::string> text_file(10);
-                    string txt_line;
-                    while (getline(streamYaml, txt_line))
-                    {
-                        text_file[idx] = txt_line;
-                        idx++;
-                    }
-
-                    ofstream fileYaml(configYaml.c_str());
-                    //Save values to file
-                    if (fileYaml.is_open())
-                    {
-                        for (int i=0; i<10; i++)
-                        {
-
-                            if (i==color)
-                            {
-                                fileYaml << "Green: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
-                            }
-                            else
-                            {
-                                fileYaml << text_file[i] << "\n";
-                            }
-                        }
-                        fileYaml.close();
-                        cout << "Finished writing" << endl;
-                    }
-                    else cout << "Unable to open file";
-
-                    bWrite = false;
-                    cout << "Writing green thresholds complete." << endl;
-                }
+                obj_shape = green_shape;
+                colorAsString = "Green";
                 break;
-
             case 3: //Blue color selected.
-                if (bSend)
-                {
-                    //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowHue;
-                    threshParam[1] = iLowSat;
-                    threshParam[2] = iLowLum;
-                    n.setParam("/Quad1/BlueHLS/low", threshParam);
-                    n.setParam("/Quad2/BlueHLS/low", threshParam);
-                    n.setParam("/Quad3/BlueHLS/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighHue;
-                    threshParam[1] = iHighSat;
-                    threshParam[2] = iHighLum;
-                    n.setParam("/Quad1/BlueHLS/high", threshParam);
-                    n.setParam("/Quad2/BlueHLS/high", threshParam);
-                    n.setParam("/Quad3/BlueHLS/high", threshParam);
-                    bSend = false;
-                    cout << "Sending blue thresholds complete." << endl;
-                }
-                if (bWrite)
-                {
-
-                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-                    ifstream streamYaml (configYaml.c_str());
-                    if (!streamYaml)
-                    {
-                        cout << "error: could not load yaml color_thresholds file," << endl;
-                    }
-
-                    int idx = 0;
-                    std::vector<std::string> text_file(10);
-                    string txt_line;
-                    while (getline(streamYaml, txt_line))
-                    {
-                        text_file[idx] = txt_line;
-                        idx++;
-                    }
-
-                    ofstream fileYaml(configYaml.c_str());
-                    //Save values to file
-                    if (fileYaml.is_open())
-                    {
-                        for (int i=0; i<10; i++)
-                        {
-
-                            if (i==color)
-                            {
-                                fileYaml << "Blue: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
-                            }
-                            else
-                            {
-                                fileYaml << text_file[i] << "\n";
-                            }
-                        }
-                        fileYaml.close();
-                        cout << "Finished writing" << endl;
-                    }
-                    else cout << "Unable to open file";
-
-                    bWrite = false;
-                    cout << "Writing blue thresholds complete." << endl;
-                }
+                obj_shape = blue_shape;
+                colorAsString = "Blue";
                 break;
-
             case 4: //Yellow color selected.
-                if (bSend)
-                {
-                    //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowHue;
-                    threshParam[1] = iLowSat;
-                    threshParam[2] = iLowLum;
-                    n.setParam("/Quad1/YellowHLS/low", threshParam);
-                    n.setParam("/Quad2/YellowHLS/low", threshParam);
-                    n.setParam("/Quad3/YellowHLS/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighHue;
-                    threshParam[1] = iHighSat;
-                    threshParam[2] = iHighLum;
-                    n.setParam("/Quad1/YellowHLS/high", threshParam);
-                    n.setParam("/Quad2/YellowHLS/high", threshParam);
-                    n.setParam("/Quad3/YellowHLS/high", threshParam);
-                    bSend = false;
-                    cout << "Sending yellow thresholds complete." << endl;
-                }
-                if (bWrite)
-                {
-
-                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-                    ifstream streamYaml (configYaml.c_str());
-                    if (!streamYaml)
-                    {
-                        cout << "error: could not load yaml color_thresholds file," << endl;
-                    }
-
-                    int idx = 0;
-                    std::vector<std::string> text_file(10);
-                    string txt_line;
-                    while (getline(streamYaml, txt_line))
-                    {
-                        text_file[idx] = txt_line;
-                        idx++;
-                    }
-
-                    ofstream fileYaml(configYaml.c_str());
-                    //Save values to file
-                    if (fileYaml.is_open())
-                    {
-                        for (int i=0; i<10; i++)
-                        {
-
-                            if (i==color)
-                            {
-                                fileYaml << "Yellow: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
-                            }
-                            else
-                            {
-                                fileYaml << text_file[i] << "\n";
-                            }
-                        }
-                        fileYaml.close();
-                        cout << "Finished writing" << endl;
-                    }
-                    else cout << "Unable to open file";
-
-                    bWrite = false;
-                    cout << "Writing yellow thresholds complete." << endl;
-                }
+                obj_shape = yellow_shape;
+                colorAsString = "Yellow";
                 break;
             case 5: // box
-                if (bSend)
-                {
-                    //Send ROS message here
-                    // send low values
-                    threshParam[0] = iLowHue;
-                    threshParam[1] = iLowSat;
-                    threshParam[2] = iLowLum;
-                    n.setParam("/Quad1/BoxHLS/low", threshParam);
-                    n.setParam("/Quad2/BoxHLS/low", threshParam);
-                    n.setParam("/Quad3/BoxHLS/low", threshParam);
-                    // send high values
-                    threshParam[0] = iHighHue;
-                    threshParam[1] = iHighSat;
-                    threshParam[2] = iHighLum;
-                    n.setParam("/Quad1/BoxHLS/high", threshParam);
-                    n.setParam("/Quad2/BoxHLS/high", threshParam);
-                    n.setParam("/Quad3/BoxHLS/high", threshParam);
-                    bSend = false;
-                    cout << "Sending Box thresholds complete." << endl;
-                }
-                if (bWrite)
-                {
-
-                    string configYaml = pkgpath + "/configs/color_thresholds.yaml";
-                    ifstream streamYaml (configYaml.c_str());
-                    if (!streamYaml)
-                    {
-                        cout << "error: could not load yaml color_thresholds file," << endl;
-                    }
-
-                    int idx = 0;
-                    std::vector<std::string> text_file(10);
-                    string txt_line;
-                    while (getline(streamYaml, txt_line))
-                    {
-                        text_file[idx] = txt_line;
-                        idx++;
-                    }
-
-                    ofstream fileYaml(configYaml.c_str());
-                    //Save values to file
-                    if (fileYaml.is_open())
-                    {
-                        for (int i=0; i<10; i++)
-                        {
-
-                            if (i==color)
-                            {
-                                fileYaml << "Box: {low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "], high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "]} \n";
-                            }
-                            else
-                            {
-                                fileYaml << text_file[i] << "\n";
-                            }
-                        }
-                        fileYaml.close();
-                        cout << "Finished writing" << endl;
-                    }
-                    else cout << "Unable to open file";
-
-                    bWrite = false;
-                    cout << "Writing box thresholds complete." << endl;
-                }
+                obj_shape = box_shape;
+                colorAsString = "Box";
                 break;
             }
 
+
+            switch (obj_shape)
+            {
+            case 0:
+                bFitBoundingBox = true;
+                bFitCircle = false;
+                bFitRotatedRect = false;
+                break;
+            case 1:
+                bFitBoundingBox = false;
+                bFitCircle = true;
+                bFitRotatedRect = false;
+                break;
+            case 2:
+                bFitBoundingBox = false;
+                bFitCircle = false;
+                bFitRotatedRect = true;
+                break;
+            }
+
+            if (bSend)
+            {
+                thres_low[0] = iLowBlue;
+                thres_low[1] = iLowGreen;
+                thres_low[2] = iLowRed;
+                thres_low[3] = iLowL;
+                thres_low[4] = iLowA;
+                thres_low[5] = iLowB;
+                thres_low[6] = iLowHue;
+                thres_low[7] = iLowLum;
+                thres_low[8] = iLowSat;
+                thres_high[0] = iHighBlue;
+                thres_high[1] = iHighGreen;
+                thres_high[2] = iHighRed;
+                thres_high[3] = iHighL;
+                thres_high[4] = iHighA;
+                thres_high[5] = iHighB;
+                thres_high[6] = iHighHue;
+                thres_high[7] = iHighLum;
+                thres_high[8] = iHighSat;
+
+                // send low values
+                n.setParam("/Quad1/" + colorAsString + "/low", thres_low);
+                n.setParam("/Quad2/" + colorAsString + "/low", thres_low);
+                n.setParam("/Quad3/" + colorAsString + "/low", thres_low);
+                // send high values
+                n.setParam("/Quad1/" + colorAsString + "/high", thres_high);
+                n.setParam("/Quad2/" + colorAsString + "/high", thres_high);
+                n.setParam("/Quad3/" + colorAsString + "/high", thres_high);
+                 // send obj_shape
+                n.setParam("/Quad1/" + colorAsString + "/low", obj_shape);
+                n.setParam("/Quad2/" + colorAsString + "/low", obj_shape);
+                n.setParam("/Quad3/" + colorAsString + "/low", obj_shape);
+                 // send min_obj_sz
+                n.setParam("/Quad1/" + colorAsString + "/low", min_obj_sz);
+                n.setParam("/Quad2/" + colorAsString + "/low", min_obj_sz);
+                n.setParam("/Quad3/" + colorAsString + "/low", min_obj_sz);
+                // send min_obj_sz
+                n.setParam("/Quad1/" + colorAsString + "/low", min_obj_sz);
+                n.setParam("/Quad2/" + colorAsString + "/low", min_obj_sz);
+                n.setParam("/Quad3/" + colorAsString + "/low", min_obj_sz);
+                // send mergeThres
+                n.setParam("/Quad1/" + colorAsString + "/low", mergeThres);
+                n.setParam("/Quad2/" + colorAsString + "/low", mergeThres);
+                n.setParam("/Quad3/" + colorAsString + "/low", mergeThres);
+
+                bSend = false;
+                cout << "Sending " << colorAsString << " thresholds complete." << endl;
+            }
+
+            if (bWrite)
+            {
+
+                string configYaml = pkgpath + "/configs/color_thresholds.yaml";
+                ifstream streamYaml (configYaml.c_str());
+                if (!streamYaml)
+                {
+                    cout << "error: could not load yaml color_thresholds file," << endl;
+                }
+
+                int idx = 0;
+                std::vector<std::string> text_file(10);
+                string txt_line;
+                while (getline(streamYaml, txt_line))
+                {
+                    text_file[idx] = txt_line;
+                    idx++;
+                }
+
+                ofstream fileYaml(configYaml.c_str());
+                //Save values to file
+                if (fileYaml.is_open())
+                {
+                    for (int i=0; i<10; i++)
+                    {
+
+                        if (i==color)
+                        {
+                            fileYaml << colorAsString << ": {"
+                                     <<"low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "],"
+                                     << "high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "],"
+                                     << "obj_shape: [" << obj_shape << "],"
+                                     << "min_obj_sz: [" << min_obj_sz << "],"
+                                     << "morph_sz: [" << morph_sz << "],"
+                                     << "merge_thres: [" << mergeThres << "]} \n";
+                        }
+                        else
+                        {
+                            fileYaml << text_file[i] << "\n";
+                        }
+                    }
+                    fileYaml.close();
+                    cout << "Writing " << colorAsString << " thresholds complete." << endl;
+                }
+                else cout << "Unable to open file";
+
+                bWrite = false;
+            }
+
+            //end if(!bCompetition)
+            }
+
+            //ROS Topics
+            //pose (setpoint - 2D float [m], heading - float [deg])
+            //valid - bool
+            //radius - float [m]
+            if (cont_sz>0)
+            {
+                msg.pose.x = x_SP;
+                msg.pose.y = y_SP;
+                msg.pose.theta = t_SP;
+                msg.radius = r_SP;
+                msg.valid = true;
+            }
+            else
+            {
+                msg.valid = false;
+            }
+
+            //ROS Publisher
+            object_pub.publish(msg);
+
+            if (cv_img_ptr_ros)
+            {
+                //Clear pointer
+                cv_img_ptr_ros.reset();
+            }
+
+            ros::spinOnce();
+            loop_rate.sleep();
         }
 
-        //ROS Topics
-        //pose (setpoint - 2D float [m], heading - float [deg])
-        //valid - bool
-        //radius - float [m]
-        if (cont_sz>0)
+        string newThres = srcpath + "/ThresholdValuesNew.txt";
+        switch (color)
         {
-            msg.pose.x = x_SP;
-            msg.pose.y = y_SP;
-            msg.pose.theta = t_SP;
-            msg.radius = r_SP;
-            msg.valid = true;
+        case 1: //Red color selected.
+            newThres = srcpath + "/ThresholdValuesRed.txt";
+            break;
+
+        case 2: //Green color selected.
+            newThres = srcpath + "/ThresholdValuesGreen.txt";
+            break;
+
+        case 3: //Blue color selected.
+            newThres = srcpath + "/ThresholdValuesBlue.txt";
+            break;
+
+        case 4: //Yellow color selected.
+            newThres = srcpath + "/ThresholdValuesYellow.txt";
+            break;
+
+        case 5: //Box color selected.
+            newThres = srcpath + "/ThresholdValuesBox.txt";
+            break;
         }
-        else
+
+        ofstream myfile(newThres.c_str());
+        //Save values to file
+        if (myfile.is_open())
         {
-            msg.valid = false;
+            myfile << "iLowHue = " << iLowHue << "\n";
+            myfile << "iHighHue = " << iHighHue << "\n";
+            myfile << "iLowSat = " << iLowSat << "\n";
+            myfile << "iHighSat = " << iHighSat << "\n";
+            myfile << "iLowLum = " << iLowLum << "\n";
+            myfile << "iHighLum = " << iHighLum << "\n";
+            myfile << "iLowBlue = " << iLowBlue << "\n";
+            myfile << "iHighBlue = " << iHighBlue << "\n";
+            myfile << "iLowGreen = " << iLowGreen << "\n";
+            myfile << "iHighGreen = " << iHighGreen << "\n";
+            myfile << "iLowRed = " << iLowRed << "\n";
+            myfile << "iHighRed = " << iHighRed << "\n";
+            myfile << "iLowL = " << iLowL << "\n";
+            myfile << "iHighL = " << iHighL << "\n";
+            myfile << "iLowA = " << iLowA << "\n";
+            myfile << "iHighA = " << iHighA << "\n";
+            myfile << "iLowB = " << iLowB << "\n";
+            myfile << "iHighB = " << iHighB << "\n";
+            myfile.close();
+            cout << "Finished writing" << endl;
         }
-
-        //ROS Publisher
-        object_pub.publish(msg);
-
-        if (cv_img_ptr_ros)
-        {
-            //Clear pointer
-            cv_img_ptr_ros.reset();
-        }
-
-        ros::spinOnce();
-        loop_rate.sleep();
+        else cout << "Unable to open file";
+        return 0;
     }
-
-    string newThres = srcpath + "/ThresholdValuesNew.txt";
-    switch (color)
-    {
-    case 1: //Red color selected.
-        newThres = srcpath + "/ThresholdValuesRed.txt";
-        break;
-
-    case 2: //Green color selected.
-        newThres = srcpath + "/ThresholdValuesGreen.txt";
-        break;
-
-    case 3: //Blue color selected.
-        newThres = srcpath + "/ThresholdValuesBlue.txt";
-        break;
-
-    case 4: //Yellow color selected.
-        newThres = srcpath + "/ThresholdValuesYellow.txt";
-        break;
-
-    case 5: //Box color selected.
-        newThres = srcpath + "/ThresholdValuesBox.txt";
-        break;
-    }
-
-    ofstream myfile(newThres.c_str());
-    //Save values to file
-    if (myfile.is_open())
-    {
-        myfile << "iLowHue = " << iLowHue << "\n";
-        myfile << "iHighHue = " << iHighHue << "\n";
-        myfile << "iLowSat = " << iLowSat << "\n";
-        myfile << "iHighSat = " << iHighSat << "\n";
-        myfile << "iLowLum = " << iLowLum << "\n";
-        myfile << "iHighLum = " << iHighLum << "\n";
-        myfile << "iLowBlue = " << iLowBlue << "\n";
-        myfile << "iHighBlue = " << iHighBlue << "\n";
-        myfile << "iLowGreen = " << iLowGreen << "\n";
-        myfile << "iHighGreen = " << iHighGreen << "\n";
-        myfile << "iLowRed = " << iLowRed << "\n";
-        myfile << "iHighRed = " << iHighRed << "\n";
-        myfile << "iLowL = " << iLowL << "\n";
-        myfile << "iHighL = " << iHighL << "\n";
-        myfile << "iLowA = " << iLowA << "\n";
-        myfile << "iHighA = " << iHighA << "\n";
-        myfile << "iLowB = " << iLowB << "\n";
-        myfile << "iHighB = " << iHighB << "\n";
-        myfile.close();
-        cout << "Finished writing" << endl;
-    }
-    else cout << "Unable to open file";
-    return 0;
-}
