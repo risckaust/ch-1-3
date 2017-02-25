@@ -60,16 +60,16 @@ class Telecom():
 
 		# subscribers
 		# to my gps
-		rospy.Subscriber(self.ns+'/mavros/global_position/global', NavSatFix, self.gps_cb)
+		rospy.Subscriber(self.ns+'/mavros/global_position/raw/fix', NavSatFix, self.gps_cb)
 		# to my state machine state
 		rospy.Subscriber(self.ns+'/state_machine/state', StateMachine, self.sm_cb)
 
 		# publishers
 		# quadA
-		self.qA_gps_pub 	= rospy.Publisher(self.quadA_ns + '/mavros/global_position/global',NavSatFix, queue_size=10)
+		self.qA_gps_pub 	= rospy.Publisher(self.quadA_ns + '/mavros/global_position/raw/fix',NavSatFix, queue_size=10)
 		self.qA_state_pub 	= rospy.Publisher(self.quadA_ns + '/state_machine/state', StateMachine, queue_size=10)
 		# quadB
-		self.qB_gps_pub 	= rospy.Publisher(self.quadB_ns + '/mavros/global_position/global',NavSatFix, queue_size=10)
+		self.qB_gps_pub 	= rospy.Publisher(self.quadB_ns + '/mavros/global_position/raw/fix',NavSatFix, queue_size=10)
 		self.qB_state_pub 	= rospy.Publisher(self.quadB_ns + '/state_machine/state', StateMachine, queue_size=10)
 
 		# counter for transmission
