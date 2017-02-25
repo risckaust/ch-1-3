@@ -142,6 +142,7 @@ class Telecom():
 						q = 'B'
 			self.in_buf = []
 			self.parser = []
+			self.ser.flushInput()
 
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
