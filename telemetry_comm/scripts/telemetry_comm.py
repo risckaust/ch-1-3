@@ -42,6 +42,9 @@ class Telecom():
 			self.quadB_N 	= 2
 			self.quadA_ns 	= '/Quad1'
 			self.quadB_ns 	= '/Quad2'
+		else:
+			rospy.logerr('Quad ID is not 1, 2, or 3')
+			exit(1)
 
 		# other quad A
 		# gps
@@ -131,9 +134,12 @@ class Telecom():
 				# check if first letter is Q
 				if parser[0] == 'Q':
 					qn = parser[1]
+					if qn == str(self.quadN):
+						rospy.logerr('Quad ID is not unique!')
+						exit(1)
 					# start parsing
 					# other quad A
-					if qn == str(self.quadA_N):
+					elif qn == str(self.quadA_N):
 						self.quadA_gps_msg.header.stamp = rospy.Time.now()
 						self.quadA_gps_msg.latitude = float(parser[4])
 						self.quadA_gps_msg.longitude = float(parser[5])
@@ -148,7 +154,7 @@ class Telecom():
 							sm_a = True
 							self.qA_sm_c = int(parser[8])
 					# other quad B
-					if qn == str(self.quadB_N):
+					elif qn == str(self.quadB_N):
 						self.quadB_gps_msg.header.stamp = rospy.Time.now()
 						self.quadB_gps_msg.latitude = float(parser[3])
 						self.quadB_gps_msg.longitude = float(parser[4])
@@ -162,6 +168,9 @@ class Telecom():
 						if int(parser[8]) > self.qB_sm_c:
 							sm_b = True
 							self.qB_sm_c = int(parser[8])
+					else:
+						rospy.logerr('Quad ID is not 1,2, or 3.')
+						exit(1)
 			self.in_buf = []
 			self.parser = []
 
