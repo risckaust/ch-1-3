@@ -207,7 +207,7 @@ class StateMachineC( object ):
 		self.cRate		= 0.95
 
 		# descend_rate: fraction of the previous setpoint
-		self.descend_factor_low = 0.05 #[ % ]
+		self.descend_factor_low = 0.07 #[ % ]
 		self.descend_factor_high = 0.1 #[ % ]
 		# altitude where descend rate is r
 
@@ -609,8 +609,8 @@ class StateMachineC( object ):
 				if objectFound: # object is most likely seen
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*1.0, 1)
 					# update direction towards object
-					obj_x = self.bgr_target.x
-					obj_y = self.bgr_target.y
+					obj_x = xy[0]
+					obj_y = xy[1]
 				else: # object is most likely NOT seen
 					self.confidence = min(self.cRate*self.confidence + (1-self.cRate)*0.0, 1)
 
@@ -618,15 +618,18 @@ class StateMachineC( object ):
 				if self.confidence > self.cTh:
 
 					# two possibilites: 1) see it in the frame, 2) not
-					if objectSeen: # confidence high + detection
+					if objectFound: # confidence high + detection
 
 						if self.USE_LIDAR and self.lidar_active and (self.lidar_z <= self.LIDAR_USE_ALT):
 							rospy.loginfo( '#------------Using Lidar for altitude correction-----------#')
 							dz = max(self.lidar_z - self.OBJ_OFFSET, 0.0)
-							altCorrect = dz/rospy.get_param(self.ns+'/pix2m/altCal')
+							altCorrect = dz/rospy.get_param(self.namespace+'/pix2m/altCal')
 						else:
 							dz = max(self.altK.z - self.ZGROUND, 0.0)
-							altCorrect = (dz + self.CAMOFFSET)/rospy.get_param(self.ns+'/pix2m/altCal')
+							altCorrect = (dz + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
+
+						self.bodK.xSp = obj_x*altCorrect
+						self.bodK.ySp = obj_y*altCorrect
 
 						# update home
 						self.home.x = self.bodK.x
@@ -963,17 +966,17 @@ class StateMachineC( object ):
 			# TODO: boxIsFound, xy = self.findBox()
 
 			(self.bodK.xSp, self.bodK.ySp) = autopilotLib.wayHome(self.bodK, self.home)
-			self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
+			#self.altK.zSp = self.ZGROUND + rospy.get_param(self.namespace+'/autopilot/altStep')
 
 			# try to drop if arrived
 			dxy = sqrt(self.bodK.xSp**2 + self.bodK.ySp**2)
-			if dxy <= 0.15:
+			if dxy <= 1.0:
 				rospy.loginfo('Arrived at drop zone..')
 				# descend gradually
 				if abs(self.altK.z - self.ZGROUND - descend_alt) <= 0.1:
 					descend_alt = descend_alt - self.descend_factor_high*descend_alt
 					descend_alt = max(self.ZGROUND+self.DROP_ALT, descend_alt)
-
+					self.altK.zSp = descend_alt
 				
 				# deactivate gripper if at DROP_ALT
 				if abs(self.altK.z - self.ZGROUND - self.DROP_ALT) <= 0.1:
@@ -1729,7 +1732,7 @@ def mission():
 
 	sm.SEARCH_ALT = 3.0
 	sm.PICK_ALT = 0.2
-	sm.DROP_ALT = 1.0
+	sm.DROP_ALT = 2.0
 	sm.ENVELOPE_XY_POS_MIN = 0.1
 	sm.ENVELOPE_XY_POS_MAX = 0.6
 	sm.ENVELOPE_XY_VEL_MIN = 0.15

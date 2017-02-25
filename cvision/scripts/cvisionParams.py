@@ -49,9 +49,9 @@ def setParams(ns):
     rospy.set_param(ns+'/getColors/green','green')
     rospy.set_param(ns+'/getColors/yellow','yellow')
     
-    rospy.set_param(ns+'/getColors/useMass', True)                 # use mass for color blob (otherwise, only circle)
+    rospy.set_param(ns+'/getColors/useMass', False)                 # use mass for color blob (otherwise, only circle)
     rospy.set_param(ns+'/getColors/minMass',50.0)                   # minimum mass to detect a color blob
-    rospy.set_param(ns+'/getColors/minRadius',10.0)                 # minimum cirlce radius to detect a color blob
+    rospy.set_param(ns+'/getColors/minRadius',5.0)                 # minimum cirlce radius to detect a color blob
     rospy.set_param(ns+'/getColors/erodeOn',True)                   # use erode/dilate vs blurring 
     rospy.set_param(ns+'/getColors/proximityOn',True)               # use proximity filter on most recent detection
     rospy.set_param(ns+'/getColors/pxRadius', 1.2)                  # radius multiplier for proximity mask

@@ -16,7 +16,7 @@ def setParams(ns):
     # ROS parameters for kAltVel
     rospy.set_param(ns+'/kAltVel/gP',1.7)
     rospy.set_param(ns+'/kAltVel/gI',0.1)
-    rospy.set_param(ns+'/kAltVel/vMaxU',2.0)
+    rospy.set_param(ns+'/kAltVel/vMaxU',1.0)
     rospy.set_param(ns+'/kAltVel/vMaxD',0.2)
 
     # ROS parameters for kBodVel
