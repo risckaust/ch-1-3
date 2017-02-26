@@ -85,6 +85,9 @@ class Telecom():
 		# quadB
 		self.qB_gps_c		= 0
 		self.qB_sm_c		= 0
+		
+		# test counter
+		self.test_c		= 0
 
 
 	# callbacks
@@ -109,11 +112,13 @@ class Telecom():
 	# encoding function
 	def encode(self):
 		if self.ser.isOpen():
+			#self.out_buf = ''
 			self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.my_gps_msg.header.seq) + ',' + str(self.my_gps_msg.latitude) + ',' + str(self.my_gps_msg.longitude)+ ',' + str(self.my_gps_msg.altitude)+ ',' +  'sm'+ ',' + str(self.my_sm_msg.header.seq) + ',' +  self.my_sm_msg.state+'\n'
 			# send buffer
 			if self.my_gps_msg.header.seq > self.counter or self.my_sm_msg.header.seq > self.counter :
 				self.ser.write(bytearray(self.out_buf))
 				self.counter = max(self.my_gps_msg.header.seq, self.my_sm_msg.header.seq)
+
 			#else:
 				#rospy.logwarn('Nothing to write to telemetry module.')
 		else:
@@ -181,9 +186,10 @@ class Telecom():
 
 	def test(self):
 		if True:
-			self.out_buf 	= 'Q'+ ',' + str(self.quadN)+',1.2323435,2,3,4,5' +'\n'
+			self.out_buf 	= self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.test_c) + ',' + str(39.23456789) + ',' + str(26.123456789)+ ',' + str(-17.5)+ ',' +  'sm'+ ',' + str(self.test_c) + ',' +  'test_state'+'\n'
 			# send buffer
 			self.ser.write(bytearray(self.out_buf))
+			self.test_c = self.test_c + 1
 
 
 def main(arg):
