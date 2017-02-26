@@ -185,7 +185,7 @@ class Telecom():
 		return res, gps_a, sm_a, gps_b, sm_b
 
 	def test(self):
-		if True:
+		if self.ser.isOpen():
 			self.out_buf 	= self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.test_c) + ',' + str(39.23456789) + ',' + str(26.123456789)+ ',' + str(-17.5)+ ',' +  'sm'+ ',' + str(self.test_c) + ',' +  'test_state'+'\n'
 			# send buffer
 			self.ser.write(bytearray(self.out_buf))
