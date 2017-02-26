@@ -386,7 +386,7 @@ int main(int argc, char** argv)
                 vector<Point2f> cc(cont_sz);
                 vector<float> cr(cont_sz);
                 vector<int> minRectArea(cont_sz);
-		vector<int> minCircleArea(cont_sz);
+                vector<int> minCircleArea(cont_sz);
                 int max_idx_c= 0;
                 int max_idx_r= 0;
 
@@ -458,11 +458,10 @@ int main(int argc, char** argv)
 
                 if (bViz && !bCompetition)
                 {
-//                    if (bFitBoundingBox)
-//                    {
-//                        //bounding box
-//                        rectangle(imgBGR, boundRect[i].tl(), boundRect[i].br(), color1, 2, 8, 0 );
-//                    }
+                    if (bFitBoundingBox)
+                    {
+                        //bounding box
+                    }
                     if (bFitRotatedRect)
                     {
                         //rotated rectangle
@@ -731,7 +730,7 @@ if (!bCompetition) {
 			cout << "Finished writing" << endl;
 		    }
 		    else cout << "Unable to open file";
-		
+
                     bWrite = false;
                     cout << "Writing red thresholds complete." << endl;
 		}
@@ -788,7 +787,7 @@ if (!bCompetition) {
 			cout << "Finished writing" << endl;
 		    }
 		    else cout << "Unable to open file";
-		
+
                     bWrite = false;
                     cout << "Writing green thresholds complete." << endl;
 		}
@@ -845,7 +844,7 @@ if (!bCompetition) {
 			cout << "Finished writing" << endl;
 		    }
 		    else cout << "Unable to open file";
-		
+
                     bWrite = false;
                     cout << "Writing blue thresholds complete." << endl;
 		}
@@ -902,7 +901,7 @@ if (!bCompetition) {
 			cout << "Finished writing" << endl;
 		    }
 		    else cout << "Unable to open file";
-		
+
                     bWrite = false;
                     cout << "Writing yellow thresholds complete." << endl;
 		}
@@ -958,7 +957,7 @@ if (!bCompetition) {
 			cout << "Finished writing" << endl;
 		    }
 		    else cout << "Unable to open file";
-		
+
                     bWrite = false;
                     cout << "Writing box thresholds complete." << endl;
 		}
