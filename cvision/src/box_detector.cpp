@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     int min_obj_sz = 5;
     int obj_sz = 0;
     int morph_sz = 5;
-    int mergeThres = 100;
+    int merge_thres = 100;
 
     int frame_counter = 0;
     int frame_count_max = -1; //infinite
@@ -76,6 +76,7 @@ int main(int argc, char** argv)
 
     std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
+    std::string img_tp = "/cv_camera/image_raw";
 
     //ROS Init
     ros::init(argc, argv, "box_detector");
@@ -88,7 +89,7 @@ int main(int argc, char** argv)
     //Get the namespace
     std::string ns = ros::this_node::getNamespace();
 
-    /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
+    // get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml
     if (n.getParam(ns + "/pkg_path", pkgpath))
     {
         ROS_INFO("Got pkg path: %s", pkgpath.c_str());
@@ -99,16 +100,14 @@ int main(int argc, char** argv)
         ROS_INFO("Failed to get param 'pkgpath'. Default to hardcoded paths.");
     }
 
-    /* get the topic name of image feed */
-    std::string img_tp;
+    //get the topic name of image feed
     if (n.getParam(ns + "/image_feed", img_tp))
     {
         ROS_INFO("Got param: %s", img_tp.c_str());
     }
     else
     {
-        ROS_INFO("Failed to get param 'image_feed'. Default to default image feed.");
-        img_tp = "/cv_camera/image_raw";
+        ROS_INFO("Failed to get param 'image_feed'. Default to hardcoded image feed.");
     }
 
     // get gray image stream rate
@@ -160,7 +159,7 @@ int main(int argc, char** argv)
         ROS_INFO("Failed to get thresholds.");
     }
 
-    if (n.getParam(ns + "/Box/obj_shape", obj_shape) && n.getParam(ns + "/Box/min_obj_sz", min_obj_sz) && n.getParam(ns + "/Box/morph_sz", morph_sz) && n.getParam(ns + "/Box/mergeThres", mergeThres))
+    if (n.getParam(ns + "/Box/obj_shape", obj_shape) && n.getParam(ns + "/Box/min_obj_sz", min_obj_sz) && n.getParam(ns + "/Box/morph_sz", morph_sz) && n.getParam(ns + "/Box/merge_thres", merge_thres))
     {
         ROS_INFO("Got Object Parameters.");
     }
@@ -220,11 +219,11 @@ int main(int argc, char** argv)
 
         //Threshold combined results
         //gray = 0.114b + 0.587g + 0.299r
-        //e.g mergeThres = 100 - LAB or HLS + BGR, 160 - LAB + HLS or LAB + BGR, 200 - LAB + HLS
+        //e.g merge_thres = 100 - LAB or HLS + BGR, 160 - LAB + HLS or LAB + BGR, 200 - LAB + HLS
         cvtColor(imgThresAll, imgThresAllGray, COLOR_BGR2GRAY);
         //GaussianBlur(imgThresAllGray, imgThresAllGray, Size(0, 0),morph_sz);
         //blur(imgThresAllGray, imgThresAllGray, Size(morph_width, morph_height));
-        threshold(imgThresAllGray,imgThresSum,mergeThres,255,THRESH_BINARY);
+        threshold(imgThresAllGray,imgThresSum,merge_thres,255,THRESH_BINARY);
 
         morph_sz=max(morph_sz,1);
         //Width and height for morph
