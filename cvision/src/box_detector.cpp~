@@ -369,8 +369,8 @@ int main(int argc, char** argv)
             y_dist = frame_center.y - obj_location.y;
 
             //convert to meters using emperical data fit and flip for NED
-            msg_dist.pose.x = y_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
-            msg_dist.pose.y = x_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
+            msg_dist.pose.x = y_dist/100*(0.0018037*sqrt(x_dist^2 + y_dist^2) + 0.3124266);
+            msg_dist.pose.y = x_dist/100*(0.0018037*sqrt(x_dist^2 + y_dist^2) + 0.3124266);
 	    msg_dist.pose.theta = 0;
 	    msg_dist.radius = cr[max_idx_c];
 
@@ -390,8 +390,8 @@ int main(int argc, char** argv)
             y_dist = frame_center.y - obj_location.y;
 
             //convert to meters using emperical data fit and flip for NED
-            msg_dist.pose.x = y_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
-            msg_dist.pose.y = x_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
+            msg_dist.pose.x = y_dist/100*(0.0018037*sqrt(x_dist^2 + y_dist^2) + 0.3124266);
+            msg_dist.pose.y = x_dist/100*(0.0018037*sqrt(x_dist^2 + y_dist^2) + 0.3124266);
 	    msg_dist.pose.theta = minRect[max_idx_r].angle;
 	    msg_dist.radius = 0;
         }
