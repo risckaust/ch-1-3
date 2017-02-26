@@ -112,7 +112,7 @@ class Telecom():
 	# encoding function
 	def encode(self):
 		if self.ser.isOpen():
-			#self.out_buf = ''
+			self.out_buf = ''
 			self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.my_gps_msg.header.seq) + ',' + str(self.my_gps_msg.latitude) + ',' + str(self.my_gps_msg.longitude)+ ',' + str(self.my_gps_msg.altitude)+ ',' +  'sm'+ ',' + str(self.my_sm_msg.header.seq) + ',' +  self.my_sm_msg.state+'\n'
 			# send buffer
 			if self.my_gps_msg.header.seq > self.counter or self.my_sm_msg.header.seq > self.counter :
@@ -178,7 +178,7 @@ class Telecom():
 						exit(1)
 			self.in_buf = []
 			parser = []
-
+			self.ser.flushInput()
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
 		
@@ -194,7 +194,7 @@ class Telecom():
 
 def main(arg):
 	rospy.init_node('telemetry_node', anonymous=True)
-	rate = rospy.Rate(30)
+	rate = rospy.Rate(10)
 
 	if len(arg)<2:
 		rospy.logerr('Insufficient input arguments')
