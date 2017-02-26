@@ -99,11 +99,13 @@ int main(int argc, char** argv)
     bool bOutputVideo = false;
     bool bCamera = false;
     bool bVideo = false;
-    bool bROS = false;
     bool bViz = false;
     bool bCompetition = false;
+    bool bLoad = false;
     bool bSend = false;
     bool bWrite = false;
+    bool bStream = false;
+
     //Object shapes
     int obj_shape = 1; //0-upright bouding box, 1-circle, 2-rotated rect
     int red_shape = 1; //circle
@@ -117,6 +119,7 @@ int main(int argc, char** argv)
     bool bFitRotatedRect = false;
     bool bFitCircle = true;
     bool bUpdateThres = false;
+
     //Set min object size
     int min_obj_sz = 5;
     int obj_sz = 0;
@@ -124,12 +127,14 @@ int main(int argc, char** argv)
     int thres_tol_HLS = 5;
     int thres_tol_BGR = 30;
     int morph_sz = 5;
-    int mergeThres = 100;
-    int frameRate = 30;
+    int merge_thres = 100;
 
     int ex = CV_FOURCC('D', 'I', 'V', 'X');     //Codec Type- Int form
     int frame_counter = 0;
     int frame_count_max = -1; //infinite
+    int frame_rate = 30;
+    int stream_rate = 1;
+
     int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow, 5-box
     std::string colorAsString = "None";
 
@@ -137,15 +142,19 @@ int main(int argc, char** argv)
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
     std::string img_tp = "/cv_camera/image_raw";
 
-
     //ROS Init
     ros::init(argc, argv, "threshold_tuning");
 
     //Node handle
     ros::NodeHandle n;
+    image_transport::ImageTransport it(n);
+    cvision::ObjectPose msg;
 
-    /* get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml*/
-    if (n.getParam("pkg_path", pkgpath))
+    //Get the namespace
+    std::string ns = ros::this_node::getNamespace();
+
+    // get src path as a ros parameter. Should be loaded by cvision/configs/configs.yaml
+    if (n.getParam(ns + "/pkg_path", pkgpath))
     {
         ROS_INFO("Got pkg path: %s", pkgpath.c_str());
         srcpath = pkgpath + "/src";
@@ -155,27 +164,39 @@ int main(int argc, char** argv)
         ROS_INFO("Failed to get param 'pkgpath'. Default to hardcoded paths.");
     }
 
-    /* get the topic name of image feed */
-    if (n.getParam("image_feed", img_tp))
+    //get the topic name of image feed
+    if (n.getParam(ns + "/image_feed", img_tp))
     {
         ROS_INFO("Got param: %s", img_tp.c_str());
     }
     else
     {
-        ROS_INFO("Failed to get param 'image_feed'. Default to hardcoded topic.");
+        ROS_INFO("Failed to get param 'image_feed'. Default to hardcoded image feed.");
     }
 
-    cvision::ObjectPose msg;
-    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("colorObj",1000);
+    // get gray image stream rate
+    if (n.getParam(ns + "/bStream", bStream) && n.getParam(ns + "/stream_rate", stream_rate) )
+    {
+        ROS_INFO("Got streaming info.");
+    }
+    else
+    {
+        ROS_INFO("Failed to get streaming info.");
+    }
 
-    /* Subscribe to image ROS topic*/
+    // Subscribe to image ROS topic
     ros::Subscriber image_sub = n.subscribe(img_tp,1,imageCallback);
+    // Publish object pose
+    ros::Publisher object_pub = n.advertise<cvision::ObjectPose>("objPose",1000);
+    // Publish video stream
+    image_transport::Publisher img_pub = it.advertise("objImg", 10);
+
+    //Set loop rate for ros
+    ros::Rate loop_rate(frame_rate);
 
     /* list variables to be published in ROS parameters server */
     std::vector<int> thres_low(9);
     std::vector<int> thres_high(9);
-
-    ros::Rate loop_rate(frameRate);
 
     string configFile = srcpath + "/config.txt";
     ifstream f_config(configFile.c_str());
@@ -205,9 +226,9 @@ int main(int argc, char** argv)
         else if (name == "thres_tol_LAB") iss >> thres_tol_LAB;
         else if (name == "thres_tol_HLS") iss >> thres_tol_HLS;
         else if (name == "thres_tol_BGR") iss >> thres_tol_BGR;
-        else if (name == "mergeThres") iss >> mergeThres;
+        else if (name == "merge_thres") iss >> merge_thres;
         else if (name == "morph_sz") iss >> morph_sz;
-        else if (name == "frameRate") iss >> frameRate;
+        else if (name == "frame_rate") iss >> frame_rate;
     }
 
     int thres_tol_LAB_old = thres_tol_LAB;
@@ -256,7 +277,7 @@ int main(int argc, char** argv)
         // Transform from int to char via Bitwise operators
         //char EXT[] = { (char)(ex & 0XFF), (char)((ex & 0XFF00) >> 8), (char)((ex & 0XFF0000) >> 16), (char)((ex & 0XFF000000) >> 24), 0 };
 
-        frameRate = cap.get(CV_CAP_PROP_FPS);
+        frame_rate = cap.get(CV_CAP_PROP_FPS);
     }
 
     if (bOutputVideo && !bCompetition)
@@ -264,7 +285,7 @@ int main(int argc, char** argv)
         const string NAME = srcpath + "/ProcessedVideo.avi";   // Form the new name with container
 
         // Open the output
-        outputVideo.open(NAME, ex, frameRate, imgSz, true);
+        outputVideo.open(NAME, ex, frame_rate, imgSz, true);
 
         if (!outputVideo.isOpened())
         {
@@ -345,6 +366,7 @@ int main(int argc, char** argv)
     int vA=floor((iLowA+iHighA)/2); //A
     int vB=floor((iLowB+iHighB)/2); //B
 
+    Mat imgGray;
     Mat imgBGR;
     Mat imgHLS;
     Mat imgLAB;
@@ -409,7 +431,7 @@ int main(int argc, char** argv)
         //gray = 0.114b + 0.587g + 0.299r
         //100, 160, 200
         cvtColor(imgThresAll, imgThresAllGray, COLOR_BGR2GRAY);
-        threshold(imgThresAllGray,imgThresSum,mergeThres,255,THRESH_BINARY);
+        threshold(imgThresAllGray,imgThresSum,merge_thres,255,THRESH_BINARY);
 
 
         morph_sz=max(morph_sz,1);
@@ -515,24 +537,24 @@ int main(int argc, char** argv)
                 }
             }
 
-        //Circle
-        if (bFitCircle)
-        {
-            //x_SP = mc[max_idx_c].x;
-            //y_SP = mc[max_idx_c].y;
-            x_SP = cc[max_idx_c].x;
-            y_SP = cc[max_idx_c].y;
-            r_SP = cr[max_idx_c];
-        }
-        //Rotated rect
-        else if (bFitRotatedRect)
-        {
-            //x_SP = mc[max_idx_r].x;
-            //y_SP = mc[max_idx_r].y;
-            x_SP = minRect[max_idx_r].center.x;
-            y_SP = minRect[max_idx_r].center.y;
-            t_SP = minRect[max_idx_r].angle;
-        }
+            //Circle
+            if (bFitCircle)
+            {
+                //x_SP = mc[max_idx_c].x;
+                //y_SP = mc[max_idx_c].y;
+                x_SP = cc[max_idx_c].x;
+                y_SP = cc[max_idx_c].y;
+                r_SP = cr[max_idx_c];
+            }
+            //Rotated rect
+            else if (bFitRotatedRect)
+            {
+                //x_SP = mc[max_idx_r].x;
+                //y_SP = mc[max_idx_r].y;
+                x_SP = minRect[max_idx_r].center.x;
+                y_SP = minRect[max_idx_r].center.y;
+                t_SP = minRect[max_idx_r].angle;
+            }
 
             //cout << "x: " << x_SP << " y: " << y_SP << " r: " << r_SP << " t: " << t_SP << endl;
 
@@ -542,7 +564,7 @@ int main(int argc, char** argv)
             Scalar color2 = Scalar(0, 255, 0);
             Scalar color3 = Scalar(0, 0, 255);
 
-            if (bViz && !bCompetition)
+            if ((bViz && !bCompetition) || bStream)
             {
                 if (bFitBoundingBox)
                 {
@@ -655,9 +677,9 @@ int main(int argc, char** argv)
                 /// Show in a window
                 imshow("VideoFeed", imgBGR); //show the original image
                 imshow("ThresholdedImage", imgThresSum); //show the thresholded image
+                createTrackbar("ToleranceBGR", "ThresholdedImage", &thres_tol_BGR, 100);
                 createTrackbar("ToleranceLAB", "ThresholdedImage", &thres_tol_LAB, 50);
                 createTrackbar("ToleranceHLS", "ThresholdedImage", &thres_tol_HLS, 25);
-                createTrackbar("ToleranceBGR", "ThresholdedImage", &thres_tol_BGR, 100);
                 createTrackbar("Object Sz", "ThresholdedImage", &min_obj_sz, 100);
                 createTrackbar("Morph Sz", "ThresholdedImage", &morph_sz, 10);
 
@@ -826,13 +848,18 @@ int main(int argc, char** argv)
                 cout << "Color: Box" << endl;
                 break;
 
+            case 108: //'l' has been pressed.
+                bLoad = true;
+                cout << "Loading triggered." << endl;
+                break;
+
             case 115: //'s' has been pressed.
-                bSend = 1;
+                bSend = true;
                 cout << "Sending triggered." << endl;
                 break;
 
             case 119: //'w' has been pressed. Toggle visualization
-                bWrite = 1;
+                bWrite = true;
                 cout << "Writing triggered." << endl;
                 break;
 
@@ -921,6 +948,48 @@ int main(int argc, char** argv)
                 break;
             }
 
+            if (bLoad)
+            {
+                if (n.getParam(ns + "/" + colorAsString + "/low", thres_low) && n.getParam(ns + "/" + colorAsString + "/high", thres_high))
+                {
+                    ROS_INFO("Got Thresholds.");
+                    iLowBlue = thres_low[0];
+                    iLowGreen = thres_low[1];
+                    iLowRed = thres_low[2];
+                    iLowL = thres_low[3];
+                    iLowA = thres_low[4];
+                    iLowB = thres_low[5];
+                    iLowHue = thres_low[6];
+                    iLowLum = thres_low[7];
+                    iLowSat = thres_low[8];
+                    iHighBlue = thres_high[0];
+                    iHighGreen = thres_high[1];
+                    iHighRed = thres_high[2];
+                    iHighL = thres_high[3];
+                    iHighA = thres_high[4];
+                    iHighB = thres_high[5];
+                    iHighHue = thres_high[6];
+                    iHighLum = thres_high[7];
+                    iHighSat = thres_high[8];
+                }
+                else
+                {
+                    ROS_INFO("Failed to get thresholds.");
+                }
+
+                if (n.getParam(ns + "/" + colorAsString + "/obj_shape", obj_shape) && n.getParam(ns + "/" + colorAsString + "/min_obj_sz", min_obj_sz) && n.getParam(ns + "/" + colorAsString + "/morph_sz", morph_sz) && n.getParam(ns + "/" + colorAsString + "/merge_thres", merge_thres))
+                {
+                    ROS_INFO("Got Object Parameters.");
+                }
+                else
+                {
+                    ROS_INFO("Failed to get object parameters.");
+                }
+
+                bLoad = false;
+                cout << "Loading " << colorAsString << " parameters complete." << endl;
+            }
+
             if (bSend)
             {
                 thres_low[0] = iLowBlue;
@@ -950,25 +1019,25 @@ int main(int argc, char** argv)
                 n.setParam("/Quad1/" + colorAsString + "/high", thres_high);
                 n.setParam("/Quad2/" + colorAsString + "/high", thres_high);
                 n.setParam("/Quad3/" + colorAsString + "/high", thres_high);
-                 // send obj_shape
-                n.setParam("/Quad1/" + colorAsString + "/low", obj_shape);
-                n.setParam("/Quad2/" + colorAsString + "/low", obj_shape);
-                n.setParam("/Quad3/" + colorAsString + "/low", obj_shape);
-                 // send min_obj_sz
-                n.setParam("/Quad1/" + colorAsString + "/low", min_obj_sz);
-                n.setParam("/Quad2/" + colorAsString + "/low", min_obj_sz);
-                n.setParam("/Quad3/" + colorAsString + "/low", min_obj_sz);
+                // send obj_shape
+                n.setParam("/Quad1/" + colorAsString + "/obj_shape", obj_shape);
+                n.setParam("/Quad2/" + colorAsString + "/obj_shape", obj_shape);
+                n.setParam("/Quad3/" + colorAsString + "/obj_shape", obj_shape);
                 // send min_obj_sz
-                n.setParam("/Quad1/" + colorAsString + "/low", min_obj_sz);
-                n.setParam("/Quad2/" + colorAsString + "/low", min_obj_sz);
-                n.setParam("/Quad3/" + colorAsString + "/low", min_obj_sz);
-                // send mergeThres
-                n.setParam("/Quad1/" + colorAsString + "/low", mergeThres);
-                n.setParam("/Quad2/" + colorAsString + "/low", mergeThres);
-                n.setParam("/Quad3/" + colorAsString + "/low", mergeThres);
+                n.setParam("/Quad1/" + colorAsString + "/min_obj_sz", min_obj_sz);
+                n.setParam("/Quad2/" + colorAsString + "/min_obj_sz", min_obj_sz);
+                n.setParam("/Quad3/" + colorAsString + "/min_obj_sz", min_obj_sz);
+                // send min_obj_sz
+                n.setParam("/Quad1/" + colorAsString + "/morph_sz", morph_sz);
+                n.setParam("/Quad2/" + colorAsString + "/morph_sz", morph_sz);
+                n.setParam("/Quad3/" + colorAsString + "/morph_sz", morph_sz);
+                // send merge_thres
+                n.setParam("/Quad1/" + colorAsString + "/merge_thres", merge_thres);
+                n.setParam("/Quad2/" + colorAsString + "/merge_thres", merge_thres);
+                n.setParam("/Quad3/" + colorAsString + "/merge_thres", merge_thres);
 
                 bSend = false;
-                cout << "Sending " << colorAsString << " thresholds complete." << endl;
+                cout << "Sending " << colorAsString << " parameters complete." << endl;
             }
 
             if (bWrite)
@@ -1002,10 +1071,10 @@ int main(int argc, char** argv)
                             fileYaml << colorAsString << ": {"
                                      <<"low: [" << iLowBlue << ", " << iLowGreen << ", " << iLowRed << ", " << iLowL << ", " << iLowA << ", " << iLowB << ", " << iLowHue << ", " << iLowLum << ", " << iLowSat << "],"
                                      << "high: [" << iHighBlue << ", " << iHighGreen << ", " << iHighRed << ", " << iHighL << ", " << iHighA << ", " << iHighB << ", " << iHighHue << ", " << iHighLum << ", " << iHighSat << "],"
-                                     << "obj_shape: [" << obj_shape << "],"
-                                     << "min_obj_sz: [" << min_obj_sz << "],"
-                                     << "morph_sz: [" << morph_sz << "],"
-                                     << "merge_thres: [" << mergeThres << "]} \n";
+                                     << "obj_shape: " << obj_shape << ","
+                                     << "min_obj_sz: " << min_obj_sz << ","
+                                     << "morph_sz: " << morph_sz << ","
+                                     << "merge_thres: " << merge_thres << "} \n";
                         }
                         else
                         {
@@ -1013,7 +1082,7 @@ int main(int argc, char** argv)
                         }
                     }
                     fileYaml.close();
-                    cout << "Writing " << colorAsString << " thresholds complete." << endl;
+                    cout << "Writing " << colorAsString << " parameters complete." << endl;
                 }
                 else cout << "Unable to open file";
 
@@ -1021,87 +1090,96 @@ int main(int argc, char** argv)
             }
 
             //end if(!bCompetition)
-            }
-
-            //ROS Topics
-            //pose (setpoint - 2D float [m], heading - float [deg])
-            //valid - bool
-            //radius - float [m]
-            if (cont_sz>0)
-            {
-                msg.pose.x = x_SP;
-                msg.pose.y = y_SP;
-                msg.pose.theta = t_SP;
-                msg.radius = r_SP;
-                msg.valid = true;
-            }
-            else
-            {
-                msg.valid = false;
-            }
-
-            //ROS Publisher
-            object_pub.publish(msg);
-
-            if (cv_img_ptr_ros)
-            {
-                //Clear pointer
-                cv_img_ptr_ros.reset();
-            }
-
-            ros::spinOnce();
-            loop_rate.sleep();
         }
 
-        string newThres = srcpath + "/ThresholdValuesNew.txt";
-        switch (color)
+
+        if ( (bStream && (((frame_counter*stream_rate)%frame_rate)<stream_rate) ) )
         {
-        case 1: //Red color selected.
-            newThres = srcpath + "/ThresholdValuesRed.txt";
-            break;
-
-        case 2: //Green color selected.
-            newThres = srcpath + "/ThresholdValuesGreen.txt";
-            break;
-
-        case 3: //Blue color selected.
-            newThres = srcpath + "/ThresholdValuesBlue.txt";
-            break;
-
-        case 4: //Yellow color selected.
-            newThres = srcpath + "/ThresholdValuesYellow.txt";
-            break;
-
-        case 5: //Box color selected.
-            newThres = srcpath + "/ThresholdValuesBox.txt";
-            break;
+            //Publish gray image to ROS
+            cvtColor(imgBGR, imgGray, CV_BGR2GRAY);
+            sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", imgGray).toImageMsg();
+            img_pub.publish(img_msg);
         }
 
-        ofstream myfile(newThres.c_str());
-        //Save values to file
-        if (myfile.is_open())
+        //ROS Topics
+        //pose (setpoint - 2D float [m], heading - float [deg])
+        //valid - bool
+        //radius - float [m]
+        if (cont_sz>0)
         {
-            myfile << "iLowHue = " << iLowHue << "\n";
-            myfile << "iHighHue = " << iHighHue << "\n";
-            myfile << "iLowSat = " << iLowSat << "\n";
-            myfile << "iHighSat = " << iHighSat << "\n";
-            myfile << "iLowLum = " << iLowLum << "\n";
-            myfile << "iHighLum = " << iHighLum << "\n";
-            myfile << "iLowBlue = " << iLowBlue << "\n";
-            myfile << "iHighBlue = " << iHighBlue << "\n";
-            myfile << "iLowGreen = " << iLowGreen << "\n";
-            myfile << "iHighGreen = " << iHighGreen << "\n";
-            myfile << "iLowRed = " << iLowRed << "\n";
-            myfile << "iHighRed = " << iHighRed << "\n";
-            myfile << "iLowL = " << iLowL << "\n";
-            myfile << "iHighL = " << iHighL << "\n";
-            myfile << "iLowA = " << iLowA << "\n";
-            myfile << "iHighA = " << iHighA << "\n";
-            myfile << "iLowB = " << iLowB << "\n";
-            myfile << "iHighB = " << iHighB << "\n";
-            myfile.close();
-            cout << "Finished writing" << endl;
+            msg.pose.x = x_SP;
+            msg.pose.y = y_SP;
+            msg.pose.theta = t_SP;
+            msg.radius = r_SP;
+            msg.valid = true;
         }
-        else cout << "Unable to open file";
-        return 0;
+        else
+        {
+            msg.valid = false;
+        }
+
+        //ROS Publisher
+        object_pub.publish(msg);
+
+        if (cv_img_ptr_ros)
+        {
+            //Clear pointer
+            cv_img_ptr_ros.reset();
+        }
+
+        ros::spinOnce();
+        loop_rate.sleep();
     }
+
+    string newThres = srcpath + "/ThresholdValuesNew.txt";
+    switch (color)
+    {
+    case 1: //Red color selected.
+        newThres = srcpath + "/ThresholdValuesRed.txt";
+        break;
+
+    case 2: //Green color selected.
+        newThres = srcpath + "/ThresholdValuesGreen.txt";
+        break;
+
+    case 3: //Blue color selected.
+        newThres = srcpath + "/ThresholdValuesBlue.txt";
+        break;
+
+    case 4: //Yellow color selected.
+        newThres = srcpath + "/ThresholdValuesYellow.txt";
+        break;
+
+    case 5: //Box color selected.
+        newThres = srcpath + "/ThresholdValuesBox.txt";
+        break;
+    }
+
+    ofstream myfile(newThres.c_str());
+    //Save values to file
+    if (myfile.is_open())
+    {
+        myfile << "iLowHue = " << iLowHue << "\n";
+        myfile << "iHighHue = " << iHighHue << "\n";
+        myfile << "iLowSat = " << iLowSat << "\n";
+        myfile << "iHighSat = " << iHighSat << "\n";
+        myfile << "iLowLum = " << iLowLum << "\n";
+        myfile << "iHighLum = " << iHighLum << "\n";
+        myfile << "iLowBlue = " << iLowBlue << "\n";
+        myfile << "iHighBlue = " << iHighBlue << "\n";
+        myfile << "iLowGreen = " << iLowGreen << "\n";
+        myfile << "iHighGreen = " << iHighGreen << "\n";
+        myfile << "iLowRed = " << iLowRed << "\n";
+        myfile << "iHighRed = " << iHighRed << "\n";
+        myfile << "iLowL = " << iLowL << "\n";
+        myfile << "iHighL = " << iHighL << "\n";
+        myfile << "iLowA = " << iLowA << "\n";
+        myfile << "iHighA = " << iHighA << "\n";
+        myfile << "iLowB = " << iLowB << "\n";
+        myfile << "iHighB = " << iHighB << "\n";
+        myfile.close();
+        cout << "Finished writing" << endl;
+    }
+    else cout << "Unable to open file";
+    return 0;
+}
