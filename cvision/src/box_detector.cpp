@@ -52,28 +52,6 @@ int main(int argc, char** argv)
     int frame_counter = 0;
     int frame_count_max = -1; //infinite
 
-    //Threshold values
-    int iLowHue = 0;
-    int iHighHue = 179;
-    int iLowLum = 0;
-    int iHighLum = 255;
-    int iLowSat = 0;
-    int iHighSat = 255;
-
-    int iLowBlue = 0;
-    int iHighBlue = 255;
-    int iLowGreen = 0;
-    int iHighGreen = 255;
-    int iLowRed = 0;
-    int iHighRed = 255;
-
-    int iLowL = 0;
-    int iHighL = 255; //standard convention 0 TO 100
-    int iLowA = 0;
-    int iHighA = 255; //standard convention -127 TO 127
-    int iLowB = 0;
-    int iHighB = 255; //standard convention -127 TO 127
-
     std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
     std::string srcpath = "/home/odroid/ros_ws/src/ch-1-3/cvision/src";
     std::string img_tp = "/cv_camera/image_raw";
@@ -138,24 +116,6 @@ int main(int argc, char** argv)
     if (n.getParam(ns + "/Box/low", thresBox_low) && n.getParam(ns + "/Box/high", thresBox_high))
     {
         ROS_INFO("Got Box Thresholds.");
-        iLowBlue = thresBox_low[0];
-        iLowGreen = thresBox_low[1];
-        iLowRed = thresBox_low[2];
-        iLowL = thresBox_low[3];
-        iLowA = thresBox_low[4];
-        iLowB = thresBox_low[5];
-        iLowHue = thresBox_low[6];
-        iLowLum = thresBox_low[7];
-        iLowSat = thresBox_low[8];
-        iHighBlue = thresBox_high[0];
-        iHighGreen = thresBox_high[1];
-        iHighRed = thresBox_high[2];
-        iHighL = thresBox_high[3];
-        iHighA = thresBox_high[4];
-        iHighB = thresBox_high[5];
-        iHighHue = thresBox_high[6];
-        iHighLum = thresBox_high[7];
-        iHighSat = thresBox_high[8];
     }
     else
     {
@@ -210,9 +170,9 @@ int main(int argc, char** argv)
         cvtColor(imgBGR, imgLAB, COLOR_BGR2Lab); //Convert the captured frame from BGR to LAB
 
         //Thresholding
-        inRange(imgBGR, Scalar(iLowBlue, iLowGreen, iLowRed), Scalar(iHighBlue, iHighGreen, iHighRed), imgBGRThres); //Threshold the BGR image
-        inRange(imgHLS, Scalar(iLowHue, iLowLum, iLowSat), Scalar(iHighHue, iHighLum, iHighSat), imgHLSThres); //Threshold the HLS image
-        inRange(imgLAB, Scalar(iLowL, iLowA, iLowB), Scalar(iHighL, iHighA, iHighB), imgLABThres); //Threshold the LAB image
+        inRange(imgBGR, Scalar(thresBox_low[0], thresBox_low[1], thresBox_low[2]), Scalar(thresBox_high[0], thresBox_high[1], thresBox_high[2]), imgBGRThres); //Threshold the BGR image
+        inRange(imgHLS, Scalar(thresBox_low[6], thresBox_low[7], thresBox_low[8]), Scalar(thresBox_high[6], thresBox_high[7], thresBox_high[8]), imgHLSThres); //Threshold the HLS image
+        inRange(imgLAB, Scalar(thresBox_low[3], thresBox_low[4], thresBox_low[5]), Scalar(thresBox_high[3], thresBox_high[4], thresBox_high[5]), imgLABThres); //Threshold the LAB image
 
         //Merge results from color spaces
         imgThres3[0] = imgBGRThres;
@@ -263,8 +223,8 @@ int main(int argc, char** argv)
         int max_idx_r= 0;
         //center of frame
         Point2f frame_center(icols_imgBGR / 2, irows_imgBGR / 2);
-        
-	if (cont_sz>0)
+
+        if (cont_sz>0)
         {
 
             /// Approximate contours to polygons and fit rotated rectange or circle
@@ -350,19 +310,19 @@ int main(int argc, char** argv)
         //pose (setpoint - 2D float [m], heading - float [deg])
         //valid - bool
         //radius - float [m]
-	Point2f obj_location;
+        Point2f obj_location;
         float x_dist = 0;
         float y_dist = 0;
 
         //Circle
         if (obj_shape == 1)
         {
-            //obj_location = mc[max_idx_c]; 
-	    obj_location = cc[max_idx_c];
+            //obj_location = mc[max_idx_c];
+            obj_location = cc[max_idx_c];
 
             msg_pos.pose.x = obj_location.x;
             msg_pos.pose.y = obj_location.y;
-	    msg_pos.pose.theta = 0;
+            msg_pos.pose.theta = 0;
             msg_pos.radius = cr[max_idx_c];
 
             x_dist = obj_location.x - frame_center.x;
@@ -371,19 +331,19 @@ int main(int argc, char** argv)
             //convert to meters using emperical data fit and flip for NED
             msg_dist.pose.x = y_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
             msg_dist.pose.y = x_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
-	    msg_dist.pose.theta = 0;
-	    msg_dist.radius = cr[max_idx_c];
+            msg_dist.pose.theta = 0;
+            msg_dist.radius = cr[max_idx_c];
 
-         }
+        }
         //Rotated rect
         else if (obj_shape == 2)
         {
             //obj_location = mc[max_idx_r];
-	    obj_location = minRect[max_idx_r].center;
+            obj_location = minRect[max_idx_r].center;
 
             msg_pos.pose.x = obj_location.x;
             msg_pos.pose.y = obj_location.y;
-	    msg_pos.pose.theta = minRect[max_idx_r].angle;
+            msg_pos.pose.theta = minRect[max_idx_r].angle;
             msg_pos.radius = 0;
 
             x_dist = obj_location.x - frame_center.x;
@@ -392,8 +352,8 @@ int main(int argc, char** argv)
             //convert to meters using emperical data fit and flip for NED
             msg_dist.pose.x = y_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
             msg_dist.pose.y = x_dist/100*(0.0018037*sqrt(pow(x_dist,2) + pow(y_dist,2)) + 0.3124266);
-	    msg_dist.pose.theta = minRect[max_idx_r].angle;
-	    msg_dist.radius = 0;
+            msg_dist.pose.theta = minRect[max_idx_r].angle;
+            msg_dist.radius = 0;
         }
 
         if (cont_sz>0)
@@ -404,12 +364,12 @@ int main(int argc, char** argv)
         else
         {
             msg_pos.valid = false;
-	    msg_dist.valid = false;
+            msg_dist.valid = false;
         }
 
         //ROS Publisher
         obj_pos_pub.publish(msg_pos);
-	obj_dist_pub.publish(msg_dist);
+        obj_dist_pub.publish(msg_dist);
 
         if (cv_img_ptr_ros)
         {
