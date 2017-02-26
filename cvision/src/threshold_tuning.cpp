@@ -111,6 +111,7 @@ int main(int argc, char** argv)
     int red_shape = 1; //circle
     int green_shape = 1; //circle
     int blue_shape = 1; //circle
+    int orange_shape = 1; //circle
     int yellow_shape = 2; //rotated rect
     int box_shape = 2; //rotated rect
 
@@ -135,7 +136,7 @@ int main(int argc, char** argv)
     int frame_rate = 30;
     int stream_rate = 1;
 
-    int color=0; //0-default, 1-red, 2-green, 3-blue, 4-yellow, 5-box
+    int color=0; //0-default, 1-red, 2-green, 3-blue, 4-orange, 5-yellow, 6-box
     std::string colorAsString = "None";
 
     std::string pkgpath = "/home/odroid/ros_ws/src/ch-1-3/cvision";
@@ -838,13 +839,18 @@ int main(int argc, char** argv)
                 cout << "Color: Blue" << endl;
                 break;
 
-            case 121: //'y' has been pressed.
+            case 111: //'o' has been pressed.
                 color = 4;
+                cout << "Color: Orange" << endl;
+                break;
+
+            case 121: //'y' has been pressed.
+                color = 5;
                 cout << "Color: Yellow" << endl;
                 break;
 
             case 120: //'x' has been pressed.
-                color = 5;
+                color = 6;
                 cout << "Color: Box" << endl;
                 break;
 
@@ -918,11 +924,15 @@ int main(int argc, char** argv)
                 obj_shape = blue_shape;
                 colorAsString = "Blue";
                 break;
-            case 4: //Yellow color selected.
+            case 4: //Orange color selected.
+                obj_shape = orange_shape;
+                colorAsString = "Orange";
+                break;
+            case 5: //Yellow color selected.
                 obj_shape = yellow_shape;
                 colorAsString = "Yellow";
                 break;
-            case 5: // box
+            case 6: // box
                 obj_shape = box_shape;
                 colorAsString = "Box";
                 break;
@@ -1063,7 +1073,7 @@ int main(int argc, char** argv)
                 //Save values to file
                 if (fileYaml.is_open())
                 {
-                    for (int i=0; i<10; i++)
+                    for (int i=0; i<12; i++)
                     {
 
                         if (i==color)
@@ -1131,55 +1141,59 @@ int main(int argc, char** argv)
         loop_rate.sleep();
     }
 
-    string newThres = srcpath + "/ThresholdValuesNew.txt";
-    switch (color)
-    {
-    case 1: //Red color selected.
-        newThres = srcpath + "/ThresholdValuesRed.txt";
-        break;
-
-    case 2: //Green color selected.
-        newThres = srcpath + "/ThresholdValuesGreen.txt";
-        break;
-
-    case 3: //Blue color selected.
-        newThres = srcpath + "/ThresholdValuesBlue.txt";
-        break;
-
-    case 4: //Yellow color selected.
-        newThres = srcpath + "/ThresholdValuesYellow.txt";
-        break;
-
-    case 5: //Box color selected.
-        newThres = srcpath + "/ThresholdValuesBox.txt";
-        break;
-    }
-
-    ofstream myfile(newThres.c_str());
-    //Save values to file
-    if (myfile.is_open())
-    {
-        myfile << "iLowHue = " << iLowHue << "\n";
-        myfile << "iHighHue = " << iHighHue << "\n";
-        myfile << "iLowSat = " << iLowSat << "\n";
-        myfile << "iHighSat = " << iHighSat << "\n";
-        myfile << "iLowLum = " << iLowLum << "\n";
-        myfile << "iHighLum = " << iHighLum << "\n";
-        myfile << "iLowBlue = " << iLowBlue << "\n";
-        myfile << "iHighBlue = " << iHighBlue << "\n";
-        myfile << "iLowGreen = " << iLowGreen << "\n";
-        myfile << "iHighGreen = " << iHighGreen << "\n";
-        myfile << "iLowRed = " << iLowRed << "\n";
-        myfile << "iHighRed = " << iHighRed << "\n";
-        myfile << "iLowL = " << iLowL << "\n";
-        myfile << "iHighL = " << iHighL << "\n";
-        myfile << "iLowA = " << iLowA << "\n";
-        myfile << "iHighA = " << iHighA << "\n";
-        myfile << "iLowB = " << iLowB << "\n";
-        myfile << "iHighB = " << iHighB << "\n";
-        myfile.close();
-        cout << "Finished writing" << endl;
-    }
-    else cout << "Unable to open file";
+//    string newThres = srcpath + "/ThresholdValuesNew.txt";
+//    switch (color)
+//    {
+//    case 1: //Red color selected.
+//        newThres = srcpath + "/ThresholdValuesRed.txt";
+//        break;
+//
+//    case 2: //Green color selected.
+//        newThres = srcpath + "/ThresholdValuesGreen.txt";
+//        break;
+//
+//    case 3: //Blue color selected.
+//        newThres = srcpath + "/ThresholdValuesBlue.txt";
+//        break;
+//
+//    case 4: //Orange color selected.
+//        newThres = srcpath + "/ThresholdValuesOrange.txt";
+//        break;
+//
+//    case 5: //Yellow color selected.
+//        newThres = srcpath + "/ThresholdValuesYellow.txt";
+//        break;
+//
+//    case 6: //Box color selected.
+//        newThres = srcpath + "/ThresholdValuesBox.txt";
+//        break;
+//    }
+//
+//    ofstream myfile(newThres.c_str());
+//    //Save values to file
+//    if (myfile.is_open())
+//    {
+//        myfile << "iLowHue = " << iLowHue << "\n";
+//        myfile << "iHighHue = " << iHighHue << "\n";
+//        myfile << "iLowSat = " << iLowSat << "\n";
+//        myfile << "iHighSat = " << iHighSat << "\n";
+//        myfile << "iLowLum = " << iLowLum << "\n";
+//        myfile << "iHighLum = " << iHighLum << "\n";
+//        myfile << "iLowBlue = " << iLowBlue << "\n";
+//        myfile << "iHighBlue = " << iHighBlue << "\n";
+//        myfile << "iLowGreen = " << iLowGreen << "\n";
+//        myfile << "iHighGreen = " << iHighGreen << "\n";
+//        myfile << "iLowRed = " << iLowRed << "\n";
+//        myfile << "iHighRed = " << iHighRed << "\n";
+//        myfile << "iLowL = " << iLowL << "\n";
+//        myfile << "iHighL = " << iHighL << "\n";
+//        myfile << "iLowA = " << iLowA << "\n";
+//        myfile << "iHighA = " << iHighA << "\n";
+//        myfile << "iLowB = " << iLowB << "\n";
+//        myfile << "iHighB = " << iHighB << "\n";
+//        myfile.close();
+//        cout << "Finished writing" << endl;
+//    }
+//    else cout << "Unable to open file";
     return 0;
 }
