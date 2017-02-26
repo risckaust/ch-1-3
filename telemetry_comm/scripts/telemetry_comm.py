@@ -145,7 +145,7 @@ class Telecom():
 						self.quadA_gps_msg.longitude = float(parser[5])
 						self.quadA_gps_msg.altitude = float(parser[6])
 						self.quadA_sm_msg.header.stamp = rospy.Time.now()
-						self.quadA_sm_msg.state = parser[7].replace('\n','')	
+						self.quadA_sm_msg.state = parser[9].replace('\n','')	
 						res =  True
 						if int(parser[3]) > self.qA_gps_c:
 							gps_a = True
@@ -156,9 +156,9 @@ class Telecom():
 					# other quad B
 					elif qn == str(self.quadB_N):
 						self.quadB_gps_msg.header.stamp = rospy.Time.now()
-						self.quadB_gps_msg.latitude = float(parser[3])
-						self.quadB_gps_msg.longitude = float(parser[4])
-						self.quadB_gps_msg.altitude = float(parser[5])
+						self.quadB_gps_msg.latitude = float(parser[4])
+						self.quadB_gps_msg.longitude = float(parser[5])
+						self.quadB_gps_msg.altitude = float(parser[6])
 						self.quadB_sm_msg.header.stamp = rospy.Time.now()
 						self.quadB_sm_msg.state = parser[9].replace('\n','')
 						res =  True
@@ -172,7 +172,7 @@ class Telecom():
 						rospy.logerr('Quad ID is not 1,2, or 3.')
 						exit(1)
 			self.in_buf = []
-			self.parser = []
+			parser = []
 
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
