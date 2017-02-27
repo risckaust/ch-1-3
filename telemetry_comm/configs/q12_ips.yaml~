@@ -1,0 +1,4 @@
+# this loads ips for quad 1 & 2
+quad1_ip: '192.168.1.133'
+quad1_ip: '192.168.1.194'
+quad1_ip: '192.168.1.168'
