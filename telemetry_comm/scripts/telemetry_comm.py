@@ -121,6 +121,7 @@ class Telecom():
 			if self.my_gps_msg.header.seq > self.counter or self.my_sm_msg.header.seq > self.counter :
 				self.ser.write(bytearray(self.out_buf))
 				self.counter = max(self.my_gps_msg.header.seq, self.my_sm_msg.header.seq)
+				self.ser.flushOutput()
 
 			#else:
 				#rospy.logwarn('Nothing to write to telemetry module.')
@@ -205,6 +206,7 @@ class Telecom():
 			# send buffer
 			self.ser.write(bytearray(self.out_buf))
 			self.test_c = self.test_c + 1
+			self.ser.flushOutput()
 
 
 def main(arg):
