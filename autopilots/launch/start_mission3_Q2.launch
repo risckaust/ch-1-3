@@ -12,6 +12,7 @@
 	<arg name="record" default="false"/>
 	<arg name="ns" default="Quad2"/>
 	<arg name="quadN" default="2"/>
+	<arg name="telem_required" default="false"/>
 	<arg name="telem_port" default="/dev/ttyUSB1"/>
 
 	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/raw/fix /$(arg ns)/mavros/setpoint_raw/local /$(arg ns)/state_machine/state" />
@@ -67,7 +68,7 @@
 	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 
-        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)">
+        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)" if="$(arg telem_required)">
         </node>
 
 </group>
