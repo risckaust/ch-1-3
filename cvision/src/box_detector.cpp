@@ -107,6 +107,7 @@ int main(int argc, char** argv)
     ros::Publisher obj_dist_pub = n.advertise<cvision::ObjectPose>("boxDistance",1000);
     // Publish video stream
     image_transport::Publisher img_pub = it.advertise("boxImg", 10);
+    image_transport::Publisher dbg_pub = it.advertise("boxDbg", 10);
 
     //Set loop rate for ros
     ros::Rate loop_rate(frame_rate);
@@ -275,6 +276,8 @@ int main(int argc, char** argv)
 
         if ( (bStream && (((frame_counter*stream_rate)%frame_rate)<stream_rate) ) )
         {
+                if (cont_sz>0)
+        {
 
             //Circle
             if (obj_shape == 1)
@@ -298,11 +301,14 @@ int main(int argc, char** argv)
                 //circle(imgBGR, mc[max_idx_r], 5, color, -1, 8, 0);
                 circle(imgBGR, minRect[max_idx_r].center, 5, color, -1, 8, 0);
             }
+            }
 
             //Publish gray image to ROS
             cvtColor(imgBGR, imgGray, CV_BGR2GRAY);
             sensor_msgs::ImagePtr img_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", imgGray).toImageMsg();
+            sensor_msgs::ImagePtr dbg_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", imgThresSum).toImageMsg();
             img_pub.publish(img_msg);
+            dbg_pub.publish(dbg_msg);
 
         }
 
@@ -314,6 +320,8 @@ int main(int argc, char** argv)
         float x_dist = 0;
         float y_dist = 0;
 
+        if (cont_sz>0)
+        {
         //Circle
         if (obj_shape == 1)
         {
@@ -355,11 +363,9 @@ int main(int argc, char** argv)
             msg_dist.pose.theta = minRect[max_idx_r].angle;
             msg_dist.radius = 0;
         }
-
-        if (cont_sz>0)
-        {
-            msg_pos.valid = true;
+                    msg_pos.valid = true;
             msg_dist.valid = true;
+
         }
         else
         {
