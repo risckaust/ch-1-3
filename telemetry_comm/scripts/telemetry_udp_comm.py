@@ -31,7 +31,7 @@ class Telecom():
                      socket.SOCK_DGRAM) # UDP
 		# server address
 		self.server_address = ("", self.udp_port)
-		self.sock.bind(self.server_address)
+
 		# non-block mode
 		self.sock.setblocking(0)
 
@@ -51,6 +51,7 @@ class Telecom():
 			self.quadB_ns 	= '/Quad3'
 			self.quadA_ip	= rospy.get_param('/quad2_ip')
 			self.quadB_ip	= rospy.get_param('/quad3_ip')
+			self.server_address = (rospy.get_param('/quad1_ip'), self.udp_port)
 		elif (quadN == 2):
 			self.quadA_N 	= 1
 			self.quadB_N 	= 3
@@ -58,6 +59,7 @@ class Telecom():
 			self.quadB_ns 	= '/Quad3'
 			self.quadA_ip	= rospy.get_param('/quad1_ip')
 			self.quadB_ip	= rospy.get_param('/quad3_ip')
+			self.server_address = (rospy.get_param('/quad2_ip'), self.udp_port)
 		elif (quadN == 3):
 			self.quadA_N 	= 1
 			self.quadB_N 	= 2
@@ -65,9 +67,13 @@ class Telecom():
 			self.quadB_ns 	= '/Quad2'
 			self.quadA_ip	= rospy.get_param('/quad1_ip')
 			self.quadB_ip	= rospy.get_param('/quad2_ip')
+			self.server_address = (rospy.get_param('/quad3_ip'), self.udp_port)
 		else:
 			rospy.logerr('Quad ID is not 1, 2, or 3')
 			exit(1)
+
+		# bind udp socket
+		self.sock.bind(self.server_address)
 
 		# other quad A
 		# gps
