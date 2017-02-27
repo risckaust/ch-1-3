@@ -10,8 +10,8 @@
 	<arg name="arduino_url" default="/dev/ttyACM0" />
 	<arg name="arduino_baud" default="115200" />
 	<arg name="record" default="false"/>
-	<arg name="ns" default="Quad3"/>
-	<arg name="quadN" default="3"/>
+	<arg name="ns" default="Quad2"/>
+	<arg name="quadN" default="2"/>
 	<arg name="telem_required" default="false"/>
 	<arg name="telem_port" default="/dev/ttyUSB1"/>
 
@@ -21,7 +21,7 @@
 
 	
 
-<group ns="Quad3">
+<group ns="Quad2">
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
 		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
@@ -70,7 +70,7 @@
 	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 
-        <node pkg="telemetry_udp_comm" type="telemetry_udp_comm.py" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" if="$(arg telem_required)" output="screen">
+        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)" if="$(arg telem_required)">
         </node>
 
 </group>

@@ -70,7 +70,7 @@
 	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 
-        <node pkg="telemetry_udp_comm" type="telemetry_udp_comm.py" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" if="$(arg telem_required)" output="screen">
+        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)" if="$(arg telem_required)">
         </node>
 
 </group>
