@@ -32,6 +32,8 @@ class Telecom():
 		# server address
 		self.server_address = ('localhost', self.udp_port)
 		self.sock.bind(self.server_address)
+		# non-block mode
+		self.sock.setblocking(0)
 
 		# my gps
 		self.my_gps_msg	= NavSatFix()
@@ -160,7 +162,11 @@ class Telecom():
 			self.qA_sm_c = 0
 
 		self.in_buf = ''
-		self.in_buf, address = self.sock.recvfrom(4096)
+		try:
+			self.in_buf, address = self.sock.recvfrom(4096)
+		except:
+			rospy.logwarn('No telemetry data received.')
+			return res, gps_a, sm_a, gps_b, sm_b
 		sz = len(self.in_buf)		
 		if sz > 0:
 			# TODO flush input udo buffer? 
