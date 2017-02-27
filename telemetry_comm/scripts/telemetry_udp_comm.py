@@ -30,7 +30,7 @@ class Telecom():
 		self.sock = socket.socket(socket.AF_INET, # Internet
                      socket.SOCK_DGRAM) # UDP
 		# server address
-		self.server_address = ('localhost', self.udp_port)
+		self.server_address = ("", self.udp_port)
 		self.sock.bind(self.server_address)
 		# non-block mode
 		self.sock.setblocking(0)
