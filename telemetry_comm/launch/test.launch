@@ -24,7 +24,7 @@
 		<arg name="log_output" value="$(arg log_output)" />
 	</include>
 
-        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)">
+        <node pkg="telemetry_comm" type="telemetry_comm.py" name="telemetry_comm"  required="true" args="$(arg quadN) $(arg telem_port)" output="screen">
         </node>
 
 </group>

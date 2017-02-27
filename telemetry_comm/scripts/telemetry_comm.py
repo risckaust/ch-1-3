@@ -89,6 +89,9 @@ class Telecom():
 		# test counter
 		self.test_c		= 0
 
+		# DATA packet length (elements)
+		self.DATA_LENGTH	= 10
+
 
 	# callbacks
 	def gps_cb(self, msg):
@@ -113,7 +116,7 @@ class Telecom():
 	def encode(self):
 		if self.ser.isOpen():
 			self.out_buf = ''
-			self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.my_gps_msg.header.seq) + ',' + str(self.my_gps_msg.latitude) + ',' + str(self.my_gps_msg.longitude)+ ',' + str(self.my_gps_msg.altitude)+ ',' +  'sm'+ ',' + str(self.my_sm_msg.header.seq) + ',' +  self.my_sm_msg.state+'\n'
+			self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.my_gps_msg.header.seq) + ',' + str(self.my_gps_msg.latitude) + ',' + str(self.my_gps_msg.longitude)+ ',' + str(self.my_gps_msg.altitude)+ ',' +  'sm'+ ',' + str(self.my_sm_msg.header.seq) + ',' +  self.my_sm_msg.state+','
 			# send buffer
 			if self.my_gps_msg.header.seq > self.counter or self.my_sm_msg.header.seq > self.counter :
 				self.ser.write(bytearray(self.out_buf))
@@ -132,53 +135,65 @@ class Telecom():
 		gps_b = False
 		sm_b = False
 		if self.ser.isOpen():
-			self.in_buf 	= self.ser.readline()
-			parser = self.in_buf.split(',')							
-			L = len(parser)
-			if L == 10:
-				# check if first letter is Q
-				if parser[0] == 'Q':
-					qn = parser[1]
-					if qn == str(self.quadN):
-						rospy.logerr('Quad ID is not unique!')
-						exit(1)
-					# start parsing
-					# other quad A
-					elif qn == str(self.quadA_N):
-						self.quadA_gps_msg.header.stamp = rospy.Time.now()
-						self.quadA_gps_msg.latitude = float(parser[4])
-						self.quadA_gps_msg.longitude = float(parser[5])
-						self.quadA_gps_msg.altitude = float(parser[6])
-						self.quadA_sm_msg.header.stamp = rospy.Time.now()
-						self.quadA_sm_msg.state = parser[9].replace('\n','')	
-						res =  True
-						if int(parser[3]) > self.qA_gps_c:
-							gps_a = True
-							self.qA_gps_c = int(parser[3])
-						if int(parser[8]) > self.qA_sm_c:
-							sm_a = True
-							self.qA_sm_c = int(parser[8])
-					# other quad B
-					elif qn == str(self.quadB_N):
-						self.quadB_gps_msg.header.stamp = rospy.Time.now()
-						self.quadB_gps_msg.latitude = float(parser[4])
-						self.quadB_gps_msg.longitude = float(parser[5])
-						self.quadB_gps_msg.altitude = float(parser[6])
-						self.quadB_sm_msg.header.stamp = rospy.Time.now()
-						self.quadB_sm_msg.state = parser[9].replace('\n','')
-						res =  True
-						if int(parser[3]) > self.qB_gps_c:
-							gps_b = True
-							self.qB_gps_c = int(parser[3])
-						if int(parser[8]) > self.qB_sm_c:
-							sm_b = True
-							self.qB_sm_c = int(parser[8])
-					else:
-						rospy.logerr('Quad ID is not 1,2, or 3.')
-						exit(1)
-			self.in_buf = []
-			parser = []
-			self.ser.flushInput()
+			Nbytes = self.ser.inWaiting()
+			if Nbytes > 0:
+				self.in_buf = self.ser.read(Nbytes)
+				self.ser.flushInput()
+				# split string ','
+				split = self.in_buf.split(',')
+				L = len(split)
+				# loop over the split string's elements
+				for i in range(0,L-1):
+					if split[i] == 'Q' :
+						msg = split[i:i+self.DATA_LENGTH]
+						if len(msg) == 10:
+							# check quad number
+							qn = msg[1]
+							if qn == str(self.quadN):
+								rospy.logerr('Quad ID is not unique!')
+								exit(1)
+							# start parsing
+							# other quad A
+							elif qn == str(self.quadA_N):
+								try:
+									self.quadA_gps_msg.header.stamp = rospy.Time.now()
+									self.quadA_gps_msg.latitude = float(msg[4])
+									self.quadA_gps_msg.longitude = float(msg[5])
+									self.quadA_gps_msg.altitude = float(msg[6])
+									self.quadA_sm_msg.header.stamp = rospy.Time.now()
+									self.quadA_sm_msg.state = msg[9]	
+									res =  True
+									if int(msg[3]) > self.qA_gps_c:
+										gps_a = True
+										self.qA_gps_c = int(msg[3])
+									if int(msg[8]) > self.qA_sm_c:
+										sm_a = True
+										self.qA_sm_c = int(msg[8])
+								except:
+									rospy.logwarn('corrupted message')
+							# other quad B
+							elif qn == str(self.quadB_N):
+								try:
+									self.quadB_gps_msg.header.stamp = rospy.Time.now()
+									self.quadB_gps_msg.latitude = float(msg[4])
+									self.quadB_gps_msg.longitude = float(msg[5])
+									self.quadB_gps_msg.altitude = float(msg[6])
+									self.quadB_sm_msg.header.stamp = rospy.Time.now()
+									self.quadB_sm_msg.state = msg[9]
+									res =  True
+									if int(msg[3]) > self.qB_gps_c:
+										gps_b = True
+										self.qB_gps_c = int(msg[3])
+									if int(msg[8]) > self.qB_sm_c:
+										sm_b = True
+										self.qB_sm_c = int(msg[8])
+								except:
+									rospy.logwarn('corrupted message')
+							else:
+								rospy.logerr('Quad ID is not 1,2, or 3.')
+								exit(1)
+						self.in_buf = []
+						msg = []
 		else:
 			rospy.logwarn('Telemetry serial port is not open.')
 		
@@ -186,7 +201,7 @@ class Telecom():
 
 	def test(self):
 		if self.ser.isOpen():
-			self.out_buf 	= self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.test_c) + ',' + str(39.23456789) + ',' + str(26.123456789)+ ',' + str(-17.5)+ ',' +  'sm'+ ',' + str(self.test_c) + ',' +  'test_state'+'\n'
+			self.out_buf 	= self.out_buf 	= 'Q'+ ',' + str(self.quadN) + ',' + 'gps' + ',' + str(self.test_c) + ',' + str(39.23456789) + ',' + str(26.123456789)+ ',' + str(-17.5)+ ',' +  'sm'+ ',' + str(self.test_c) + ',' +  'test_state'+','
 			# send buffer
 			self.ser.write(bytearray(self.out_buf))
 			self.test_c = self.test_c + 1
