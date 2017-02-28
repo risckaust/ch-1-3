@@ -52,14 +52,19 @@ int main(int argc, char **argv)
     /**
       make sure to get port/baud from command line arguments
     */
-    if (argc != 3)
+    if (argc != 4)
     {
+        ROS_INFO("telem_serial quadN /dev/ttyACM0 57600");
         ROS_ERROR("Please provide port and baud. Exiting");
                 return 1;
     }
+    // my quad number
+    uint8_t quadN=(uint8_t)(atoi(argv[1]));
+
     // port and baud
-    string port = argv[1];
-    int baud = atoi(argv[2]);
+    string port = argv[2];
+    int baud = atoi(argv[3]);
+
 
     /**
     * You must call one of the versions of ros::init() before using any other
@@ -79,8 +84,7 @@ int main(int argc, char **argv)
 
     ros::Rate loop_rate(20);	/* Hz */
 
-    // my quad number
-    uint8_t quadN=1;
+
 
     /*------------ Serial setup---------------------- */
     uint8_t input_buffer[MAX_BUFFER_SIZE];		/* read buffer */
