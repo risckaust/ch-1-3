@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     * You must call one of the versions of ros::init() before using any other
     * part of the ROS system.
     */
-    ros::init(argc, argv, "gripper_node");
+    ros::init(argc, argv, "telem_serial");
 
     /**
     * NodeHandle is the main access point to communications with the ROS system.
