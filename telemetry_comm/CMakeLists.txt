@@ -188,3 +188,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(telem_serial src/telem_serial.cpp)
+target_link_libraries(telem_serial ${catkin_LIBRARIES})
+add_dependencies(telem_serial autopilots_generate_messages_cpp)
