@@ -10,10 +10,11 @@
 	<arg name="arduino_url" default="/dev/ttyACM0" />
 	<arg name="arduino_baud" default="115200" />
 	<arg name="record" default="false"/>
-	<arg name="ns" default="Quad2"/>
+	<arg name="ns" default="Quad1"/>
 	<arg name="quadN" default="2"/>
 	<arg name="telem_required" default="false"/>
-	<arg name="telem_port" default="/dev/ttyUSB1"/>
+	<arg name="telem_port" default="/dev/ttyUSB1"/>\
+	<arg name="telem_baud" default="57600"/>
 
 	<rosparam command="load" file="$(find telemetry_comm)/configs/quad_ips.yaml" />
 
@@ -34,14 +35,16 @@
 	</include>
 	
 	<rosparam command="load" file="$(find autopilots)/configs/field_map.yaml" />
-	
 	<rosparam command="load" file="$(find cvision)/configs/color_thresholds.yaml" />
-
+	<rosparam command="load" file="$(find cvision)/configs/configs.yaml" />
+	
         <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
         </node>
 
-	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true" output="screen">
-        </node>
+	<node pkg="cvision" name="cvision_color_detector" type="cvision_color_detector" required="True" output="screen"/>	
+	
+	<!--node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true" output="screen">
+        </node-->
 	
 	<!--node pkg="cvision" type="getColorBlob.py" name="getGreenBlob" args="'green'" respawn="true" output="screen">
         </node>
@@ -70,8 +73,9 @@
 	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 
-        <node pkg="telemetry_comm" type="telemetry_udp_comm.py" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen" if="$(arg telem_required)">
+        <node pkg="telemetry_comm" type="telem_serial" name="telemetry_serial_comm"  required="true" args="$(arg quadN) $(arg telem_port) $(arg telem_baud)" output="screen" if="$(arg telem_required)">
         </node>
+
 </group>
 
 </launch>
