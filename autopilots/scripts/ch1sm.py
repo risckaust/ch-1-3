@@ -398,7 +398,7 @@ def ch1sm():
                         Envelope = True
                     if theAlt > 2.5:
                         HighAltitude = True
-                    else theAlt > 1.8 
+                    elif theAlt > 1.8: 
 			MidAltitude = True  
                         
                     if HighAltitude: # descend if seeIt and high altitude and platform velocity match:
