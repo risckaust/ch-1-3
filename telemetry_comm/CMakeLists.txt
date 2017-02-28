@@ -193,3 +193,7 @@ include_directories(
 add_executable(telem_serial src/telem_serial.cpp)
 target_link_libraries(telem_serial ${catkin_LIBRARIES})
 add_dependencies(telem_serial autopilots_generate_messages_cpp)
+
+add_executable(telem_serial_test src/telem_serial_test.cpp)
+target_link_libraries(telem_serial_test ${catkin_LIBRARIES})
+add_dependencies(telem_serial_test autopilots_generate_messages_cpp)
