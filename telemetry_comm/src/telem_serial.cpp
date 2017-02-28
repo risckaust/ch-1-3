@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     size_t bytes_read;		/* number of bytes read from serail port returned by read() method*/
     size_t bytes_available;		/* bytes available, returned by available() method*/
     /* create serial handle */
-    serial::Serial serial_handle(port, (unsigned long)baud, serial::Timeout::simpleTimeout(500));
+    serial::Serial serial_handle(port, (unsigned long)baud, serial::Timeout::simpleTimeout(100));
     ROS_INFO("Serial port is opened");
 
     // other quads numbers
