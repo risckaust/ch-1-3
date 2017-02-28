@@ -244,7 +244,7 @@ class StateMachineC( object ):
 		rospy.Subscriber(ns+'/getColors/bgr/xyMeters', Point32, self.bgr_target.cbXYZ)
 
 		# subscribe to BGR object
-		self.obj_target 		= cvision.ObjectPose()
+		self.obj_target 		= ObjectPose()
 		rospy.Subscriber(ns+'/objDistance', ObjectPose, self.obj_target_cb)
 			
 		# Establish a rate
@@ -1369,9 +1369,12 @@ class StateMachineC( object ):
 	# returns a tuple: (bool objectFound, xy_coord of object with biggest contour)
 	def monitorSingleObject(self):
 		
-		self.bgr_target.x=self.x_SP
-		self.bgr_target.y=self.y_SP
-
+		self.bgr_target.x=self.obj_target.pose.x
+		self.bgr_target.y=self.obj_target.pose.y
+				
+				#self.obj_target.pose.theta
+				#self.obj_target.radius
+				
 		# define distance to each color object
 		d_to_object=np.inf
 		# radius list: of detected objects
@@ -1384,7 +1387,7 @@ class StateMachineC( object ):
 
 		# update the distance if (blue) is found
 		#if self.bgr_target.z > 0 :
-		if (self.v) :
+		if (self.obj_target.valid) :
 			d_to_object = np.sqrt(self.bgr_target.x**2 + self.bgr_target.y**2)
 			r_list.append(d_to_object)
 			xy_list.append([self.bgr_target.x, self.bgr_target.y,d_to_object])
@@ -1716,11 +1719,7 @@ class StateMachineC( object ):
 	################# Vision callback #####################3
 	def obj_target_cb(self, msg):
 		if msg is not None:
-				self.x_SP = self.pose.x
-				self.y_SP = self.pose.y
-				self.t = self.pose.theta
-				self.r = self.radius
-				self.v = self.valid 
+				self.obj_target  = msg
 	############## End of Vision callback #################
 	
 
