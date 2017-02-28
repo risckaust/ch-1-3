@@ -17,6 +17,14 @@
         <node pkg="cvision" type="getLaunchpadx3.py"  name="getLaunchpadx3" required="true" >
         </node>
         
+        <node pkg="altitude_sensor" type="altitude_sensor_node"  name="altitude_sensor" respawn="true" >
+        </node>
+
+        <node pkg="altitude_sensor" type="altitude_sensor_node2"  name="altitude_sensor2" respawn="true" >
+        </node>
+
+	<!--node pkg="teraranger_tower" type="teraranger_tower_node"  name="teraranger" args="/dev/ttyACM0" respawn="true" >
+        </node-->
         <node pkg="autopilots" type="ch1sm.py"  name="ch1sm" respawn="true" if="$(arg autopilot_en)" >
         </node>
 

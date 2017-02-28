@@ -9,7 +9,7 @@ from sensor_msgs.msg import *
 from geometry_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
-
+from altitude_sensor.msg import sensor_data
 #########
 # Math custom functions
 #########
@@ -30,17 +30,17 @@ def setParams():
 
     # ROS parameters for autopilot
     rospy.set_param('/autopilot/fbRate',20.0)        # feedback rate (hz)
-    rospy.set_param('/autopilot/altStep',3.0)        # initial altitude step command
-    rospy.set_param('/autopilot/camOffset',0.3)      # camera offset from ground
+    rospy.set_param('/autopilot/altStep',3.5)        # initial altitude step command
+    rospy.set_param('/autopilot/camOffset',0.055)      # camera offset from ground
 
     # ROS parameters for kAltVel
     rospy.set_param('/kAltVel/gP',1.5)
     rospy.set_param('/kAltVel/gI',0.1)
-    rospy.set_param('/kAltVel/vMaxU',1.0)
+    rospy.set_param('/kAltVel/vMaxU',1)
     rospy.set_param('/kAltVel/vMaxD',0.5)
     rospy.set_param('/kAltVel/smartLanding', True)  # use terarangers & laser sensor to land
     rospy.set_param('/kAltVel/distanceSensorName','hrlv_ez4_pub') # name of distance sensor for mavros subscription
-    rospy.set_param('/kAltVel/smartLandingSim', True)         # True = for HIL simulation of smartLanding
+    rospy.set_param('/kAltVel/smartLandingSim', False)         # True = for HIL simulation of smartLanding
     rospy.set_param('/kAltVel/teraN',3)             # number of tera rangers
     rospy.set_param('/kAltVel/teraAgree', 0.5)       # agreement for terarangers   
 
@@ -54,7 +54,7 @@ def setParams():
     rospy.set_param('/kBodVel/yawCone',45.0)        # cone to use proportional control (deg)
     rospy.set_param('/kBodVel/yawTurnRate',15.0)    # constant turn rate outside cone (deg/s)
     rospy.set_param('/kBodVel/feedForward', True)   # use EKF to feedforward estimates
-    rospy.set_param('/kBodVel/momentum', True)       # use momentum (vs EKF) in case of vision loss
+    rospy.set_param('/kBodVel/momentum', False)       # use momentum (vs EKF) in case of vision loss
 
 class autopilotClass:
 
@@ -118,6 +118,7 @@ class autopilotClass:
             self.z = 0.0
             self.vz = 0.0
             self.distanceSensor = 0.0
+	    self.distanceSensor2 = 0.0
             self.teraRanges = [0.0]*rospy.get_param('/kAltVel/teraN')
             self.engaged = False
             self.airborne = False
@@ -125,9 +126,11 @@ class autopilotClass:
             self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
             self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
             self.subFCUexState = rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
-            self.subTera = rospy.Subscriber('/scan', LaserScan, self.cbTera)
+            #self.subTera = rospy.Subscriber('/scan', LaserScan, self.cbTera)
             sensorTopic = '/mavros/distance_sensor/' + rospy.get_param('/kAltVel/distanceSensorName')
             self.subDistanceSensor = rospy.Subscriber(sensorTopic, Range, self.cbDistanceSensor)
+	    self.subDistanceSensor2 = rospy.Subscriber('/altitude', sensor_data, self.cbDistanceSensor2)
+	    self.subDistanceSensor3 = rospy.Subscriber('/altitude2', sensor_data, self.cbDistanceSensor3)
 
         def cbPos(self,msg):
             if not msg == None:
@@ -157,6 +160,12 @@ class autopilotClass:
         def cbDistanceSensor(self,msg):
             if not msg == None:
                 self.distanceSensor = msg.range
+        def cbDistanceSensor2(self,msg):
+            if not msg == None:
+                self.distanceSensor2 = msg.altitude
+        def cbDistanceSensor3(self,msg):
+            if not msg == None:
+                self.distanceSensor3 = msg.altitude
 
         def controller(self):
         

@@ -1,0 +1,20 @@
+<launch>
+
+	<arg name="record_imgs" default="true" />
+        <arg name="record_states" default="true" />
+
+        
+        <node pkg="autopilots" type="ch1sm.py"  name="ch1sm" required="true" output="screen">
+        </node>
+
+
+	<!--node pkg="topic_tools" type="throttle" name="throttle" args="messages cvision/frame 5.0 cvision/frame_reduced" respawn="true" >
+        </node-->
+
+        <node pkg="rosbag" type="record" name="record_imgs" args="-o /home/risc-nuc2/ros_bags/Img_Data.bag /getLaunchpad/launchpad/processedImage /getLaunchpad/launchpad/xyMeters /getLaunchpad/launchpad/xyPixels" respawn="true" if="$(arg record_imgs)" >
+        </node>
+
+	<node pkg="rosbag" type="record" name="record_states" args="-o /home/risc-nuc2/ros_bags/State_Data.bag /mavros/local_position/pose /mavros/setpoint_raw/local /kBodVel/ekfState /mavros/local_position/velocity /mavros/distance_sensor/hrlv_ez4_pub /altitude /altitude2 " respawn="true" if="$(arg record_states)" > 
+        </node>
+
+</launch>
