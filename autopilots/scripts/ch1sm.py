@@ -58,7 +58,6 @@ def ch1sm():
         
     zGround = sm.altK.z    
     zGroundDistanceSensor = sm.altK.distanceSensor
-    #zGroundTera = np.mean(sm.altK.teraRanges)
                           
     zHover = rospy.get_param('/autopilot/altStep')   # base hover altitude
     takeoff.x = sm.bodK.x
@@ -223,7 +222,7 @@ def ch1sm():
             tStart = rospy.Time.now()
             dT = 0.0
             
-            while confidence > 0.5 and dT < 60.0 and not rospy.is_shutdown(): # TODO: parameter
+            while confidence > 0.5 and dT < 15.0 and not rospy.is_shutdown(): # TODO: parameter
             
                 vxHold = sm.setp.velocity.x
                 vyHold = sm.setp.velocity.y
@@ -236,17 +235,25 @@ def ch1sm():
                     
                 # Update EKF
                 sm.bodK.ekfUpdate(seeIt)
+                
+                # Publish EKF state (partial)
                 ekfState.x = sm.bodK.ekf.xhat[2]
                 ekfState.y = sm.bodK.ekf.xhat[3]
                 ekfState.z = sm.bodK.ekf.xhat[4]
                 sm.bodK.ekfState.publish(ekfState)
                 
+                # theAlt = height above ground measurement
+                # NOTE: Does not correct for envelope condition
+                
+                if Testing:
+                    theAlt = sm.altK.z - zGround
+                else:
+                    theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
+                
                 if seeIt: # Track target
                     confidence = cRateU*confidence + (1-cRateU)*1.0
-                    #altCorrect = (sm.altK.z - zGround + camOffset)/rospy.get_param('/pix2m/altCal')
-                    altCorrect = (min(sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3) \
-                                  - zGroundDistanceSensor + camOffset)/rospy.get_param('/pix2m/altCal')
-		    sm.bodK.xSp = target.x*altCorrect
+                    altCorrect = (theAlt + camOffset)/rospy.get_param('/pix2m/altCal')
+                    sm.bodK.xSp = target.x*altCorrect
                     sm.bodK.ySp = target.y*altCorrect
                     (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
                 else: # Track EKF or momentum
@@ -261,17 +268,14 @@ def ch1sm():
                         (sm.bodK.xSp,sm.bodK.ySp) = sm.wayHome(sm.bodK,home)
                         (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
                                 
+                
+                # Track zHover...subject to steps!
+                
                 sm.altK.zSp = zGroundDistanceSensor + zHover
-#                sm.setp.velocity.z = sm.altK.controller()
 
-                theAlt = min(sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3)
-                vzTemp = rospy.get_param('/kAltVel/gP')*(sm.altK.zSp - theAlt) # TODO: Platform height
+                vzTemp = rospy.get_param('/kAltVel/gP')*(sm.altK.zSp - theAlt)
                 sm.setp.velocity.z = \
                     autopilotClass.sat(vzTemp,-rospy.get_param('/kAltVel/vMaxD'),rospy.get_param('/kAltVel/vMaxU'))
-
-#                sm.setp.velocity.z = 0.0
-#                if sm.altK.z > 5.0:
-#                    sm.setp.velocity.z = -0.25
 
                 sm.rate.sleep()
                 sm.setp.header.stamp = rospy.Time.now()
@@ -306,36 +310,30 @@ def ch1sm():
             tStart = rospy.Time.now()
             dT = 0.0
             
-            smartLanding = rospy.get_param('/kAltVel/smartLanding')
-            
-            # theAlt = distance about ground level measurement
-            
-            if Testing:
-                sm.altK.distanceSensor = sm.altK.z
+            # theAlt = distance above ground measurement
                 
-            if smartLanding:
-                theAlt = min(sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
-            else:
+            if Testing:
                 theAlt = sm.altK.z - zGround
-
+            else:
+                theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
+                
             zSp = theAlt/2.0    # incremental target waypoint
             zFix = -1.0
             PlatformFix = False
-            
             
             while confidence > 0.5 and theAlt> 0.3 and not rospy.is_shutdown(): # TODO: parameter
             
                 vxHold = sm.setp.velocity.x
                 vyHold = sm.setp.velocity.y
                 yrHold = sm.setp.yaw_rate
+                                
+                theAlt = min(sm.altK.distanceSensor1,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
                 
                 if Testing:
-                    sm.altK.distanceSensor = sm.altK.z
-                                
-                if smartLanding:
-                    theAlt = min(sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
-                else:
                     theAlt = sm.altK.z - zGround
+                else:
+                    lidar = sm.altK.distanceSensor1, sm.altK.distanceSensor2, sm.altK.distanceSensor3
+                    theAlt = min(lidar) - zGroundDistanceSensor
                     
                 if theAlt < zSp + .05: # TODO: parameter
                     zSp = zSp/2.0
@@ -347,15 +345,34 @@ def ch1sm():
                     
                 # Update EKF
                 sm.bodK.ekfUpdate(seeIt)
+                
+                # Publish EKF states (partial)
                 ekfState.x = sm.bodK.ekf.xhat[2]
                 ekfState.y = sm.bodK.ekf.xhat[3]
                 ekfState.z = sm.bodK.ekf.xhat[4]
                 sm.bodK.ekfState.publish(ekfState)
                 
+                # Evaluate logical situation
+
+                AllAgree = False
+                HighAltitude = False
+                MidAltitude = False
+                Envelope = False
+                    
+                if Testing:
+                    if max(sm.altK.teraRanges) - min(sm.altK.teraRanges) < rospy.get_param('/kAltVel/lidarAgree'):
+                        AllAgree = True
+                elif max(lidar) - min(lidar) < rospy.get_param('/kAltVel/lidarAgree'):
+                    AllAgree = True
+                        
+                if theAlt > 2.5:
+                    HighAltitude = True
+                elif theAlt > 1.8:
+                    MidAltitude = True                
+                    
                 if seeIt: # Track target
                     confidence = cRateU*confidence + (1-cRateU)*1.0
-                    altCorrect = (min(sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3) \
-                                  - zGroundDistanceSensor + camOffset)/rospy.get_param('/pix2m/altCal')
+                    altCorrect = (theAlt + camOffset)/rospy.get_param('/pix2m/altCal')
                     sm.bodK.xSp = target.x*altCorrect
                     sm.bodK.ySp = target.y*altCorrect
                     (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
@@ -374,56 +391,36 @@ def ch1sm():
                 Descend = False
                 dXY = -1.0
                 dV = -1.0
-                
-                lidar1 = sm.altK.distanceSensor
-		lidar2 = sm.altK.distanceSensor2
-		lidar3 = sm.altK.distanceSensor3
-
-                
+ 
                 if seeIt: # TODO: landing logic. descend blind if high confidence also?
-
+                
                     dXY = sqrt(sm.bodK.xSp**2 + sm.bodK.ySp**2)
-                    dV = abs(   sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(np.asscalar(sm.bodK.ekf.xhat[3]))   )#not tracking vehicle's velocity
-
-                    Envelope = False
-                    HighAltitude = False
-		    MidAltitude = False
-                    AllAgree = False
-
-                    #if abs(sm.altK.distanceSensor - sm.altK.distanceSensor2) < rospy.get_param('/kAltVel/teraAgree'):
-                    if max(abs(lidar1-lidar2),abs(lidar2-lidar3),abs(lidar1-lidar3)) < rospy.get_param('/kAltVel/teraAgree'):
-                       AllAgree = True
-                    
+                    dV = abs(   sqrt(sm.bodK.vx**2 + sm.bodK.vy**2) - abs(np.asscalar(sm.bodK.ekf.xhat[3]))   )
                     if dXY < 0.01+0.3*theAlt and dV < 0.4: # TODO: parameters
-                        Envelope = True
-                    if theAlt > 2.5:
-                        HighAltitude = True
-                    else theAlt > 1.8 
-			MidAltitude = True  
-                        
+                       Envelope = True
+                                            
                     if HighAltitude: # descend if seeIt and high altitude and platform velocity match:
-                        # sm.altK.zSp = 2.0
-                        # sm.setp.velocity.z = sm.altK.controller()
                         sm.setp.velocity.z = -vMaxD
                         Descend = True
                     elif Envelope and (AllAgree or MidAltitude): # descend if seeIt and platform match and either Lidars agree or MidAltitude 
-                            zFix = min(sm.altK.distanceSensor,sm.altK.distanceSensor2,sm.altK.distanceSensor3) - zGroundDistanceSensor
+                            zFix = theAlt
                             vzTemp = rospy.get_param('/kAltVel/gP')*(zSp - theAlt)
                             sm.setp.velocity.z = \
                                 autopilotClass.sat(vzTemp,-rospy.get_param('/kAltVel/vMaxD'),rospy.get_param('/kAltVel/vMaxU'))
                             PlatformFix = True
                             Descend = True
-
                     elif AllAgree and not Envelope:
                         if not PlatformFix:
                             sm.setp.velocity.z = 0.0
                         else:
-                            vzTemp = rospy.get_param('/kAltVel/gP')*(zFix + 2.0 - sm.altK.distanceSensor) # TODO: Platform height
+                            vzTemp = \
+                                rospy.get_param('/kAltVel/gP')*(zFix + rospy.get_param('/autopilot/platformHeight') - theAlt)
                             sm.setp.velocity.z = \
                                 autopilotClass.sat(vzTemp,-rospy.get_param('/kAltVel/vMaxD'),rospy.get_param('/kAltVel/vMaxU'))
-                            # sm.setp.velocity.z = 0.0
                     else: # Envelope and not AllAgree:
-                        sm.setp.velocity.z = 0.0
+                            vzTemp = rospy.get_param('/kAltVel/gP')*(zFix - theAlt) # TODO: Platform height
+                            sm.setp.velocity.z = \
+                                autopilotClass.sat(vzTemp,-rospy.get_param('/kAltVel/vMaxD'),rospy.get_param('/kAltVel/vMaxU'))
                                
                 else: # seeIt is false. increase altitude towards zHover
                     sm.altK.zSp = zGround + zHover 

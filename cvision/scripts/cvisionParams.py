@@ -37,7 +37,7 @@ def setParams():
     rospy.set_param('/getLaunchpad/minPoints', 4)                # minimum number of corners for positive detection
     rospy.set_param('/getLaunchpad/agreeTol',1.5)                # tolerance for ensemble agreement
     
-    rospy.set_param('/getLaunchpad/imgShow', False)               # show processed images to screen
+    rospy.set_param('/getLaunchpad/imgShow', True)               # show processed images to screen
     rospy.set_param('/getLaunchpad/imgStream', True)             # stream reduced processed images
     rospy.set_param('/getLaunchpad/imgStreamRate', 3)            # streaming rate
     

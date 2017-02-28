@@ -9,7 +9,8 @@ from sensor_msgs.msg import *
 from geometry_msgs.msg import *
 from mavros_msgs.msg import *
 from mavros_msgs.srv import *
-from altitude_sensor.msg import sensor_data
+# from altitude_sensor.msg import sensor_data
+
 #########
 # Math custom functions
 #########
@@ -32,17 +33,20 @@ def setParams():
     rospy.set_param('/autopilot/fbRate',20.0)        # feedback rate (hz)
     rospy.set_param('/autopilot/altStep',3.5)        # initial altitude step command
     rospy.set_param('/autopilot/camOffset',0.055)      # camera offset from ground
+    rospy.set_param('/autopilot/platformHeight',2.0)   # height of platform
 
     # ROS parameters for kAltVel
     rospy.set_param('/kAltVel/gP',1.5)
     rospy.set_param('/kAltVel/gI',0.1)
     rospy.set_param('/kAltVel/vMaxU',1)
     rospy.set_param('/kAltVel/vMaxD',0.5)
-    rospy.set_param('/kAltVel/smartLanding', True)  # use terarangers & laser sensor to land
     rospy.set_param('/kAltVel/distanceSensorName','hrlv_ez4_pub') # name of distance sensor for mavros subscription
-    rospy.set_param('/kAltVel/smartLandingSim', False)         # True = for HIL simulation of smartLanding
+    rospy.set_param('/kAltVel/smartLandingSim', True)         # True = for HIL simulation of smartLanding
     rospy.set_param('/kAltVel/teraN',3)             # number of tera rangers
-    rospy.set_param('/kAltVel/teraAgree', 0.5)       # agreement for terarangers   
+    rospy.set_param('/kAltVel/lidarAgree', 0.5)       # agreement for terarangers
+    
+    if not rospy.get_param('/kAltVel/smartLandingSim'):
+      from altitude_sensor.msg import sensor_data   
 
     
     # ROS parameters for kBodVel
@@ -117,8 +121,9 @@ class autopilotClass:
             self.zSp = 0.0
             self.z = 0.0
             self.vz = 0.0
-            self.distanceSensor = 0.0
-	    self.distanceSensor2 = 0.0
+            self.distanceSensor1 = 0.0
+            self.distanceSensor2 = 0.0
+            self.distanceSensor3 = 0.0
             self.teraRanges = [0.0]*rospy.get_param('/kAltVel/teraN')
             self.engaged = False
             self.airborne = False
@@ -126,11 +131,13 @@ class autopilotClass:
             self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
             self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
             self.subFCUexState = rospy.Subscriber('/mavros/extended_state', ExtendedState, self.cbFCUexState)
-            #self.subTera = rospy.Subscriber('/scan', LaserScan, self.cbTera)
-            sensorTopic = '/mavros/distance_sensor/' + rospy.get_param('/kAltVel/distanceSensorName')
-            self.subDistanceSensor = rospy.Subscriber(sensorTopic, Range, self.cbDistanceSensor)
-	    self.subDistanceSensor2 = rospy.Subscriber('/altitude', sensor_data, self.cbDistanceSensor2)
-	    self.subDistanceSensor3 = rospy.Subscriber('/altitude2', sensor_data, self.cbDistanceSensor3)
+            self.subTera = rospy.Subscriber('/scan', LaserScan, self.cbTera)
+            
+            if not rospy.get_param('/kAltVel/smartLandingSim'):
+                sensorTopic = '/mavros/distance_sensor/' + rospy.get_param('/kAltVel/distanceSensorName')
+                self.subDistanceSensor1 = rospy.Subscriber(sensorTopic, Range, self.cbDistanceSensor1)
+                self.subDistanceSensor2 = rospy.Subscriber('/altitude', sensor_data, self.cbDistanceSensor2)
+                self.subDistanceSensor3 = rospy.Subscriber('/altitude2', sensor_data, self.cbDistanceSensor3)
 
         def cbPos(self,msg):
             if not msg == None:
@@ -157,9 +164,9 @@ class autopilotClass:
             if not msg == None:
                 self.teraRanges = msg.ranges[1:(rospy.get_param('/kAltVel/teraN')+1)]
 
-        def cbDistanceSensor(self,msg):
+        def cbDistanceSensor1(self,msg):
             if not msg == None:
-                self.distanceSensor = msg.range
+                self.distanceSensor1 = msg.range
         def cbDistanceSensor2(self,msg):
             if not msg == None:
                 self.distanceSensor2 = msg.altitude
