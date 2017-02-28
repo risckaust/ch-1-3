@@ -13,7 +13,8 @@
 	<arg name="ns" default="Quad1"/>
 	<arg name="quadN" default="1"/>
 	<arg name="telem_required" default="false"/>
-	<arg name="telem_port" default="/dev/ttyUSB1"/>
+	<arg name="telem_port" default="/dev/ttyUSB1"/>\
+	<arg name="telem_baud" default="57600"/>
 
 	<rosparam command="load" file="$(find telemetry_comm)/configs/quad_ips.yaml" />
 
@@ -72,7 +73,7 @@
 	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 
-        <node pkg="telemetry_comm" type="telemetry_udp_comm.py" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen" if="$(arg telem_required)">
+        <node pkg="telemetry_comm" type="telem_serial" name="telemetry_serial_comm"  required="true" args="$(arg quadN) $(arg telem_port) $(arg telem_baud)" output="screen" if="$(arg telem_required)">
         </node>
 
 </group>
