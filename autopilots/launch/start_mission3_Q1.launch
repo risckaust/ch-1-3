@@ -34,13 +34,15 @@
 	</include>
 	
 	<rosparam command="load" file="$(find autopilots)/configs/field_map.yaml" />
-	
 	<rosparam command="load" file="$(find cvision)/configs/color_thresholds.yaml" />
-
+	<rosparam command="load" file="$(find cvision)/configs/configs.yaml" />
+	
         <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
         </node>
 
-	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true" output="screen">
+	<node pkg="cvision" name="cvision_color_detector" type="cvision_color_detector" required="True" output="screen"/>	
+	
+	<!--node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true" output="screen">
         </node>
 	
 	<!--node pkg="cvision" type="getColorBlob.py" name="getGreenBlob" args="'green'" respawn="true" output="screen">
