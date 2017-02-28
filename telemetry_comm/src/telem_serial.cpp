@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     std::string ns = ros::this_node::getNamespace();
 
 
-    ros::Rate loop_rate(10);	/* Hz */
+    ros::Rate loop_rate(20);	/* Hz */
 
 
 
@@ -205,12 +205,12 @@ int main(int argc, char **argv)
                 uint8_t dBytes[8];
                 memcpy( dBytes , &(my_cb._gps_msg.latitude) , sizeof( double ) );
                 for (int k=0; k<8; k++)
-                    output_buffer[6+k]=intBytes[k];
+                    output_buffer[6+k]=dBytes[k];
 
                 // lon
                 memcpy( dBytes , &(my_cb._gps_msg.longitude) , sizeof( double ) );
                 for (int k=0; k<8; k++)
-                    output_buffer[14+k]=intBytes[k];
+                    output_buffer[14+k]=dBytes[k];
 
                 // state sequence
                 memcpy( intBytes , &seq2 , sizeof( uint32_t ) );

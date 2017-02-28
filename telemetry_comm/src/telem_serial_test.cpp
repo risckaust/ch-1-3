@@ -206,13 +206,13 @@ int main(int argc, char **argv)
                 double d1 = 32.3311445566;
                 memcpy( dBytes , &d1 , sizeof( double ) );
                 for (int k=0; k<8; k++)
-                    output_buffer[6+k]=intBytes[k];
+                    output_buffer[6+k]=dBytes[k];
 
                 // lon
                 d1 = 20.123456789;
                 memcpy( dBytes , &d1 , sizeof( double ) );
                 for (int k=0; k<8; k++)
-                    output_buffer[14+k]=intBytes[k];
+                    output_buffer[14+k]=dBytes[k];
 
                 // state sequence
                 memcpy( intBytes , &tx_counter , sizeof( uint32_t ) );
