@@ -34,7 +34,7 @@ public:
     //state
     void sm_cb(const autopilots::StateMachine::ConstPtr& msg)
     {
-        _sm_msg.state = msg.state
+        _sm_msg.state = msg.state;
     }
 
 };
