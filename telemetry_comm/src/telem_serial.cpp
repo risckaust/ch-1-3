@@ -261,7 +261,7 @@ int main(int argc, char **argv)
                 {
                     /* 20 bytes/msg are expected which represent: */
                     /* header+quadN+seq+Lat+Lon+seq+stateId+end = 1+1+4+8+84++1+1 = 28*/
-                    if ((uint8_t)buffer[i] == MSG_HEADER && (i+MSG_LENGTH-1) < bytes_read) /* make sure we always can read 20 bytes. Otherwise, wrong msg */
+                    if ((uint8_t)input_buffer[i] == MSG_HEADER && (i+MSG_LENGTH-1) < bytes_read) /* make sure we always can read 20 bytes. Otherwise, wrong msg */
                     {
                         // make sure that we can read the end character
                         if ( (uint8_t)input_buffer[i+MSG_LENGTH-1] == MSG_END ){
