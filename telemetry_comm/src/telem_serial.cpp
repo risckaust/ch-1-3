@@ -28,12 +28,14 @@ public:
     //gps
     void gps_cb(const sensor_msgs::NavSatFix::ConstPtr& msg)
     {
+        _gps_msg.header = msg->header;
         _gps_msg.latitude = msg->latitude;
         _gps_msg.longitude = msg->longitude;
     }
     //state
     void sm_cb(const autopilots::StateMachine::ConstPtr& msg)
     {
+        _sm_msg.header = msg->.header;
         _sm_msg.state = msg->state;
     }
 
