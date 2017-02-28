@@ -203,12 +203,14 @@ int main(int argc, char **argv)
 
                 //prepare lat/lon
                 uint8_t dBytes[8];
-                memcpy( dBytes , &((double) 32.3311445566) , sizeof( double ) );
+                double d1 = 32.3311445566;
+                memcpy( dBytes , &d1 , sizeof( double ) );
                 for (int k=0; k<8; k++)
                     output_buffer[6+k]=intBytes[k];
 
                 // lon
-                memcpy( dBytes , &((double)20.123456789) , sizeof( double ) );
+                d1 = 20.123456789;
+                memcpy( dBytes , &d1 , sizeof( double ) );
                 for (int k=0; k<8; k++)
                     output_buffer[14+k]=intBytes[k];
 
