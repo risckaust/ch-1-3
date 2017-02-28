@@ -214,35 +214,24 @@ int main(int argc, char **argv)
                 // state
                 string mystate = my_cb._sm_msg.state;
                 uint8_t mysID=9;
-                switch (mystate)
-                {
-                case "Start":
+                if (mystate == "Start")
                     mysID = 0;
-                    break;
-                case "Takeoff":
+                else if (mystate == "Takeoff")
                     mysID = 1;
-                    break;
-                case "ObjectSearch":
+                else if (mystate == "ObjectSearch")
                     mysID = 2;
-                    break;
-                case "Picking":
+                else if (mystate == "Picking")
                     mysID = 3;
-                    break;
-                case "GoToDrop":
+                else if (mystate == "GoToDrop")
                     mysID = 4;
-                    break;
-                case "WaitToDrop":
+                else if (mystate == "WaitToDrop")
                     mysID = 5;
-                    break;
-                case "Drop":
+                else if (mystate == "Drop")
                     mysID = 6;
-                    break;
-                case "Hover":
+                else if (mystate == "Hover")
                     mysID = 7;
-                    break;
-                default:
+                else
                     mysID = 9;
-                }
 
                 output_buffer[26] = mysID;
 
