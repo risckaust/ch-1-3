@@ -52,7 +52,7 @@ int main(int argc, char **argv)
     /**
       make sure to get port/baud from command line arguments
     */
-    if (argc != 4)
+    if (argc != 4+2)
     {
         ROS_INFO("telem_serial quadN /dev/ttyACM0 57600");
         ROS_ERROR("Please provide port and baud. Exiting");
