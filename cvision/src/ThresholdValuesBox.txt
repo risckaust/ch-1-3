@@ -1,0 +1,6 @@
+iLowH = 0
+iHighH = 10
+iLowS = 0
+iHighS = 157
+iLowV = 30
+iHighV = 230

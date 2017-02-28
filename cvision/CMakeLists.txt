@@ -54,7 +54,7 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message1.msg
 #   Message2.msg
    ObjectPose.msg
-)
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -71,11 +71,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
+ generate_messages(
    DEPENDENCIES
    std_msgs
    geometry_msgs
-)
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -109,7 +109,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES cvision
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  CATKIN_DEPENDS cv_bridge geometry_msgs roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
   CATKIN_DEPENDS
   message_runtime
@@ -138,7 +138,9 @@ include_directories(
 
 ## Declare a C++ executable
 # add_executable(cvision_node src/cvision_node.cpp)
-add_executable(cvision_detector src/color_detector.cpp)
+add_executable(cvision_box_detector src/box_detector.cpp)
+add_executable(cvision_color_detector src/color_detector.cpp)
+add_executable(cvision_threshold_tuning src/threshold_tuning.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -147,8 +149,10 @@ add_executable(cvision_detector src/color_detector.cpp)
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(cvision_node
 #   ${catkin_LIBRARIES}
+target_link_libraries(cvision_box_detector ${catkin_LIBRARIES})
+target_link_libraries(cvision_color_detector ${catkin_LIBRARIES})
+target_link_libraries(cvision_threshold_tuning ${catkin_LIBRARIES})
 # )
-target_link_libraries(cvision_detector ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -198,4 +202,6 @@ target_link_libraries(cvision_detector ${catkin_LIBRARIES})
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_dependencies(cvision_detector ${catkin_EXPORTED_TARGETS})
+
+
+

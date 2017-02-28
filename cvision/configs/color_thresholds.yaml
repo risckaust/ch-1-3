@@ -1,11 +1,12 @@
 # stores HSV color thresholds for {blue, green, red, yellow}
-RedHSV: {low: [166, 77, 140], high: [176, 177, 240]}
-BlueHSV: {low: [100, 155, 161], high: [110, 255, 255]}
-GreenHSV: {low: [75, 73, 95], high: [85, 173, 195]}
-YellowHSV: {low: [5, 0, 206], high: [55, 35, 255]}
-BoxHSV: {low: [0, 0, 30], high: [10, 157, 230]}
-
-FindBlue: False
+Red: {low: [80, 57, 158, 48, 163, 127, 168, 60, 88],high: [140, 117, 255, 208, 179, 143, 178, 160, 188],obj_shape: 1,min_obj_sz: 2,morph_sz: 2,merge_thres: 100} 
+Green: {low: [93, 111, 0, 58, 95, 123, 76, 22, 60],high: [153, 171, 109, 218, 111, 139, 86, 122, 160],obj_shape: 1,min_obj_sz: 2,morph_sz: 2,merge_thres: 100} 
+Blue: {low: [181, 100, 0, 58, 126, 72, 102, 108, 90],high: [255, 160, 98, 218, 142, 88, 112, 208, 190],obj_shape: 1,min_obj_sz: 2,morph_sz: 2,merge_thres: 100} 
+Orange: {low: [0, 67, 63, 21, 109, 155, 27, 78, 14],high: [62, 127, 123, 181, 125, 171, 37, 178, 114],obj_shape: 1,min_obj_sz: 2,morph_sz: 2,merge_thres: 100}
+Yellow: {low: [0, 67, 63, 21, 109, 155, 27, 78, 14],high: [62, 127, 123, 181, 125, 171, 37, 178, 114],obj_shape: 2,min_obj_sz: 2,morph_sz: 2,merge_thres: 100} 
+Box: {low: [56, 56, 85, 21, 132, 125, 0, 0, 50],high: [116, 116, 145, 181, 148, 141, 5, 87, 150],obj_shape: 2,min_obj_sz: 15,morph_sz: 5,merge_thres: 100} 
+FindBlue: True
 FindGreen: False
 FindRed: True
+FindOrange: False
 FindYellow: False

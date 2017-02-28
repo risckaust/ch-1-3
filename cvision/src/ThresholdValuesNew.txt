@@ -1,6 +1,6 @@
-iLowH = 117
-iHighH = 179
-iLowS = 114
-iHighS = 214
-iLowV = 87
-iHighV = 187
+iLowHue = 104
+iHighHue = 114
+iLowSat = 64
+iHighSat = 164
+iLowLum = 115
+iHighLum = 215
