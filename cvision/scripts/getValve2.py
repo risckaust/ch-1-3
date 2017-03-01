@@ -85,6 +85,8 @@ def getValve():
             _, cnts, _ = cv2.findContours(maskD.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
         
         bigR = -1.0
+        c0 = 320,240
+        
         if len(cnts) > 0:
             # keep largest contour
             c = max(cnts, key=cv2.contourArea)
@@ -92,20 +94,20 @@ def getValve():
             ((x, y), radius) = cv2.minEnclosingCircle(c)
             cv2.circle(gray, (int(x), int(y)), int(radius),(0, 0, 0), 2)
             bigR = radius
-        
+            c0 = int(x), int(y)
+            
         ### Find Valve
         
         # Binary threshold image
 
         _, mask = cv2.threshold(mask,60,255,cv2.THRESH_BINARY_INV)
-        
+
         # dilate white
         mask = cv2.dilate(mask, kernel, iterations=1)
         
         # Mask all but center
         
-        c0 = 320,240
-        radius = 70
+        radius = 80
         
         pxMask = np.zeros((480,640,1), np.uint8)
         cv2.circle(pxMask, c0, radius, color = 255, thickness = -1)
@@ -171,7 +173,7 @@ def getValve():
         bestMask = cv2.bitwise_not(bestMask)
         mask2 = cv2.bitwise_and(mask,bestMask)
                         
-        cv2.imshow('temp',gray2)
+        cv2.imshow('orig',gray2)
         cv2.imshow('mask',mask2)
         key = cv2.waitKey(1) & 0xFF
 

@@ -372,7 +372,7 @@ def ch1sm():
                     
                 if seeIt: # Track target
                     confidence = cRateU*confidence + (1-cRateU)*1.0
-                    altCorrect = (theAlt + camOffset)/rospy.get_param('/pix2m/altCal')
+                    altCorrect = (theAlt + camOffset)/rospy.get_param('/pix2m/altCal') #NOTE: May be too large if off platform
                     sm.bodK.xSp = target.x*altCorrect
                     sm.bodK.ySp = target.y*altCorrect
                     (sm.setp.velocity.x,sm.setp.velocity.y,sm.setp.yaw_rate) = sm.bodK.controller()
@@ -417,7 +417,7 @@ def ch1sm():
                                 rospy.get_param('/kAltVel/gP')*(zFix + rospy.get_param('/autopilot/platformHeight') - theAlt)
                             sm.setp.velocity.z = \
                                 autopilotClass.sat(vzTemp,-rospy.get_param('/kAltVel/vMaxD'),rospy.get_param('/kAltVel/vMaxU'))
-                    else: # Envelope and not AllAgree:
+                    else: # Envelope and not AllAgree. must be low altitude
                             vzTemp = rospy.get_param('/kAltVel/gP')*(zFix - theAlt) # TODO: Platform height
                             sm.setp.velocity.z = \
                                 autopilotClass.sat(vzTemp,-rospy.get_param('/kAltVel/vMaxD'),rospy.get_param('/kAltVel/vMaxU'))
