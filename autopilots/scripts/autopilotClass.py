@@ -257,9 +257,14 @@ class autopilotClass:
             self.vy = 0.0
             self.engaged = False
 
+            # current GPS coordinates
+            self.current_lat = 0.0
+            self.current_lon = 0.0
+
             self.subPos = rospy.Subscriber('/mavros/local_position/pose', PoseStamped, self.cbPos)
             self.subVel = rospy.Subscriber('/mavros/local_position/velocity', TwistStamped, self.cbVel)
             self.subFCUstate = rospy.Subscriber('/mavros/state', State, self.cbFCUstate)
+            rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.cbGPS)
 
             self.ekf = self.EKF()
             
@@ -283,6 +288,11 @@ class autopilotClass:
                 self.Q[3,3] = 0.1
                 self.Q[4,4] = 0.5
                 self.R = np.matrix(np.identity(2))*10.0 # TODO: parameter
+
+        def cbGPS(self, msg):
+            if msg is not None:
+		self.current_lat = msg.latitude
+		self.current_lon = msg.longitude
                 
 
         def cbPos(self,msg):
