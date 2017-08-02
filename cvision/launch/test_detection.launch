@@ -1,0 +1,22 @@
+<launch>
+	<!-- vim: set ft=xml noet : -->
+
+	<arg name="ns" default="Quad1"/>
+	<arg name="quadN" default="1"/>
+
+
+	
+
+<group ns="Quad1">
+	
+	<rosparam command="load" file="$(find cvision)/configs/color_thresholds.yaml" />
+
+        <node pkg="cvision" type="videoBridge.py" name="videoBridge"  respawn="true">
+        </node>
+
+	<node pkg="cvision" type="getBgrBlob.py" name="getBgrBlob"  respawn="true" output="screen">
+        </node>
+
+</group>
+
+</launch>
