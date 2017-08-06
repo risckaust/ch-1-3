@@ -225,18 +225,21 @@ int main(int argc, char **argv)
 		case 1:
 			strcpy(droneA_ip, d2_ip.c_str());
 			strcpy(droneB_ip, d3_ip.c_str());
+			myport = d1_prt;
 			droneA_port = d2_prt;
 			droneB_port = d3_prt;
 			break;
 		case 2:
 			strcpy(droneA_ip, d1_ip.c_str());
 			strcpy(droneB_ip, d3_ip.c_str());
+			myport = d2_prt;
 			droneA_port = d1_prt;
 			droneB_port = d3_prt;
 			break;
 		case 3:
 			strcpy(droneA_ip, d1_ip.c_str());
 			strcpy(droneB_ip, d2_ip.c_str());
+			myport = d3_prt;
 			droneA_port = d1_prt;
 			droneB_port = d2_prt;
 			break;
