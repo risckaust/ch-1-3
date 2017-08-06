@@ -1,0 +1,7 @@
+# this loads ips for quad 1 & 2 & 3
+drone1_ip: '192.168.1.170'
+drone2_ip: '192.168.1.171'
+drone3_ip: '192.168.1.172'
+drone1_port: 5005
+drone2_port: 5006
+drone3_port: 5007
