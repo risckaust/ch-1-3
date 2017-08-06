@@ -180,6 +180,8 @@ int main(int argc, char **argv)
 	mavlink_message_t msg;
 	uint16_t len;
 	int i = 0;
+	bool droneA_updated = false;
+	bool droneB_updated = false;
 
 	// define ips and ports
 	std::string d1_ip, d2_ip, d3_ip;
@@ -280,10 +282,7 @@ int main(int argc, char **argv)
 	while (ros::ok())
 	{
 
-		/* Send test message */
-
-		// get stat id state
-		string mystate = my_cb._sm_msg.state;
+		/* fill in test msg & send */
 		uint8_t mysID=5;
 
 		// fill msg
@@ -355,6 +354,7 @@ int main(int argc, char **argv)
 								return 1;
 							}
 							if (state_msg.drone_id == droneA_N){
+								droneA_updated = true;
 								droneA_gps_msg.header.stamp = ros::Time::now();
 								droneA_gps_msg.latitude = state_msg.latitude;
 								droneA_gps_msg.longitude = state_msg.longitude;
@@ -363,6 +363,7 @@ int main(int argc, char **argv)
 								droneA_sm_msg.state = st;
 							}
 							if (state_msg.drone_id == droneB_N){
+								droneB_updated = true;
 								droneB_gps_msg.header.stamp = ros::Time::now();
 								droneB_gps_msg.latitude = state_msg.latitude;
 								droneB_gps_msg.longitude = state_msg.longitude;
@@ -427,6 +428,7 @@ int main(int argc, char **argv)
 								return 1;
 							}
 							if (state_msg.drone_id == droneA_N){
+								droneA_updated = true;
 								droneA_gps_msg.header.stamp = ros::Time::now();
 								droneA_gps_msg.latitude = state_msg.latitude;
 								droneA_gps_msg.longitude = state_msg.longitude;
@@ -435,6 +437,7 @@ int main(int argc, char **argv)
 								droneA_sm_msg.state = st;
 							}
 							if (state_msg.drone_id == droneB_N){
+								droneB_updated = true;
 								droneB_gps_msg.header.stamp = ros::Time::now();
 								droneB_gps_msg.latitude = state_msg.latitude;
 								droneB_gps_msg.longitude = state_msg.longitude;
@@ -449,11 +452,18 @@ int main(int argc, char **argv)
 		}// end of rcv_buff2
 
 		/* ------------ publish msg ----------- */
-		droneA_gps_pub.publish(droneA_gps_msg);
-		droneB_gps_pub.publish(droneB_gps_msg);
+		//Drone A
+		if (droneA_updated){
+			droneA_gps_pub.publish(droneA_gps_msg);
+			droneA_sm_pub.publish(droneA_sm_msg);
+			droneB_updated = false;
+		}
 
-		droneA_sm_pub.publish(droneA_sm_msg);
-		droneB_sm_pub.publish(droneB_sm_msg);
+		if(droneB_updated){
+			droneB_gps_pub.publish(droneB_gps_msg);
+			droneB_sm_pub.publish(droneB_sm_msg);
+			droneB_updated = false;
+		}
 
 		ros::spinOnce();
 	        loop_rate.sleep();
