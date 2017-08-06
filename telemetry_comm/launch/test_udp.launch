@@ -23,7 +23,7 @@
 		<arg name="log_output" value="$(arg log_output)" />
 	</include>
 
-        <node pkg="telemetry_comm" type="telem_mavlink_udp" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen">
+        <node pkg="telemetry_comm" type="telem_mavlink_udp_test" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen">
         </node>
 
 </group>

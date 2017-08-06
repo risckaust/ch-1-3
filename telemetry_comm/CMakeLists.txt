@@ -195,3 +195,7 @@ include_directories(
 add_executable(telem_mavlink_udp src/telem_mavlink_udp.cpp)
 target_link_libraries(telem_mavlink_udp ${catkin_LIBRARIES})
 add_dependencies(telem_mavlink_udp autopilots_generate_messages_cpp)
+
+add_executable(telem_mavlink_udp_test src/telem_mavlink_udp_test.cpp)
+target_link_libraries(telem_mavlink_udp_test ${catkin_LIBRARIES})
+add_dependencies(telem_mavlink_udp_test autopilots_generate_messages_cpp)
