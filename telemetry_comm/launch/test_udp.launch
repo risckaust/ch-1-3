@@ -2,14 +2,14 @@
 	<!-- vim: set ft=xml noet : -->
 	<!-- example launch script for PX4 based FCU's -->
 
-	<arg name="fcu_url" default="/dev/ttyACM0:921600" />
+	<arg name="fcu_url" default="/dev/ttyUSB0:921600" />
 	<arg name="gcs_url" default="" />
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
 	<arg name="quadN" default="1"/>
 
-	<rosparam command="load" file="$(find telemetry_comm)/configs/quad_ips.yaml" />
+	<rosparam command="load" file="$(find telemetry_comm)/configs/telem_configs.yaml" />
 
 <group ns="Quad$(arg quadN)">
 	<include file="$(find mavros)/launch/node.launch">
@@ -23,7 +23,7 @@
 		<arg name="log_output" value="$(arg log_output)" />
 	</include>
 
-        <node pkg="telemetry_comm" type="telemetry_udp_comm.py" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen">
+        <node pkg="telemetry_comm" type="telem_mavlink_udp" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen">
         </node>
 
 </group>
