@@ -7,7 +7,7 @@
 
 	
 
-<group ns="Quad1">
+<group ns="Drone$(arg quadN)">
 	
 	<rosparam command="load" file="$(find cvision)/configs/color_thresholds.yaml" />
 
