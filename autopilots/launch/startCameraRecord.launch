@@ -2,11 +2,15 @@
 	<!-- vim: set ft=xml noet : -->
 	<!-- example launch script for PX4 based FCU's -->
 
-	<arg name="fcu_url" default="/dev/ttySAC0:921600" />
+	<arg name="fcu_url" default="/dev/ttyUSB0:921600" />
 	<arg name="gcs_url" default="" />
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="1" />
 	<arg name="log_output" default="screen" />
+	<arg name="droneN" default="1" />
+	<arg name="out_file" default="/home/odroid/ros_bags/ImgData.bag"/>
+
+<group ns="Drone$(arg dorneN)">
 
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
@@ -22,10 +26,11 @@
         <node pkg="cvision" type="videoBridge.py" name="videoBridge" required="true" >
         </node>
 
-        <node pkg="topic_tools" type="throttle" name="throttle" args="messages /frameBGR 5.0 /frameBGR_reduced" required="true" >
+        <node pkg="topic_tools" type="throttle" name="throttle" args="messages /Quad$(arg droneN)/cvision/frame 5.0 /Quad$(arg droneN)/cvision/frame_reduced" required="true" >
         </node>
 
-        <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
+        <node pkg="rosbag" type="record" name="record" args="-o $(arg out_file) /Quad$(arg droneN)/cvision/frame_reduced" required="true" >
         </node>
+</group>
 
 </launch>
