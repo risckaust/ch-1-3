@@ -220,6 +220,7 @@ class StateMachineC( object ):
 		self.setp		= PositionTarget()
 		# use velocity setpoints
 		self.setp.type_mask	= int('010111000111', 2)
+		self.setp.coordinate_frame = 1 # FRAME_LOCAL_NED
 
 		# Instantiate altitude controller object (from autopilot library)
 		self.altK 		= autopilotLib.kAltVel(ns)
@@ -943,7 +944,7 @@ class StateMachineC( object ):
 
 	# State: Drop
 	def execute_drop(self):
-		self.current_state='Drop'
+		self.current_state='Dropping'
 		self.current_signal='Running'
 
 		self.debug()
@@ -1282,9 +1283,9 @@ class StateMachineC( object ):
 			elif signal == 'Resume':
 				self.execute_waittodrop()
 
-		elif (state == 'Drop'):
+		elif (state == 'Dropping'):
 			if signal == 'Interrupted':
-				self.resume_state = 'Drop'
+				self.resume_state = 'Dropping'
 				self.execute_hover()
 			elif signal == 'Done':
 				self.execute_objectSearch()

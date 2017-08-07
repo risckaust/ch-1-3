@@ -342,7 +342,7 @@ int main(int argc, char **argv)
 								st = "WaitToDrop";
 								break;
 							case 6:
-								st = "Drop";
+								st = "Dropping";
 								break;
 							case 7:
 								st = "Hover";
@@ -416,7 +416,7 @@ int main(int argc, char **argv)
 								st = "WaitToDrop";
 								break;
 							case 6:
-								st = "Drop";
+								st = "Dropping";
 								break;
 							case 7:
 								st = "Hover";
@@ -461,7 +461,7 @@ int main(int argc, char **argv)
 			droneA_sm_pub.publish(droneA_sm_msg);
 			droneB_updated = false;
 		}
-
+		// Drone B
 		if(droneB_updated){
 			droneB_gps_pub.publish(droneB_gps_msg);
 			droneB_sm_pub.publish(droneB_sm_msg);
