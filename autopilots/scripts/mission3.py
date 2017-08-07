@@ -1739,7 +1739,7 @@ def mission():
 	sm.ENVELOPE_XY_VEL_MIN = 0.15
 	sm.ENVELOPE_XY_VEL_MAX = 0.5
 	sm.vHold_factor = 0.05
-	sm.USE_LIDAR = True
+	sm.USE_LIDAR = False
 
 	sm.DEBUG=True
 	sm.TKOFFALT1 = 1.0
