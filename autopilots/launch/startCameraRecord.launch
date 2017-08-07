@@ -10,7 +10,7 @@
 	<arg name="droneN" default="1" />
 	<arg name="out_file" default="/home/odroid/ros_bags/ImgData.bag"/>
 
-<group ns="Drone$(arg dorneN)">
+<group ns="Quad$(arg droneN)">
 
 	<include file="$(find mavros)/launch/node.launch">
 		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
