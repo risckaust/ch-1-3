@@ -12,7 +12,7 @@
 	<arg name="record" default="false"/>
 	<arg name="ns" default="Quad2"/>
 	<arg name="quadN" default="2"/>
-	<arg name="telem_required" default="false"/>
+	<arg name="telem_required" default="true"/>
 	<arg name="telem_port" default="/dev/ttyUSB1"/>
 
 	<rosparam command="load" file="$(find telemetry_comm)/configs/telem_configs.yaml" />
@@ -70,7 +70,7 @@
 	<node pkg="autopilots" type="mission3.py" name="mission3" output="screen" respawn="true">	
         </node>
 
-        <node pkg="telemetry_comm" type="telemetry_udp_comm.py" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen" if="$(arg telem_required)">
+        <node pkg="telemetry_comm" type="telem_mavlink_udp" name="telemetry_udp_comm"  required="true" args="$(arg quadN)" output="screen" if="$(arg telem_required)">
         </node>
 </group>
 
