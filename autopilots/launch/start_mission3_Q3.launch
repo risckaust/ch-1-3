@@ -17,7 +17,7 @@
 
 	<rosparam command="load" file="$(find telemetry_comm)/configs/telem_configs.yaml" />
 
-	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/raw/fix /$(arg ns)/mavros/setpoint_raw/local /$(arg ns)/state_machine/state" />
+	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/global /$(arg ns)/mavros/setpoint_raw/local /$(arg ns)/state_machine/state" />
 
 	
 
