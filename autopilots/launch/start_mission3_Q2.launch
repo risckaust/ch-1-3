@@ -17,7 +17,7 @@
 
 	<rosparam command="load" file="$(find telemetry_comm)/configs/telem_configs.yaml" />
 
-	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/global /$(arg ns)/mavros/setpoint_raw/local /$(arg ns)/state_machine/state" />
+	<arg name="record_topics" default="/$(arg ns)/mavros/local_position/pose /$(arg ns)/mavros/local_position/velocity /$(arg ns)/getColors/bgr/processedImage /$(arg ns)/getColors/bgr/xyMeters /$(arg ns)/gripper_command /$(arg ns)/gripper_status /$(arg ns)/mavros/battery /$(arg ns)/mavros/state /$(arg ns)/mavros/global_position/global /$(arg ns)/mavros/setpoint_raw/local /$(arg ns)/state_machine/state /Quad1/mavros/global_position/global /Quad3/mavros/global_position/global /Quad1/state_machine/state /Quad3/state_machine/state" />
 
 	
 
@@ -61,7 +61,7 @@
         <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/ImgData.bag /frameBGR_reduced" required="true" >
         </node-->
 
-        <node pkg="rosbag" type="record" name="record" args="-o /home/risc/ros_bags/LogSM.bag $(arg record_topics)"  if="$(arg record)">
+        <node pkg="rosbag" type="record" name="record" args="-o /home/odroid/ros_bags/drone2_mission3Log.bag $(arg record_topics)"  if="$(arg record)">
         </node>
 	
 	<node pkg="rosserial_python" type="serial_node.py" name="gripper_node" args="_port:=$(arg arduino_url) _baud:=$(arg arduino_baud)" output="screen">
