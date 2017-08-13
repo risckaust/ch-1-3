@@ -704,7 +704,7 @@ class StateMachineC( object ):
 			# object is picked
 			else:
 				# make sure to stay for some time to confirm
-				if pick_counter >= 20:
+				if pick_counter >= 10:
 					rospy.loginfo('Object is considered PICKED.')
 					self.altK.zSp = self.ZGROUND + self.SEARCH_ALT
 					rospy.loginfo('Climbing to Altitude: %s', self.altK.zSp)
@@ -714,7 +714,7 @@ class StateMachineC( object ):
 				else:
 					rospy.loginfo('Pick signal is received. Waiting for confirmation....')
 					
-				pick_counter = min(pick_counter+1, 20)
+				pick_counter = min(pick_counter+1, 10)
 
 				# activate magnets once more to ensure gripping
 				if gripper_counter <1:
