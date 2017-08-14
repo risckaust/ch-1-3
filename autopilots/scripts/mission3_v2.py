@@ -780,8 +780,8 @@ class StateMachineC( object ):
 			    # clear the interruption
 			    rospy.set_param(self.namespace+'/state_machine/interruption',0.0)
 
-				# set back velocity setpoints
-				self.setp.type_mask	= int('010111000111', 2)
+			    # set back velocity setpoints
+			    self.setp.type_mask	= int('010111000111', 2)
 			    break
 
 		# Done with Picking state, send signal
