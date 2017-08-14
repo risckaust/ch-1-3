@@ -638,8 +638,13 @@ class StateMachineC( object ):
 							dz = max(self.altK.z - self.ZGROUND, 0.0)
 							altCorrect = (dz + self.CAMOFFSET)/rospy.get_param(self.namespace+'/pix2m/altCal')
 
+						# setpoints in NED body frame
 						self.bodK.xSp = obj_x*altCorrect
 						self.bodK.ySp = obj_y*altCorrect
+
+						# setpoints in ENU body frame
+						xsp_enu = self.bodK.ySp
+						ysp_enu = self.bodK.xSp
 
 						# convert body setpoints to local ENU
 						bodyRot = self.bodK.yaw - pi/2.0
@@ -1772,7 +1777,7 @@ def mission():
 	sm.vHold_factor = 0.05
 	sm.USE_LIDAR = False
 	sm.GRIPPER_OFFSET_X=0.0
-	sm.GRIPPER_OFFSET_Y=0.07
+	sm.GRIPPER_OFFSET_Y=0.10
 
 	sm.DEBUG=True
 	sm.TKOFFALT1 = 1.0
