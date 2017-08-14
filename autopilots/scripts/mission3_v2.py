@@ -274,6 +274,11 @@ class StateMachineC( object ):
 		# .data=True: activate magnets, .data=False: deactivate
 		self.gripper_action	= Bool()
 		self.gripper_pub	= rospy.Publisher(ns+'/gripper_command', Bool, queue_size=10)
+
+		# gripper lateral offsets from camera, [meters]
+		self.GRIPPER_OFFSET_X=0.0
+		self.GRIPPER_OFFSET_Y=0.07
+
 		# set state Interruption as ROS paramter
 		# if >0 : interrupt state
 		rospy.set_param(ns+'/state_machine/interruption', 0.0)
@@ -638,10 +643,14 @@ class StateMachineC( object ):
 
 						# convert body setpoints to local ENU
 						bodyRot = self.bodK.yaw - pi/2.0
+						# align body ENU with local ENU
+						# add gripper offset, if any, to center gripper on object
+						xsp_enu = xsp_enu + self.GRIPPER_OFFSET_X
 						xsp_enu = self.bodK.ySp*cos(bodyRot) - self.bodK.xSp*sin(bodyRot)
+						ysp_enu = ysp_enu + self.GRIPPER_OFFSET_Y
 						ysp_enu = self.bodK.ySp*sin(bodyRot) + self.bodK.xSp*cos(bodyRot)
-						self.setp.position.x = xsp_enu
-						self.setp.position.y = ysp_enu
+						self.setp.position.x = self.bodK.x + xsp_enu
+						self.setp.position.y = self.bodK.y + ysp_enu
 
 						# update home
 						self.home.x = self.bodK.x
@@ -1762,6 +1771,8 @@ def mission():
 	sm.ENVELOPE_XY_VEL_MAX = 0.5
 	sm.vHold_factor = 0.05
 	sm.USE_LIDAR = False
+	sm.GRIPPER_OFFSET_X=0.0
+	sm.GRIPPER_OFFSET_Y=0.07
 
 	sm.DEBUG=True
 	sm.TKOFFALT1 = 1.0
