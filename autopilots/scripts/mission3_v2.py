@@ -642,18 +642,18 @@ class StateMachineC( object ):
 						self.bodK.xSp = obj_x*altCorrect
 						self.bodK.ySp = obj_y*altCorrect
 
-						# setpoints in ENU body frame
-						xsp_enu = self.bodK.ySp
-						ysp_enu = self.bodK.xSp
+						# setpoints in ENU body frame with offsets
+						xsp_enu_o = self.bodK.ySp + self.GRIPPER_OFFSET_X
+						ysp_enu_o = self.bodK.xSp + self.GRIPPER_OFFSET_Y
 
 						# convert body setpoints to local ENU
 						bodyRot = self.bodK.yaw - pi/2.0
 						# align body ENU with local ENU
 						# add gripper offset, if any, to center gripper on object
-						xsp_enu = xsp_enu + self.GRIPPER_OFFSET_X
-						xsp_enu = self.bodK.ySp*cos(bodyRot) - self.bodK.xSp*sin(bodyRot)
-						ysp_enu = ysp_enu + self.GRIPPER_OFFSET_Y
-						ysp_enu = self.bodK.ySp*sin(bodyRot) + self.bodK.xSp*cos(bodyRot)
+						xsp_enu = ysp_enu_o*sin(bodyRot) + xsp_enu_o*cos(bodyRot)
+						ysp_enu = ysp_enu_o*cos(bodyRot) - xsp_enu_o*sin(bodyRot)
+						#xsp_enu = self.bodK.ySp*cos(bodyRot) - self.bodK.xSp*sin(bodyRot)
+						#ysp_enu = self.bodK.ySp*sin(bodyRot) + self.bodK.xSp*cos(bodyRot)
 						self.setp.position.x = self.bodK.x + xsp_enu
 						self.setp.position.y = self.bodK.y + ysp_enu
 
@@ -1428,6 +1428,11 @@ class StateMachineC( object ):
 			xy_list_sorted=sorted(xy_list, key=self.getThirdElemt)
 			for i in range(0,len(xy_list_sorted)):
 				bodyRot = self.bodK.yaw - pi/2.0
+				# NOTE possible mistake: objects are detected in camera NED frame.
+				# So xy_list_sorted[i][0] is NED-x, xy_list_sorted[i][1] is NED-y
+				# equation from body enu to local enu should be,
+				# x_enu = body_enu_y*cos(rotaion) - body_enu_x*sin(rotaion)
+				# x_enu = body_enu_y*sin(rotaion) + body_enu_x*cos(rotaion)
 				x_enu =  xy_list_sorted[i][1]*cos(bodyRot) - xy_list_sorted[i][0]*sin(bodyRot)
 				y_enu = xy_list_sorted[i][1]*sin(bodyRot) + xy_list_sorted[i][0]*cos(bodyRot)
 				dx_enu = x_enu
