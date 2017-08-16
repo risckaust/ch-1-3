@@ -647,7 +647,8 @@ class StateMachineC( object ):
 						ysp_enu_o = self.bodK.xSp + self.GRIPPER_OFFSET_Y
 
 						# convert body setpoints to local ENU
-						bodyRot = self.bodK.yaw - pi/2.0
+						# bodyRot = self.bodK.yaw - pi/2.0
+						bodyRot = self.bodK.yaw
 						# align body ENU with local ENU
 						# add gripper offset, if any, to center gripper on object
 						xsp_enu = ysp_enu_o*sin(bodyRot) + xsp_enu_o*cos(bodyRot)
