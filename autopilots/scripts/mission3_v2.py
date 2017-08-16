@@ -203,7 +203,7 @@ class StateMachineC( object ):
 
 		# object monitoring confidence
 		self.confidence 	= 0.0
-		self.cTh 		= 0.5
+		self.cTh 		= 0.2
 		self.cRate		= 0.95
 
 		# descend_rate: fraction of the previous setpoint
@@ -648,7 +648,7 @@ class StateMachineC( object ):
 
 						# convert body setpoints to local ENU
 						# bodyRot = self.bodK.yaw - pi/2.0
-						bodyRot = self.bodK.yaw
+						bodyRot = pi/2 - self.bodK.yaw
 						# align body ENU with local ENU
 						# add gripper offset, if any, to center gripper on object
 						xsp_enu = ysp_enu_o*sin(bodyRot) + xsp_enu_o*cos(bodyRot)
@@ -1783,7 +1783,7 @@ def mission():
 	sm.vHold_factor = 0.05
 	sm.USE_LIDAR = False
 	sm.GRIPPER_OFFSET_X=0.0
-	sm.GRIPPER_OFFSET_Y=0.10
+	sm.GRIPPER_OFFSET_Y=0.08
 
 	sm.DEBUG=True
 	sm.TKOFFALT1 = 1.0
